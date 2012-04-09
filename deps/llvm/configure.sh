@@ -3,9 +3,9 @@ cd "$(dirname $0)"
 LLVM_PROJECT_DIR="$(pwd)"
 LLVM_SRC_DIR="$LLVM_PROJECT_DIR/src"
 LLVM_DST_DIR="$LLVM_PROJECT_DIR/bin"
-LLVM_OBJ_DIR="$LLVM_PROJECT_DIR/objroot"
+LLVM_BUILD_DIR="$LLVM_PROJECT_DIR/build"
 
-cd "$LLVM_OBJ_DIR"
+cd "$LLVM_BUILD_DIR"
 
 "$LLVM_SRC_DIR/configure" \
   "--prefix=$LLVM_DST_DIR" \
