@@ -11,6 +11,6 @@ cd "$LLVM_BUILD_DIR"
   "--prefix=$LLVM_DST_DIR" \
   --enable-optimized \
   --enable-jit \
-  --enable-targets=x86,x86_64,arm
+  --enable-targets=x86,x86_64
 
 #make -j
