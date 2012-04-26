@@ -31,6 +31,9 @@ public:
   FunctionInterface(VariableList *args = 0, TypeDeclarationList *returnTypes = 0)
     : Node(TFunctionInterface), args_(args), returnTypes_(returnTypes) {}
 
+  VariableList *args() const { return args_; }
+  TypeDeclarationList *returnTypes() const { return returnTypes_; }
+
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
@@ -67,6 +70,9 @@ public:
     : Expression(TFunction), interface_(interface), body_(body) {}
   Function(FunctionInterface *interface, Expression *body)
     : Expression(TFunction), interface_(interface), body_(new Block(body)) {}
+
+  FunctionInterface *interface() const { return interface_; }
+  Block *body() const { return body_; }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;

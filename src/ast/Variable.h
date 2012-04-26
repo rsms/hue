@@ -1,11 +1,12 @@
 #ifndef RSMS_AST_VARIABLE_DEFINITION_H
 #define RSMS_AST_VARIABLE_DEFINITION_H
+#include "Node.h"
 #include "TypeDeclaration.h"
 #include <vector>
 #include <string>
 namespace rsms { namespace ast {
 
-class Variable {
+class Variable : public Node {
 public:
   Variable(bool isMutable, const std::string& name, TypeDeclaration *type)
     : isMutable_(isMutable), name_(name), type_(type) {}

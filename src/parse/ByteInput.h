@@ -2,12 +2,16 @@
 #ifndef RSMS_BYTE_INPUT_H
 #define RSMS_BYTE_INPUT_H
 
+#include <stdint.h>
+#include <stdlib.h>
+
 namespace rsms {
 
 class ByteInput {
 public:
   virtual bool started() const = 0;
   virtual bool ended() const = 0;
+  virtual bool failed() const = 0;
   virtual const uint8_t& next(const size_t stride = 1) = 0;
   virtual const uint8_t& past(size_t offset) const = 0;
   virtual const uint8_t& current() const = 0;

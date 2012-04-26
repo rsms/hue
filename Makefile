@@ -1,17 +1,33 @@
-all: covec
+# Source files
+cxx_sources := src/main.cc
 
-clean:
-	rm -f covec src/parser.cc src/tokens.cc
+# Tools
+CC = clang
+LD = clang
+CXXC = clang++
 
-src/parser.cc: src/parser.y
-	bison --name-prefix=cove_ -d -o $@ $^
+# Compiler and Linker flags for all targets
+CFLAGS   += -Wall
+CXXFLAGS += -std=c++11
+LDFLAGS  += -lc++ -lstdc++
 
-src/parser.hh: src/parser.cc
+# Compiler and Linker flags for release targets
+CFLAGS_RELEASE  := -O3 -DNDEBUG
+LDFLAGS_RELEASE :=
+# Compiler and Linker flags for debug targets
+CFLAGS_DEBUG    := -g -O0 #-gdwarf2
+LDFLAGS_DEBUG   :=
 
-src/tokens.cc: src/tokens.l src/parser.hh
-	lex --prefix=cove_ --8bit -o $@ $^
+# Source files to Object files
+object_dir := .objs
 
-llvm_components := all
+cxx_objects := ${cxx_sources:.cc=.o}
+_objects := $(cxx_objects)
+objects = $(patsubst %,$(object_dir)/%,$(_objects))
+object_dirs := $(foreach fn,$(objects),$(shell dirname "$(fn)"))
+
+# --- libllvm ---------------------------------------------------------------------
+libllvm_components := all
 # Available components (from llvm-config --components):
 #   all analysis archive asmparser asmprinter backend bitreader bitwriter
 #   codegen core debuginfo engine executionengine instcombine instrumentation
@@ -20,18 +36,46 @@ llvm_components := all
 #   target transformutils x86 x86asmparser x86asmprinter x86codegen x86desc
 #   x86disassembler x86info x86utils
 llvm_config := deps/llvm/bin/bin/llvm-config
-llvm_inc_dir := $(shell $(llvm_config) --includedir)
-llvm_lib_dir := $(shell $(llvm_config) --libdir)
-llvm_flags := $(shell $(llvm_config) --libs $(llvm_components) --cxxflags --ldflags)
-clang_c_flags := -I$(llvm_inc_dir)
-clang_ld_flags := -L$(llvm_lib_dir) -lclang -lclangARCMigrate -lclangAST -lclangAnalysis -lclangBasic -lclangCodeGen -lclangDriver -lclangFrontend -lclangFrontendTool -lclangIndex -lclangLex -lclangParse -lclangRewrite -lclangSema -lclangSerialization -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangStaticAnalyzerFrontend
-clang_flags := $(clang_c_flags) $(clang_ld_flags)
+libllvm_inc_dir := $(shell $(llvm_config) --includedir)
+libllvm_lib_dir := $(shell $(llvm_config) --libdir)
+libllvm_ld_flags := $(shell $(llvm_config) --libs $(libllvm_components) --ldflags)
 
-covec: src/main.cc src/parser.cc src/tokens.cc src/codegen.cc
-	llvm-g++ -o $@ $(llvm_flags) $(clang_flags) -O2 $^
+libllvm_c_flags := -I$(libllvm_inc_dir)
+libllvm_c_flags += -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
+libllvm_cxx_flags := $(libllvm_c_flags) -fno-rtti -fno-common
 
-# -DNDEBUG -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -O3  -fno-exceptions -fno-rtti -fno-common -Woverloaded-virtual -Wcast-qual
+# --- libclang ---------------------------------------------------------------------
+libclang_c_flags := -I$(libllvm_inc_dir)
+libclang_ld_flags := -L$(libllvm_lib_dir) -lclang -lclangARCMigrate -lclangAST -lclangAnalysis -lclangBasic -lclangCodeGen -lclangDriver -lclangFrontend -lclangFrontendTool -lclangIndex -lclangLex -lclangParse -lclangRewrite -lclangSema -lclangSerialization -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangStaticAnalyzerFrontend
+libclang_flags := $(libclang_c_flags) $(libclang_ld_flags)
 
-#-fno-exceptions -fno-rtti -fno-common
-#g++ -o $@ `deps/llvm/bin/bin/llvm-config --libs core jit native --cxxflags --ldflags` $^
-# codegen.cc
+# --- targets ---------------------------------------------------------------------
+
+#all: echo_state covec
+all: release
+
+debug: CFLAGS += $(CFLAGS_DEBUG)
+debug: LDFLAGS += $(LDFLAGS_DEBUG)
+debug: covec
+
+release: CFLAGS += $(CFLAGS_RELEASE)
+release: LDFLAGS += $(LDFLAGS_RELEASE)
+release: covec
+
+clean:
+	rm -f covec
+	rm -rf $(object_dir)
+
+echo_state:
+	@echo objects: $(objects)
+	@echo object_dirs: $(object_dirs)
+
+# C++ source -> objects
+$(object_dir)/%.o: %.cc
+	@mkdir -p $(object_dirs)
+	$(CXXC) $(CFLAGS) $(CXXFLAGS) $(libllvm_cxx_flags) -c -o $@ $<
+
+covec: $(objects)
+	$(LD) $(LDFLAGS) $(libllvm_ld_flags) -o covec $^
+
+.PHONY: 

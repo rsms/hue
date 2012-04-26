@@ -4,29 +4,38 @@
 
 #include "ByteInput.h"
 #include <iostream>
-#include <fstream>
 
 namespace rsms {
 
 template <size_t BufferSize = 4096>
 class StreamInput : public ByteInput {
+  std::istream *istream_;
+  bool owns_istream_;
   size_t  start_;  // index of oldest element
   size_t  count_;  // number of used elements
   size_t  next_;   // current element index (offset from start_)
   size_t  current_;
   uint8_t elems_[BufferSize]; // vector of elements
-  std::istream &istream_;
 public:
-  explicit StreamInput(std::istream &ins)
-    : istream_(ins)
-    , start_(0)
-    , count_(0)
-    , next_(0)
-    , current_(0) {}
+  explicit StreamInput(std::istream *ins = NULL, bool takeOwnership = false)
+    : istream_(ins), owns_istream_(takeOwnership), start_(0), count_(0), next_(0), current_(0) {}
+
+  virtual ~StreamInput() {
+    if (owns_istream_ && istream_) delete istream_;
+  }
+  
+  const std::istream* inputStream() const { return istream_; }
+  void setInputStream(std::istream *ins, bool takeOwnership = false) {
+    std::istream *istream1 = owns_istream_ ? istream_ : NULL;
+    istream_ = ins;
+    owns_istream_ = takeOwnership;
+    if (istream1) delete istream1;
+  }
 
   const size_t size() const { return BufferSize; }
   const size_t &count() const { return count_; }
 
+  bool failed() const { return istream_->fail(); }
   bool started() const { return count_ != 0; }
   bool isFull() const { return count_ == BufferSize; }
   int isEmpty() const { return count_ == 0; }
@@ -53,11 +62,12 @@ public:
     if (limit > BufferSize) {
       limit = BufferSize;
     }
+    
     //std::cout << "read " << limit << " \"";
-    while (istream_.good() && limit--) {
+    while (istream_->good() && limit--) {
       char byte;
-      istream_.get(byte);
-      if (istream_.eof()) {
+      istream_->get(byte);
+      if (istream_->eof()) {
         //std::cout << "<EOF>";
         break;
       }
@@ -75,7 +85,7 @@ public:
     size_t lowWatermark = BufferSize / 3;
     size_t futurec = futureCount();
   
-    if (futurec < lowWatermark && !istream_.eof()) {
+    if (futurec < lowWatermark && !istream_->eof()) {
       //std::cout << "Filling from stream... " << std::endl;
       size_t readLimit;
       if (!isFull() && futurec == 0) {
@@ -85,7 +95,7 @@ public:
       }
       pushFromStream(readLimit);
       //cout << "count_: " << count_ << endl;
-    } else if (futurec == 0 && istream_.eof()) {
+    } else if (futurec == 0 && istream_->eof()) {
       current_ = count_;
       return InputEnd;
     }

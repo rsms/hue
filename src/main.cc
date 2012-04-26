@@ -1,18 +1,28 @@
-// Parses a program into an Abstract Syntax Tree (AST).
-// clang++ -std=c++11 -o parse parse.cc && ./parse
-#include "../src/parse/FileInput.h"
-#include "../src/parse/Tokenizer.h"
-#include "../src/parse/TokenBuffer.h"
-#include "../src/parse/Parser.h"
-
+#include <string.h>
+#include <stdlib.h>
 #include <iostream>
+#include <fstream>
+
+#include "parse/FileInput.h"
+#include "parse/Tokenizer.h"
+#include "parse/TokenBuffer.h"
+#include "parse/Parser.h"
+
+#include "codegen/LLVMVisitor.h"
+
+using std::cerr;
+using std::cout;
+using std::cin;
+using std::endl;
+using std::ios_base;
+using std::ifstream;
 
 using namespace rsms;
 
 int main(int argc, char **argv) {
-
+  
   // A FileInput reads from a file, feeding bytes to a Tokenizer
-  FileInput<> input(argc > 1 ? argv[1] : "program1.txt");
+  FileInput<> input(argc > 1 ? argv[1] : "examples/program1.txt");
   if (input.failed()) {
     std::cerr << "Failed to open input." << std::endl;
     return 1;
@@ -36,9 +46,12 @@ int main(int argc, char **argv) {
     std::cerr << parser.errors().size() << " errors." << std::endl;
     return 1;
   }
+
+  // Generate code
+  codegen::LLVMVisitor codegenVisitor;
+  llvm::Module *llvmModule = codegenVisitor.genModule(llvm::getGlobalContext(), "hello", module);
   
-  // Print a textual representation of the AST
-  std::cout << "\e[32;1mParsed module:\e[0m " << module->toString() << std::endl;
+  std::cout << "moduleIR: " << llvmModule << std::endl;
 
   return 0;
 }

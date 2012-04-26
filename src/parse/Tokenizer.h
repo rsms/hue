@@ -65,7 +65,6 @@ public:
     // Skip any whitespace.
     if (IsWhitespaceByte(input_->current())) {
       uint32_t lengthAfterLF = 0;
-      long leading = lineLeading_;
       bool afterLF = false;
       
       do {

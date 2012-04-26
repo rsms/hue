@@ -9,6 +9,11 @@
 #include "../ast/Expression.h"
 #include "../ast/Function.h"
 
+#include <vector>
+
+namespace rsms {
+using namespace ast;
+
 // ------------------------------------------------------------------
 class RTracer {
   const char *funcName_;
@@ -32,11 +37,6 @@ int RTracer::depth = 0;
 #define R_TRACE RTracer RTracer_##__LINE__(__FUNCTION__, __PRETTY_FUNCTION__)
 // ------------------------------------------------------------------
 
-#include <vector>
-
-namespace rsms {
-
-using namespace ast;
 
 // Precedence of the pending binary operator token.
 static int BinaryOperatorPrecedence(const Token& token) {
@@ -75,6 +75,10 @@ class Parser {
   uint32_t previousLineIndentation_ = 0;
   uint32_t currentLineIndentation_ = 0;
   
+  std::vector<std::string> errors_;
+  //std::vector<std::string> warnings_;
+  //std::vector<std::string> notices_;
+  
 public:
   explicit Parser(TokenBuffer& tokens)
     : tokens_(tokens)
@@ -84,6 +88,10 @@ public:
   // ------------------------------------------------------------------------
   // Error handling
   Expression *error(const char *str) {
+    std::ostringstream ss;
+    ss << str << " (" << token_.toString() << ")";
+    errors_.push_back(ss.str());
+    
     fprintf(stderr, "\e[31;1mError: %s\e[0m (%s)\n Token trace:\n", str, token_.toString().c_str());
     
     // list token trace
@@ -96,6 +104,8 @@ public:
     }
     return 0;
   }
+  
+  const std::vector<std::string>& errors() const { return errors_; };
   
   bool tokenTerminatesCall(const Token& token) const {
     return token.type != Token::Identifier
