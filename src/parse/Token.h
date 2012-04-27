@@ -10,7 +10,7 @@ typedef struct {
   const char *name;
   const bool hasStringValue;
   const bool hasDoubleValue;
-  const bool hasLongValue;
+  const bool hasIntValue;
 } TokenTypeInfo;
 
 class Token {
@@ -52,7 +52,7 @@ public:
   std::string stringValue;
   union {
     double doubleValue;
-    long longValue;
+    uint8_t intValue;
   };
   
   uint32_t line;
@@ -68,13 +68,9 @@ public:
     // Value
     if (type >= 0 && type < _TypeCount) {
       const TokenTypeInfo& info = TypeInfo[type];
-      if (info.hasStringValue) {
-        stringValue = other.stringValue;
-      } else if (info.hasDoubleValue) {
-        doubleValue = other.doubleValue;
-      } else if (info.hasLongValue) {
-        longValue = other.longValue;
-      }
+      if (info.hasStringValue) stringValue = other.stringValue;
+      if (info.hasDoubleValue) doubleValue = other.doubleValue;
+      if (info.hasIntValue)     intValue = other.intValue;
     }
   }
   
@@ -102,8 +98,8 @@ public:
         return_fstr("%s@%u:%u,%u = '%s'", info.name, line, column, length, stringValue.c_str());
       } else if (info.hasDoubleValue) {
         return_fstr("%s@%u:%u,%u = %f", info.name, line, column, length, doubleValue);
-      } else if (info.hasLongValue) {
-        return_fstr("%s@%u:%u,%u = %ld", info.name, line, column, length, longValue);
+      } else if (info.hasIntValue) {
+        return_fstr("%s@%u:%u,%u = %d", info.name, line, column, length, intValue);
       } else {
         return_fstr("%s@%u:%u,%u", info.name, line, column, length);
       }
@@ -116,7 +112,7 @@ public:
 static const Token NullToken;
 
 const TokenTypeInfo Token::TypeInfo[] = {
-  // name                // hasStringValue  hasDoubleValue  hasLongValue
+  // name                // hasStringValue  hasDoubleValue  hasIntValue
   {"Unexpected",          .hasStringValue = 1, 0,0},
   {"Comment",             .hasStringValue = 1, 0,0},
   {"Func",                0,0,0},
@@ -134,7 +130,7 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"Stop",                0,0,0},
   {"Assignment",          0,0,0},
   {"NewLine",             0,0,0},
-  {"IntLiteral",          0,0, .hasLongValue = 1},
+  {"IntLiteral",          .hasStringValue = 1,0, .hasIntValue = 1}, // intValue = radix
   {"FloatLiteral",        0, .hasDoubleValue = 1,0},
   {"IntSymbol",           0,0,0},
   {"FloatSymbol",         0,0,0},

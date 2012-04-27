@@ -21,11 +21,17 @@ public:
   }
 };
 
-// Numeric integer literals like "1".
+// Numeric integer literals like "3".
 class IntLiteralExpression : public Expression {
-  long value_;
+  std::string value_;
+  const uint8_t radix_;
 public:
-  IntLiteralExpression(long value) : Expression(TIntLiteralExpression), value_(value) {}
+  IntLiteralExpression(std::string value, uint8_t radix = 10)
+    : Expression(TIntLiteralExpression), value_(value), radix_(radix) {}
+
+  const std::string& text() const { return value_; }
+  const uint8_t& radix() const { return radix_; }
+  
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
@@ -66,6 +72,9 @@ public:
   
   AssignmentExpression(VariableList *varList, Expression *rhs)
     : Expression(TAssignmentExpression), varList_(varList), rhs_(rhs) {}
+
+  const VariableList *variables() const { return varList_; };
+  const Expression *rhs() const { return rhs_; }
 
   //VariableList *varList() { return varList_; }
   // 

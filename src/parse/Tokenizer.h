@@ -58,7 +58,6 @@ public:
       token_.column = 0;
       token_.length = 0;
       token_.type = Token::NewLine;
-      token_.longValue = 0; // leading whitespace
       return token_;
     }
     
@@ -162,21 +161,25 @@ public:
       token_.type = input_->current() == '.' ? Token::FloatLiteral : Token::IntLiteral;
       
       while (1) {
-        token_.stringValue += nextByte();
-        if (input_->current() == '.') {
+        const uint8_t& b = nextByte();
+        if (b == '.') {
           token_.type = Token::FloatLiteral;
-        } else if (!isdigit(input_->current())) {
+        } else if (!isdigit(b)) {
           break;
         }
+        token_.stringValue += b;
       }
       
       token_.line = line_;
       token_.column = startColumn;
       token_.length = column_ - startColumn - 1;
+      
       if (token_.type == Token::FloatLiteral) {
         token_.doubleValue = strtod(token_.stringValue.c_str(), 0);
       } else {
-        token_.longValue = strtol(token_.stringValue.c_str(), 0, /* base = */ 10);
+        std::cout << "token_.stringValue: '" << token_.stringValue << "'" << std::endl;
+        // Note: int literal keeps the string as its value
+        token_.intValue = 10; // radix -- TODO: Support 2, 8, 10, 16, and 36 radix literals
       }
     }
     

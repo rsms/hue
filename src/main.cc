@@ -10,12 +10,8 @@
 
 #include "codegen/LLVMVisitor.h"
 
-using std::cerr;
-using std::cout;
-using std::cin;
-using std::endl;
-using std::ios_base;
-using std::ifstream;
+#include <llvm/Support/raw_ostream.h>
+#include <fcntl.h>
 
 using namespace rsms;
 
@@ -38,20 +34,48 @@ int main(int argc, char **argv) {
   Parser parser(tokens);
   
   // Parse the input into an AST
-  ast::Function *module = parser.parse();
-  
-  // Check for errors
-  if (!module) return 1;
+  ast::Function *moduleFunc = parser.parse();
+  if (!moduleFunc) return 1;
   if (parser.errors().size() != 0) {
-    std::cerr << parser.errors().size() << " errors." << std::endl;
+    std::cerr << parser.errors().size() << " parse error(s)." << std::endl;
     return 1;
   }
-
+  
   // Generate code
   codegen::LLVMVisitor codegenVisitor;
-  llvm::Module *llvmModule = codegenVisitor.genModule(llvm::getGlobalContext(), "hello", module);
+  llvm::Module *llvmModule = codegenVisitor.genModule(llvm::getGlobalContext(), "hello", moduleFunc);
+  //std::cout << "moduleIR: " << llvmModule << std::endl;
+  if (!llvmModule) {
+    std::cerr << codegenVisitor.errors().size() << " error(s) during code generation." << std::endl;
+    return 1;
+  }
   
-  std::cout << "moduleIR: " << llvmModule << std::endl;
-
+  // Write IR to stderr
+  llvmModule->dump();
+  
+  // Write human-readable IR to file "out.ll"
+  std::string errInfo;
+  llvm::raw_fd_ostream os("out.ll", errInfo);
+  if (os.has_error()) {
+    std::cerr << "Failed to open 'out.ll' file for output. " << errInfo << std::endl;
+    return 1;
+  }
+  llvmModule->print(os, 0);
+  
+  //
+  // From here:
+  //
+  //   PATH=$PATH:$(pwd)/deps/llvm/bin/bin
+  //
+  //   Run the generated program:
+  //     lli out.ll
+  //
+  //   Generate target assembler:
+  //     llc -asm-verbose -o=- out.ll
+  //
+  //   Generate target image:
+  //     llvm-as -o=- out.ll | llvm-ld -native -o=out.a -
+  //
+  
   return 0;
 }

@@ -16,19 +16,19 @@ class Node {
 public:
   const enum Type {
     TNode = 0,
-    TBlock,
+    TBlock = 1,
     
-    TFunctionInterface,
-    TFunction,
-    TExternalFunction,
+    TFunctionInterface = 2,
+    TFunction = 3,
+    TExternalFunction = 4,
     
-    TExpression,
-    TIntLiteralExpression,
-    TFloatLiteralExpression,
-    TSymbolExpression,
-    TAssignmentExpression,
-    TBinaryExpression,
-    TCallExpression,
+    TExpression = 5,
+    TIntLiteralExpression = 6,
+    TFloatLiteralExpression = 7,
+    TSymbolExpression = 8,
+    TAssignmentExpression = 9,
+    TBinaryExpression = 10,
+    TCallExpression = 11,
     
     _TypeCount
   } type;

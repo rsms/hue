@@ -1,5 +1,4 @@
 // Reads from a TokenBuffer and builds an AST, possibly producing warnings and errors
-// clang++ -std=c++11 -o parse src/parse2.cc && ./parse
 #ifndef RSMS_PARSER_H
 #define RSMS_PARSER_H
 
@@ -11,31 +10,13 @@
 
 #include <vector>
 
+#include "../DebugTrace.h"
+//#define DEBUG_TRACE_PARSER DEBUG_TRACE
+#define DEBUG_TRACE_PARSER do{}while(0)
+
+
 namespace rsms {
 using namespace ast;
-
-// ------------------------------------------------------------------
-class RTracer {
-  const char *funcName_;
-  const char *funcInterface_;
-public:
-  static int depth;
-  RTracer(const char *funcName, const char *funcInterface) {
-    funcName_ = funcName;
-    funcInterface_ = funcInterface;
-    fprintf(stderr, "%*s\e[33;1m-> %d %s  \e[30;1m%s\e[0m\n", RTracer::depth*2, "",
-            RTracer::depth, funcName_, funcInterface_);
-    ++RTracer::depth;
-  }
-  ~RTracer() {
-    --RTracer::depth;
-    fprintf(stderr, "%*s\e[33m<- %d %s  \e[30;1m%s\e[0m\n", RTracer::depth*2, "",
-            RTracer::depth, funcName_, funcInterface_);
-  }
-};
-int RTracer::depth = 0;
-#define R_TRACE RTracer RTracer_##__LINE__(__FUNCTION__, __PRETTY_FUNCTION__)
-// ------------------------------------------------------------------
 
 
 // Precedence of the pending binary operator token.
@@ -126,7 +107,7 @@ public:
   
   /// typedecl ::= id
   TypeDeclaration *parseTypeDeclaration() {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     if (token_.type == Token::IntSymbol) {
       nextToken();
       return new TypeDeclaration(TypeDeclaration::Int);
@@ -150,7 +131,7 @@ public:
   /// var
   ///   ::= id 'MUTABLE'? typedecl?
   Variable *parseVariable(std::string identifierName) {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     TypeDeclaration *typeDeclaration = NULL;
     bool isMutable = false;
     
@@ -170,7 +151,7 @@ public:
   /// varlist
   ///   ::= (var ',')* var
   VariableList *parseVariableList(std::string firstVarIdentifierName = std::string()) {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     VariableList *varList = new VariableList();
     bool useArg0 = !firstVarIdentifierName.empty();
     
@@ -208,7 +189,7 @@ public:
   /// assignment_expr
   ///   ::= varlist '=' expr
   AssignmentExpression *parseAssignmentExpression(std::string firstVarIdentifierName) {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     VariableList *varList = parseVariableList(firstVarIdentifierName);
     if (!varList) return 0;
     
@@ -262,7 +243,7 @@ public:
   // foo a b (c = x d)  -->  foo(a, b, (c = x(d)))
   //
   Expression *parseCallExpression(std::string identifierName) {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     
     ScopeFlag<bool> isParsingCallArguments(&isParsingCallArguments_, true);
     
@@ -302,7 +283,7 @@ public:
   ///   ::= identifier
   ///   ::= identifier '(' expression* ')'
   Expression *parseIdentifierExpr() {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     std::string identifierName = token_.stringValue;
     nextToken();  // eat identifier.
     
@@ -320,7 +301,7 @@ public:
   /// binop_rhs
   ///   ::= (op primary)*
   Expression *parseBinOpRHS(int lhsPrecedence, Expression *lhs) {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     // If this is a binop, find its precedence.
     while (1) {
       int precedence = BinaryOperatorPrecedence(token_);
@@ -389,7 +370,7 @@ public:
   //   extern atan (Number x, Number y) Number linebreak
   //
   FunctionInterface *parseFunctionInterface() {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     
     VariableList *variableList = NULL;
     TypeDeclarationList *returnTypes = NULL;
@@ -426,7 +407,7 @@ public:
   /// func_definition
   ///   ::= 'func' func_interface '->' expression
   Function *parseFunction() {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     nextToken();  // eat 'func'
     
     // Parse function interface
@@ -453,7 +434,7 @@ public:
 
   /// external ::= 'extern' id func_interface linebreak
   ExternalFunction *parseExternalFunction() {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     nextToken();  // eat 'extern'
     
     if (token_.type != Token::Identifier) {
@@ -480,7 +461,7 @@ public:
 
   /// toplevel ::= expression
   Function *parseTopLevelExpression() {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     Expression *body = parseExpression();
     if (body == 0) return 0;
     // anonymous interface
@@ -492,7 +473,7 @@ public:
   /// assignment
   ///   ::= expression = expression
   Expression *parseAssignmentRHS(Expression *lhs) {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     Expression *rhs = parseExpression();
     if (!rhs) return 0;
     return new BinaryExpression('=', lhs, rhs);
@@ -505,7 +486,7 @@ public:
   ///   ::= primary
   ///
   Expression *parseExpression() {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     Expression *lhs = parsePrimary();
     if (!lhs) return 0;
     
@@ -531,15 +512,15 @@ public:
   
   /// intliteral ::= '0' | [1-9][0-9]*
   Expression *parseIntLiteralExpr() {
-    R_TRACE;
-    Expression *expression = new IntLiteralExpression(token_.longValue);
+    DEBUG_TRACE_PARSER;
+    Expression *expression = new IntLiteralExpression(token_.stringValue, token_.intValue);
     nextToken(); // consume the number
     return expression;
   }
   
   /// loatliteral ::= [0-9] '.' [0-9]*
   Expression *parseFloatLiteralExpr() {
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     Expression *expression = new FloatLiteralExpression(token_.doubleValue);
     nextToken(); // consume the number
     return expression;
@@ -551,7 +532,7 @@ public:
   ///   ::= paren
   Expression *parsePrimary() {
     entry:
-    R_TRACE;
+    DEBUG_TRACE_PARSER;
     switch (token_.type) {
       case Token::Identifier: {
         Expression* expr = parseIdentifierExpr();
