@@ -131,7 +131,7 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"Assignment",          0,0,0},
   {"NewLine",             0,0,0},
   {"IntLiteral",          .hasStringValue = 1,0, .hasIntValue = 1}, // intValue = radix
-  {"FloatLiteral",        0, .hasDoubleValue = 1,0},
+  {"FloatLiteral",        .hasStringValue = 1,0,0},
   {"IntSymbol",           0,0,0},
   {"FloatSymbol",         0,0,0},
   {"End",                 0,0,0},

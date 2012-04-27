@@ -174,12 +174,9 @@ public:
       token_.column = startColumn;
       token_.length = column_ - startColumn - 1;
       
-      if (token_.type == Token::FloatLiteral) {
-        token_.doubleValue = strtod(token_.stringValue.c_str(), 0);
-      } else {
-        std::cout << "token_.stringValue: '" << token_.stringValue << "'" << std::endl;
-        // Note: int literal keeps the string as its value
-        token_.intValue = 10; // radix -- TODO: Support 2, 8, 10, 16, and 36 radix literals
+      if (token_.type == Token::IntLiteral) {
+        // radix -- TODO: Support detecting 2, 8, 10, 16, and 36 radix literals
+        token_.intValue = 10;
       }
     }
     

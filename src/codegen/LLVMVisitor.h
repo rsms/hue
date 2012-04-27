@@ -1,9 +1,13 @@
 #ifndef RSMS_CODEGEN_LLVM_VISITOR_H
 #define RSMS_CODEGEN_LLVM_VISITOR_H
 
-#include "../DebugTrace.h"
-#define DEBUG_TRACE_LLVM_VISITOR DEBUG_TRACE
-//#define DEBUG_TRACE_LLVM_VISITOR do{}while(0)
+#define DEBUG_LLVM_VISITOR 1
+#if DEBUG_LLVM_VISITOR
+  #include "../DebugTrace.h"
+  #define DEBUG_TRACE_LLVM_VISITOR DEBUG_TRACE
+#else
+  #define DEBUG_TRACE_LLVM_VISITOR do{}while(0)
+#endif
 
 #include "../ast/Node.h"
 
@@ -76,8 +80,11 @@ public:
     switch (node->type) {
       //case Node::TBlock: return codegenBlock((ast::Block*)node);
       //case Node::TFunctionInterface: return codegenFunctionInterface((ast::FunctionInterface*)node);
+      case Node::TSymbolExpression: return codegenSymbolExpression((ast::SymbolExpression*)node);
+      case Node::TBinaryExpression: return codegenBinaryExpression((ast::BinaryExpression*)node);
       case Node::TFunction: return codegenFunction((ast::Function*)node);
       case Node::TIntLiteralExpression: return codegenIntLiteral((IntLiteralExpression*)node);
+      case Node::TFloatLiteralExpression: return codegenFloatLiteral((FloatLiteralExpression*)node);
       case Node::TAssignmentExpression: return codegenAssignment((AssignmentExpression*)node);
       default: return error("Unable to generate code for node");
     }
@@ -185,8 +192,11 @@ public:
     for (; it1 < nodes.end(); it1++) {
       
       // xxx
-      if ((*it1)->type == Node::TAssignmentExpression
-          && ((AssignmentExpression*)(*it1))->rhs()->type == Node::TIntLiteralExpression) {
+      if ((*it1)->type == Node::TAssignmentExpression && (
+             ((AssignmentExpression*)(*it1))->rhs()->type == Node::TIntLiteralExpression
+          || ((AssignmentExpression*)(*it1))->rhs()->type == Node::TFloatLiteralExpression
+          || ((AssignmentExpression*)(*it1))->rhs()->type == Node::TBinaryExpression
+        )) {
         lastValue = codegen(*it1);
         if (lastValue == 0) return 0;
       }
@@ -196,6 +206,7 @@ public:
   };
   
   
+  // AssignmentExpression
   Value *codegenAssignment(const ast::AssignmentExpression* node) {
     DEBUG_TRACE_LLVM_VISITOR;
     
@@ -237,12 +248,57 @@ public:
   }
   
   
-  Value *codegenIntLiteral(const ast::IntLiteralExpression *intLiteral, bool isMutable = true) {
+  // Int
+  Value *codegenIntLiteral(const ast::IntLiteralExpression *intLiteral, bool fixedSize = true) {
     DEBUG_TRACE_LLVM_VISITOR;
-    
-    const unsigned numBits = 64; // TODO: Infer the minimal size needed if isMutable is false
+    // TODO: Infer the minimal size needed if fixedSize is false
+    const unsigned numBits = 64;
     return ConstantInt::get(getGlobalContext(), APInt(numBits, intLiteral->text(), intLiteral->radix()));
   }
+  
+  
+  // Float
+  Value *codegenFloatLiteral(const ast::FloatLiteralExpression *floatLiteral, bool fixedSize = true) {
+    DEBUG_TRACE_LLVM_VISITOR;
+    // TODO: Infer the minimal size needed if fixedSize is false
+    const fltSemantics& size = APFloat::IEEEdouble;
+    return ConstantFP::get(getGlobalContext(), APFloat(size, floatLiteral->text()));
+  }
+  
+  
+  // BinaryExpression
+  Value *codegenBinaryExpression(BinaryExpression *binExpr) {
+    DEBUG_TRACE_LLVM_VISITOR;
+    
+    Value *L = codegen(binExpr->lhs());
+    Value *R = codegen(binExpr->rhs());
+    if (L == 0 || R == 0) return 0;
+  
+    switch (binExpr->operatorValue()) {
+      case '+': return builder_.CreateFAdd(L, R, "addtmp");
+      case '-': return builder_.CreateFSub(L, R, "subtmp");
+      case '*': return builder_.CreateFMul(L, R, "multmp");
+      case '<': {
+        L = builder_.CreateFCmpULT(L, R, "cmptmp");
+        // Convert bool 0/1 to double 0.0 or 1.0
+        return builder_.CreateUIToFP(L, Type::getDoubleTy(getGlobalContext()), "booltmp");
+      }
+      default: return error("invalid binary operator");
+    }
+  }
+  
+  
+  // SymbolExpression
+  Value *codegenSymbolExpression(SymbolExpression *symbol) {
+    DEBUG_TRACE_LLVM_VISITOR;
+    
+    Value *V = namedValues_[symbol->name()];
+    if (V == 0) return error("Unknown variable name");
+
+    // Load the value.
+    return builder_.CreateLoad(V, symbol->name().c_str());
+  }
+
 
 private:
   std::vector<std::string> errors_;

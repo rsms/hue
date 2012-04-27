@@ -10,9 +10,13 @@
 
 #include <vector>
 
-#include "../DebugTrace.h"
-//#define DEBUG_TRACE_PARSER DEBUG_TRACE
-#define DEBUG_TRACE_PARSER do{}while(0)
+#define DEBUG_PARSER 0
+#if DEBUG_PARSER
+  #include "../DebugTrace.h"
+  #define DEBUG_TRACE_PARSER DEBUG_TRACE
+#else
+  #define DEBUG_TRACE_PARSER do{}while(0)
+#endif
 
 
 namespace rsms {
@@ -73,8 +77,8 @@ public:
     ss << str << " (" << token_.toString() << ")";
     errors_.push_back(ss.str());
     
+    #if DEBUG_PARSER
     fprintf(stderr, "\e[31;1mError: %s\e[0m (%s)\n Token trace:\n", str, token_.toString().c_str());
-    
     // list token trace
     size_t n = 1; // excluding the futureToken_
     while (n < tokens_.count()) {
@@ -83,6 +87,8 @@ public:
       } else
       std::cerr << "  " << tokens_[n++].toString() << std::endl;
     }
+    #endif
+    
     return 0;
   }
   
@@ -521,7 +527,7 @@ public:
   /// loatliteral ::= [0-9] '.' [0-9]*
   Expression *parseFloatLiteralExpr() {
     DEBUG_TRACE_PARSER;
-    Expression *expression = new FloatLiteralExpression(token_.doubleValue);
+    Expression *expression = new FloatLiteralExpression(token_.stringValue);
     nextToken(); // consume the number
     return expression;
   }
@@ -545,7 +551,9 @@ public:
 
       case Token::Func: {
         Function *func = parseFunction();
+        #if DEBUG_PARSER
         std::cout << "Parsed function: " << func->toString() << std::endl;
+        #endif
         return func;
       }
 
@@ -591,7 +599,11 @@ public:
       token_ = futureToken_;
       futureToken_ = const_cast<Token&>(tokens_.next());
     }
+    
+    #if DEBUG_PARSER
     fprintf(stderr, "\e[34;1m>> %s\e[0m\n", token_.toString().c_str());
+    #endif
+    
     if (token_.type == Token::NewLine) {
       previousLineIndentation_ = currentLineIndentation_;
       currentLineIndentation_ = token_.length;
@@ -616,7 +628,11 @@ public:
         case Token::Identifier: {
           Expression *expr = parseExpression();
           if (expr) {
+            
+            #if DEBUG_PARSER
             std::cout << "Parsed module expression: " << expr->toString() << std::endl;
+            #endif
+            
             if (moduleBlock == NULL) {
               moduleBlock = new Block(expr);
             } else {
@@ -642,7 +658,9 @@ public:
     if (moduleBlock) {
       FunctionInterface *moduleFuncInterface = new FunctionInterface();
       Function *moduleFunc = new Function(moduleFuncInterface, moduleBlock);
+      #if DEBUG_PARSER
       std::cout << "Parsed module: " << moduleBlock->toString() << std::endl;
+      #endif
       return moduleFunc;
     }
     

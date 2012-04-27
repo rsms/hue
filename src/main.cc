@@ -40,6 +40,7 @@ int main(int argc, char **argv) {
     std::cerr << parser.errors().size() << " parse error(s)." << std::endl;
     return 1;
   }
+  std::cout << "Parsed module: " << moduleFunc->body()->toString() << std::endl;
   
   // Generate code
   codegen::LLVMVisitor codegenVisitor;
@@ -75,6 +76,8 @@ int main(int argc, char **argv) {
   //
   //   Generate target image:
   //     llvm-as -o=- out.ll | llvm-ld -native -o=out.a -
+  //
+  // See http://llvm.org/docs/CommandGuide/ for details on these tools.
   //
   
   return 0;

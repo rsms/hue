@@ -42,9 +42,10 @@ public:
 
 // Numeric fractional literals like "1.2".
 class FloatLiteralExpression : public Expression {
-  double value_;
+  std::string value_;
 public:
-  FloatLiteralExpression(double value) : Expression(TFloatLiteralExpression), value_(value) {}
+  FloatLiteralExpression(std::string value) : Expression(TFloatLiteralExpression), value_(value) {}
+  const std::string& text() const { return value_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
@@ -58,6 +59,7 @@ class SymbolExpression : public Expression {
   std::string name_;
 public:
   SymbolExpression(const std::string &name) : Expression(TSymbolExpression), name_(name) {}
+  const std::string& name() const { return name_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
