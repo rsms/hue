@@ -11,9 +11,10 @@ foo 10 (foo 10 20) 20
 # Alias 1983 as "Year"
 Year Int = 1983
 x = 4.9
-y = 3.1 + x
+y = 3.1 + atan2 x 0.3
 Month = 5
-Day MUTABLE = foo 3 4.1
+
+#Day MUTABLE = foo 3 4.1
 
 #x Int, y MUTABLE, z MUTABLE Float = ninja2000 34.4
 #MUTABLE y = 8

@@ -87,6 +87,8 @@ public:
       } else
       std::cerr << "  " << tokens_[n++].toString() << std::endl;
     }
+    #else
+    fprintf(stderr, "\e[31;1mError: %s\e[0m (%s)\n", str, token_.toString().c_str());
     #endif
     
     return 0;

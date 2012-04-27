@@ -79,13 +79,14 @@ public:
     //std::cout << "Node [" << node->type << "]" << std::endl;
     switch (node->type) {
       //case Node::TBlock: return codegenBlock((ast::Block*)node);
-      //case Node::TFunctionInterface: return codegenFunctionInterface((ast::FunctionInterface*)node);
       case Node::TSymbolExpression: return codegenSymbolExpression((ast::SymbolExpression*)node);
       case Node::TBinaryExpression: return codegenBinaryExpression((ast::BinaryExpression*)node);
       case Node::TFunction: return codegenFunction((ast::Function*)node);
       case Node::TIntLiteralExpression: return codegenIntLiteral((IntLiteralExpression*)node);
       case Node::TFloatLiteralExpression: return codegenFloatLiteral((FloatLiteralExpression*)node);
       case Node::TAssignmentExpression: return codegenAssignment((AssignmentExpression*)node);
+      case Node::TExternalFunction: return codegenExternalFunction((ast::ExternalFunction*)node);
+      case Node::TCallExpression: return codegenCallExpression((ast::CallExpression*)node);
       default: return error("Unable to generate code for node");
     }
   }
@@ -93,9 +94,34 @@ public:
   
   // FunctionInterface
   llvm::Function *codegenFunctionInterface(const ast::FunctionInterface *node,
-                                           Type *returnType,
-                                           std::string name = "") {
+                                           std::string name = "", Type *returnType = 0) {
     DEBUG_TRACE_LLVM_VISITOR;
+    
+    // Find out the return type of the function
+    if (returnType == 0) {
+      TypeDeclarationList *returnTypes = node->returnTypes();
+      if (returnTypes == 0 || returnTypes->size() == 0) {
+        returnType = builder_.getVoidTy();
+      } else {
+        assert(returnTypes->size() == 1); // TODO: Support multiple return values
+        ast::TypeDeclaration *astType = (*returnTypes)[0];
+        switch (astType->type) {
+          case ast::TypeDeclaration::Int:
+            returnType = builder_.getInt64Ty();
+            break;
+          case ast::TypeDeclaration::Float:
+            returnType = builder_.getDoubleTy();
+            break;
+          //case ast::TypeDeclaration::Func: return builder_.getDoubleTy();
+          //case ast::TypeDeclaration::Named: return 1;
+          default: {
+            error("No encoding for AST type");
+            return 0;
+          }
+        }
+        
+      }
+    }
     
     // Make the function type:  double(double,double) etc.
     FunctionType *FT;
@@ -147,13 +173,20 @@ public:
   }
   
   
+  // ExternalFunction
+  Value *codegenExternalFunction(const ast::ExternalFunction* external) {
+    DEBUG_TRACE_LLVM_VISITOR;
+    return codegenFunctionInterface(external->interface(), external->name());
+  }
+  
+  
   // Function
   Value *codegenFunction(const ast::Function *node, std::string name = "") {
     DEBUG_TRACE_LLVM_VISITOR;
     
     // Generate interface
     Type *returnType = builder_.getInt64Ty(); // todo
-    llvm::Function *function = codegenFunctionInterface(node->interface(), returnType, name);
+    llvm::Function *function = codegenFunctionInterface(node->interface(), name, returnType);
     if (function == 0) return 0;
   
     // Generate block code
@@ -196,6 +229,7 @@ public:
              ((AssignmentExpression*)(*it1))->rhs()->type == Node::TIntLiteralExpression
           || ((AssignmentExpression*)(*it1))->rhs()->type == Node::TFloatLiteralExpression
           || ((AssignmentExpression*)(*it1))->rhs()->type == Node::TBinaryExpression
+          || ((AssignmentExpression*)(*it1))->rhs()->type == Node::TExternalFunction
         )) {
         lastValue = codegen(*it1);
         if (lastValue == 0) return 0;
@@ -237,14 +271,64 @@ public:
         // Remember this binding.
         namedValues_[variable->name()] = allocaInst;
       } else if (variable->isMutable()) {
-        return error("not implemented (value mutation)");
+        return error("not implemented: value mutation");
       } else {
-        return error("Trying to mutate an immutable value");
+        return error("trying to mutate an immutable value");
       }
     
     }
 
     return rhsValue;
+  }
+  
+  
+  // CallExpression
+  Value *codegenCallExpression(const ast::CallExpression* node) {
+    DEBUG_TRACE_LLVM_VISITOR;
+    
+    // Find the function
+    Function *calleeF = module_->getFunction(node->calleeName());
+    if (calleeF == 0) {
+      Value *alias = namedValues_[node->calleeName()];
+      Type *aliasT = alias ? alias->getType() : 0;
+      if (aliasT && aliasT->isFunctionTy()) {
+        calleeF = (Function*)alias;
+      } else if (aliasT && aliasT->isPointerTy() && aliasT->getNumContainedTypes() == 1) {
+        Type *containedAliasT = aliasT->getContainedType(0);
+        if (containedAliasT->isFunctionTy()) {
+          return error("Not implemented: load referenced function from pointer");
+        } else {
+          return error("Trying to invoke something that is not a function");
+        }
+      } else {
+        //std::cerr << std::endl;
+        //aliasT->dump();
+        //std::cerr << std::endl;
+        //std::cerr << "isFunctionTy(): " << aliasT->isFunctionTy() << std::endl;
+        //std::cerr << "isStructTy(): " << aliasT->isStructTy() << std::endl;
+        //std::cerr << "isPointerTy(): " << aliasT->isPointerTy() << std::endl;
+        //std::cerr << "isDerivedType(): " << aliasT->isDerivedType() << std::endl;
+        //std::cerr << "isFirstClassType(): " << aliasT->isFirstClassType() << std::endl;
+        //std::cerr << "getNumContainedTypes(): " << aliasT->getNumContainedTypes() << std::endl;
+        return error((std::string("Unknown function referenced: ") + node->calleeName()).c_str());
+      }
+    }
+  
+    const ast::CallExpression::ArgumentList& args = node->arguments();
+  
+    // If argument mismatch error.
+    if (calleeF->arg_size() != args.size())
+      return error("Incorrect number of arguments passed");
+
+    std::vector<Value*> argValues;
+    ast::CallExpression::ArgumentList::const_iterator it = args.begin();
+    for (; it < args.end(); it++) {
+      Value *argV = codegen(*it);
+      if (argV == 0) return 0;
+      argValues.push_back(argV);
+    }
+  
+    return builder_.CreateCall(calleeF, argValues, node->calleeName()+"_res");
   }
   
   

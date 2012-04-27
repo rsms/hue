@@ -93,7 +93,10 @@ class ExternalFunction : public Expression {
 public:
   ExternalFunction(const std::string &name, FunctionInterface *interface)
     : Expression(TExternalFunction), name_(name), interface_(interface) {}
-
+  
+  const std::string& name() const { return name_; }
+  FunctionInterface *interface() const { return interface_; }
+  
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);

@@ -127,21 +127,27 @@ public:
 
 // Function calls.
 class CallExpression : public Expression {
-  std::string callee_;
-  std::vector<Expression*> args_;
 public:
-  CallExpression(const std::string &callee, std::vector<Expression*> &args)
-    : Expression(TCallExpression), callee_(callee), args_(args) {}
+  typedef std::vector<Expression*> ArgumentList;
+  
+  CallExpression(const std::string &calleeName, ArgumentList &args)
+    : Expression(TCallExpression), calleeName_(calleeName), args_(args) {}
+
+  const std::string& calleeName() const { return calleeName_; }
+  const ArgumentList& arguments() const { return args_; }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<CallExpression callee='" << callee_ << "' args=(";
-    std::vector<Expression*>::const_iterator it;
+    ss << "<CallExpression calleeName='" << calleeName_ << "' args=(";
+    ArgumentList::const_iterator it;
     if ((it = args_.begin()) < args_.end()) { ss << (*it)->toString(level+1); it++; }
     for (; it < args_.end(); it++) {          ss << ", " << (*it)->toString(level+1); }
     return ss.str();
   }
+private:
+  std::string calleeName_;
+  ArgumentList args_;
 };
 
 
