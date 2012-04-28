@@ -25,14 +25,21 @@ public:
 // Represents the "prototype" for a function, which captures its name, and its
 // argument names (thus implicitly the number of arguments the function takes).
 class FunctionInterface : public Node {
-  VariableList *args_;
-  TypeDeclarationList *returnTypes_;
 public:
-  FunctionInterface(VariableList *args = 0, TypeDeclarationList *returnTypes = 0)
-    : Node(TFunctionInterface), args_(args), returnTypes_(returnTypes) {}
+  FunctionInterface(VariableList *args = 0,
+                    TypeDeclarationList *returnTypes = 0,
+                    bool isPublic = false)
+    : Node(TFunctionInterface), args_(args), returnTypes_(returnTypes), isPublic_(isPublic) {}
 
   VariableList *args() const { return args_; }
   TypeDeclarationList *returnTypes() const { return returnTypes_; }
+  
+  bool isPublic() const { return isPublic_; }
+  void setIsPublic(bool isPublic) { isPublic_ = isPublic; }
+  
+  bool declaresReturnTypes() const {
+    return returnTypes_ != 0 && returnTypes_->size() != 0;
+  }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
@@ -59,6 +66,11 @@ public:
     ss << '>';
     return ss.str();
   }
+  
+private:
+  VariableList *args_;
+  TypeDeclarationList *returnTypes_;
+  bool isPublic_;
 };
 
 // Represents a function definition.

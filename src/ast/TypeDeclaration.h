@@ -18,6 +18,8 @@ public:
   TypeDeclaration(Type type) : type(type) {}
   TypeDeclaration(const std::string& name) : type(Named), name_(name) {}
   
+  const std::string& name() const { return name_; }
+  
   std::string toString() const {
     switch (type) {
       case Named: return name_;

@@ -223,6 +223,7 @@ public:
     {
       if (rhs->type == Node::TFunction || rhs->type == Node::TExternalFunction) {
         (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Func));
+        //if (rhs->interface()->name().empty())
       } else if (rhs->type == Node::TIntLiteralExpression) {
         (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Int));
       } else if (rhs->type == Node::TFloatLiteralExpression) {
@@ -456,6 +457,9 @@ public:
     FunctionInterface *funcInterface = parseFunctionInterface();
     if (!funcInterface) return 0;
     
+    // External functions are always public
+    funcInterface->setIsPublic(true);
+    
     // Require terminating linebreak
     if (token_.type != Token::NewLine) {
       delete funcInterface;
@@ -464,17 +468,6 @@ public:
     nextToken(); // eat linebreak
     
     return new ExternalFunction(funcName, funcInterface);
-  }
-  
-
-  /// toplevel ::= expression
-  Function *parseTopLevelExpression() {
-    DEBUG_TRACE_PARSER;
-    Expression *body = parseExpression();
-    if (body == 0) return 0;
-    // anonymous interface
-    FunctionInterface *interface = new FunctionInterface();
-    return new Function(interface, body);
   }
   
   
@@ -503,7 +496,7 @@ public:
       return parseBinOpRHS(0, lhs);
     } else if (token_.type == Token::Assignment) {
       // LHS = RHS
-      nextToken(); // eat '='
+      //nextToken(); // eat '='
       Expression *assignment = parseAssignmentRHS(lhs);
       if (!assignment) delete lhs;
       return assignment;
@@ -617,20 +610,23 @@ public:
   Function *parse() {
     Block *moduleBlock = NULL;
     
+    nextToken();
+    
     while (1) {
-      switch (nextToken().type) {
+      //switch (nextToken().type) {
+      switch (token_.type) {
         
         case Token::End:
           goto done_parsing;
         
         case Token::Comment:
         case Token::NewLine:
+          nextToken();
           break; // ignore
         
         case Token::Identifier: {
           Expression *expr = parseExpression();
           if (expr) {
-            
             #if DEBUG_PARSER
             std::cout << "Parsed module expression: " << expr->toString() << std::endl;
             #endif
@@ -658,7 +654,7 @@ public:
     done_parsing:
     
     if (moduleBlock) {
-      FunctionInterface *moduleFuncInterface = new FunctionInterface();
+      FunctionInterface *moduleFuncInterface = new FunctionInterface(0, 0, /* isPublic = */ true);
       Function *moduleFunc = new Function(moduleFuncInterface, moduleBlock);
       #if DEBUG_PARSER
       std::cout << "Parsed module: " << moduleBlock->toString() << std::endl;

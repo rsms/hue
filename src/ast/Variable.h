@@ -15,6 +15,8 @@ public:
   const std::string& name() const { return name_; }
   
   TypeDeclaration *type() const { return type_; }
+  bool hasUnknownType() const { return !type_ || type_->type == TypeDeclaration::Unknown; }
+  
   void setType(TypeDeclaration *type) {
     TypeDeclaration *old = type_;
     type_ = type;
