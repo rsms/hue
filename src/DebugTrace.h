@@ -3,27 +3,28 @@
 
 #include <stdio.h>
 
+static volatile int g_DebugTrace_depth = 0;
+
 namespace rsms {
 
 class DebugTrace {
   const char *funcName_;
   const char *funcInterface_;
 public:
-  static int depth;
   DebugTrace(const char *funcName, const char *funcInterface) {
     funcName_ = funcName;
     funcInterface_ = funcInterface;
-    fprintf(stderr, "%*s\e[33;1m-> %d %s  \e[30;1m%s\e[0m\n", DebugTrace::depth*2, "",
-            DebugTrace::depth, funcName_, funcInterface_);
-    ++DebugTrace::depth;
+    fprintf(stderr, "%*s\e[33;1m-> %d %s  \e[30;1m%s\e[0m\n", g_DebugTrace_depth*2, "",
+            g_DebugTrace_depth, funcName_, funcInterface_);
+    ++g_DebugTrace_depth;
   }
   ~DebugTrace() {
-    --DebugTrace::depth;
-    fprintf(stderr, "%*s\e[33m<- %d %s  \e[30;1m%s\e[0m\n", DebugTrace::depth*2, "",
-            DebugTrace::depth, funcName_, funcInterface_);
+    --g_DebugTrace_depth;
+    fprintf(stderr, "%*s\e[33m<- %d %s  \e[30;1m%s\e[0m\n", g_DebugTrace_depth*2, "",
+            g_DebugTrace_depth, funcName_, funcInterface_);
   }
 };
-int DebugTrace::depth = 0;
+
 
 #ifndef DEBUG_TRACE
 #define DEBUG_TRACE rsms::DebugTrace _DebugTrace_##__LINE__(__FUNCTION__, __PRETTY_FUNCTION__)
