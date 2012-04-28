@@ -51,14 +51,15 @@ class LLVMVisitor {
     bool empty() const { return value == 0; }
     Symbol() : value(0), isMutable(true) {}
     Symbol(Value *V, bool M = true) : value(V), isMutable(M) {}
+    static Symbol Empty;
   };
   
   typedef std::deque<BlockScope*> BlockStack;
   
   class BlockScope {
-    typedef std::map<std::string,Symbol> SymbolMap;
-    Symbol EmptySymbol;
   public:
+    typedef std::map<std::string,Symbol> SymbolMap;
+    
     BlockScope(LLVMVisitor& visitor, BasicBlock *block) : visitor_(visitor), block_(block) {
       visitor_.blockStack_.push_back(this);
       visitor_.builder_.SetInsertPoint(block);
@@ -73,6 +74,7 @@ class LLVMVisitor {
     }
     
     BasicBlock *block() const { return block_; }
+    const SymbolMap& symbols() const { return symbols_; }
     
     void setSymbol(const std::string& name, Value *V, bool isMutable = true) {
       Symbol& symbol = symbols_[name];
@@ -80,35 +82,12 @@ class LLVMVisitor {
       symbol.isMutable = isMutable;
     }
     
+    // Look up a symbol only in this scope.
+    // Use LLVMVisitor::lookupSymbol to lookup stuff in any scope
     const Symbol& lookupSymbol(const std::string& name, bool deep = true) const {
       SymbolMap::const_iterator it = symbols_.find(name);
-      if (it != symbols_.end()) {
-        return it->second;
-      } else {
-        // TODO: deep
-        return EmptySymbol;
-      }
-      
-      // ValueSymbolTable* symbols = block_->getValueSymbolTable();
-      // Value* V = symbols->lookup(name);
-      //     
-      // if (V == 0 && deep) {
-      //   // TODO: dig into parent blocks
-      //   std::cerr << "NOT IMPLEMENTED: deep references to symbols" << std::endl;
-      //   return 0;
-      // } else if (V) {
-      //   Type *T = V->getType();
-      //   // Do not return references for certain values, like labels
-      //   if (T->isLabelTy()) {
-      //     V = 0;
-      //   }
-      // }
-      // 
-      // std::cerr << "symbol lookup '" << name << "' -> ";
-      // if (V) V->dump();
-      // else std::cerr << "<nil>" << std::endl;
-      // 
-      // return V;
+      if (it != symbols_.end()) return it->second;
+      return Symbol::Empty;
     }
     
   private:
@@ -176,6 +155,19 @@ protected:
     return builder_.GetInsertBlock();
   }
   
+  const Symbol& lookupSymbol(const std::string& name, bool deep = true) const {
+    // Scan symbol maps starting at top of stack moving down
+    BlockStack::const_reverse_iterator bsit = blockStack_.rbegin();
+    for (; bsit != blockStack_.rend(); ++bsit) {
+      BlockScope* bs = *bsit;
+      BlockScope::SymbolMap::const_iterator it = bs->symbols().find(name);
+      if (it != bs->symbols().end()) {
+        return it->second;
+      }
+    }
+    return Symbol::Empty;
+  }
+  
   // Dump all symbols in the current block stack
   void dumpBlockSymbols() {
     if (blockStack_.empty()) return;
@@ -233,11 +225,6 @@ protected:
     }
   }
   
-  // Value* lookupSymbol(const std::string& name, bool deep = true) {
-  //   if (!blockScope()) return 0;
-  //   return blockScope()->lookupSymbol(name, deep);
-  // }
-  
   
   Type *IRTypeForASTTypeDecl(const ast::TypeDeclaration& typeDecl) {
     switch (typeDecl.type) {
@@ -246,6 +233,11 @@ protected:
       // case ast::TypeDeclaration::Named: -- Custom type
       default: return 0;
     }
+  }
+  
+  
+  std::string mangledNameForFunction(const std::string& localName) {
+    return module_->getModuleIdentifier() + "$" + localName;
   }
   
   // ------------------------------------------------
@@ -594,16 +586,18 @@ protected:
     const VariableList *variables = node->variables();
     assert(variables->size() == 1); // TODO: support >1 LHS variable
     
+    
     // Codegen the RHS.
     Value *rhsValue;
     if (node->rhs()->type == Node::TFunction) {
       // Take the LHS var name and use it for the function name
-      if ((*variables)[0]->isMutable() == false) {
-        // Don't bother making a poiner to the function, but just gen the function
-        return codegenFunction((ast::Function*)node->rhs(), (*variables)[0]->name());
-      } else {
-        rhsValue = codegenFunction((ast::Function*)node->rhs(), (*variables)[0]->name());
-      }
+      //if ((*variables)[0]->isMutable() == false) {
+      //  // Don't bother making a poiner to the function, but just gen the function
+      //  return codegenFunction((ast::Function*)node->rhs(), (*variables)[0]->name());
+      //} else {
+        std::string mangledName = mangledNameForFunction((*variables)[0]->name());
+        rhsValue = codegenFunction((ast::Function*)node->rhs(), mangledName);
+      //}
     } else if (node->rhs()->type == Node::TExternalFunction) {
       // Take the LHS var name and use it for the function name
       ast::ExternalFunction* efunc = (ast::ExternalFunction*)node->rhs();
@@ -622,13 +616,14 @@ protected:
     }
     if (rhsValue == 0) return 0;
     
+    
     // For each variable
     VariableList::const_iterator it = variables->begin();
     for (; it < variables->end(); it++) {
       Variable *variable = (*it);
     
       // Look up the name in this direct scope.
-      const Symbol& symbol = blockScope()->lookupSymbol(variable->name(), false);
+      const Symbol& symbol = lookupSymbol(variable->name(), false);
       Value *variableValue = symbol.value;
       
       if (variableValue == 0) {
@@ -637,18 +632,20 @@ protected:
         Type *allocaType = 0;
         bool didCast = false;
         
-        if (variable->hasUnknownType() == false) {
+        if (variable->hasUnknownType() == false && 
+            (   variable->type()->type != ast::TypeDeclaration::Func
+             || node->rhs()->type != Node::TFunction) ) {
           allocaType = IRTypeForASTTypeDecl(*variable->type());
           if (allocaType == 0) {
             return error("No encoding for AST type");
           }
-          
+        
           if (allocaType->getTypeID() != rhsValue->getType()->getTypeID()) {
             // RHS type is different that storage type
             Type* ST = allocaType;
             Type* VT = rhsValue->getType();
             didCast = true;
-            
+          
             // Numbers: cast to storage
             if (ST->isDoubleTy() && VT->isIntegerTy()) { // Promote Int constant to Float
               //warning("Implicit conversion of integer value to floating point storage");
@@ -693,8 +690,10 @@ protected:
     
     // Find the function
     Function *calleeF = module_->getFunction(node->calleeName());
+    Value* targetV = 0;
+    
     if (calleeF == 0) {
-      const Symbol& symbol = blockScope()->lookupSymbol(node->calleeName());
+      const Symbol& symbol = lookupSymbol(node->calleeName());
       Value *alias = symbol.value;
       Type *aliasT = alias ? alias->getType() : 0;
       
@@ -702,21 +701,45 @@ protected:
         calleeF = (Function*)alias;
       } else if (aliasT && aliasT->isPointerTy() && aliasT->getNumContainedTypes() == 1) {
         Type *containedAliasT = aliasT->getContainedType(0);
+        
         if (containedAliasT->isFunctionTy()) {
-          return error("Not implemented: load referenced function from pointer");
+          if (symbol.isAlloca()) {
+            return error("Not implemented: load alloca function from pointer");
+          } else {
+            // Immutable direct reference -- should find the constant implementation
+            // by its mangledName
+            calleeF = module_->getFunction(mangledNameForFunction(node->calleeName()));
+          }
         } else {
-          return error("Trying to invoke something that is not a function");
+          
+          // Referenced function
+          if (symbol.isAlloca() && containedAliasT->isDerivedType() && containedAliasT->isFirstClassType()) {
+            // Try to look up canonical function by mangled name
+            calleeF = module_->getFunction(mangledNameForFunction(node->calleeName()));
+          
+            // If we found a function, then LOAD the reference and call the LOAD result
+            if (calleeF) {
+              targetV = builder_.CreateLoad(symbol.value, node->calleeName().c_str());
+            }
+          }
+            
+          //std::cerr << "isVoidTy(): " << containedAliasT->isVoidTy() << std::endl;
+          //std::cerr << "isDoubleTy(): " << containedAliasT->isDoubleTy() << std::endl;
+          //std::cerr << "isIntegerTy(): " << containedAliasT->isIntegerTy() << std::endl;
+          //std::cerr << "isEmptyTy(): " << containedAliasT->isEmptyTy() << std::endl;
+          //std::cerr << "isFunctionTy(): " << containedAliasT->isFunctionTy() << std::endl;
+          //std::cerr << "isStructTy(): " << containedAliasT->isStructTy() << std::endl;
+          //std::cerr << "isPointerTy(): " << containedAliasT->isPointerTy() << std::endl;
+          //std::cerr << "isDerivedType(): " << containedAliasT->isDerivedType() << std::endl;
+          //std::cerr << "isFirstClassType(): " << containedAliasT->isFirstClassType() << std::endl;
+          //std::cerr << "getNumContainedTypes(): " << containedAliasT->getNumContainedTypes() << std::endl;
+          
+          if (calleeF == 0)
+            return error("Trying to invoke something that is not a function");
         }
-      } else {
-        //std::cerr << std::endl;
-        //aliasT->dump();
-        //std::cerr << std::endl;
-        //std::cerr << "isFunctionTy(): " << aliasT->isFunctionTy() << std::endl;
-        //std::cerr << "isStructTy(): " << aliasT->isStructTy() << std::endl;
-        //std::cerr << "isPointerTy(): " << aliasT->isPointerTy() << std::endl;
-        //std::cerr << "isDerivedType(): " << aliasT->isDerivedType() << std::endl;
-        //std::cerr << "isFirstClassType(): " << aliasT->isFirstClassType() << std::endl;
-        //std::cerr << "getNumContainedTypes(): " << aliasT->getNumContainedTypes() << std::endl;
+      }
+      
+      if (calleeF == 0) {
         return error((std::string("Unknown function referenced: ") + node->calleeName()).c_str());
       }
     }
@@ -738,7 +761,9 @@ protected:
       argValues.push_back(argV);
     }
   
-    return builder_.CreateCall(calleeF, argValues, node->calleeName()+"_res");
+    if (targetV == 0) targetV = calleeF;
+    
+    return builder_.CreateCall(targetV, argValues, node->calleeName()+"_res");
   }
   
   
@@ -854,7 +879,7 @@ protected:
     DEBUG_TRACE_LLVM_VISITOR;
     assert(symbolExpr != 0);
     
-    const Symbol& symbol = blockScope()->lookupSymbol(symbolExpr->name());
+    const Symbol& symbol = lookupSymbol(symbolExpr->name());
     
     if (symbol.empty()) return error("Unknown variable name");
 
@@ -874,6 +899,8 @@ private:
   IRBuilder<> builder_;
   BlockStack blockStack_;
 };
+
+LLVMVisitor::Symbol LLVMVisitor::Symbol::Empty;
 
 }} // namespace rsms::codegen
 #endif  // RSMS_CODEGEN_LLVM_VISITOR_H

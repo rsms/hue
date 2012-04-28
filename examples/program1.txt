@@ -5,8 +5,10 @@ atan2 = extern atan2 (a Float, b Float) Float
 foo = func (x, y Float) Float -> 7.2 * x
 #  6 + x + foo 5 (foo y 4.0)
 
+bar = func (x, y Float) Float -> foo 12.0 7.2 * x
+
 # Call the foo function with a number argument of 40
-M = foo 1.0 2.0
+M = foo 1.0 (bar 2.0 1.2)
 
 # Alias 1983 as "Year"
 Year = 1983
