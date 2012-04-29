@@ -32,6 +32,8 @@ public:
     Comma, // ','
     Stop, // '.'
     Assignment, // '='
+    Backslash, // '\'
+    
     NewLine,
     
     // Literals
@@ -129,6 +131,7 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"Comma",               0,0,0},
   {"Stop",                0,0,0},
   {"Assignment",          0,0,0},
+  {"Backslash",           0,0,0},
   {"NewLine",             0,0,0},
   {"IntLiteral",          .hasStringValue = 1,0, .hasIntValue = 1}, // intValue = radix
   {"FloatLiteral",        .hasStringValue = 1,0,0},

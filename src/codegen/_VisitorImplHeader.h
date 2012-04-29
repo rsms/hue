@@ -20,8 +20,8 @@ using namespace llvm;
 // String formatting helper.
 //  std::string R_FMT(any << ..)
 //
-static std::ostringstream* _r_fmt_begin() { return new std::ostringstream; }
-static std::string _r_fmt_end(std::ostringstream* s) {
+static std::ostringstream* __attribute__((unused)) _r_fmt_begin() { return new std::ostringstream; }
+static std::string __attribute__((unused)) _r_fmt_end(std::ostringstream* s) {
   std::string str = s->str();
   delete s;
   return str;

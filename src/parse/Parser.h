@@ -3,6 +3,7 @@
 #define RSMS_PARSER_H
 
 #include "TokenBuffer.h"
+#include "../Logger.h"
 #include "../ast/Node.h"
 #include "../ast/Block.h"
 #include "../ast/Expression.h"
@@ -10,7 +11,7 @@
 
 #include <vector>
 
-#define DEBUG_PARSER 0
+#define DEBUG_PARSER 1
 #if DEBUG_PARSER
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_PARSER DEBUG_TRACE
@@ -29,9 +30,11 @@ static int BinaryOperatorPrecedence(const Token& token) {
     return -1;
   switch (token.stringValue[0]) {
     case '*': return 40;
+    case '/': return 40;
     case '-': return 20;
     case '+': return 20;
     case '<': return 10;
+    case '>': return 10;
     default: return -1;
   }
 }
@@ -60,6 +63,7 @@ class Parser {
   uint32_t previousLineIndentation_ = 0;
   uint32_t currentLineIndentation_ = 0;
   
+  std::vector<Token> recentComments_;
   std::vector<std::string> errors_;
   //std::vector<std::string> warnings_;
   //std::vector<std::string> notices_;
@@ -429,12 +433,42 @@ public:
       return (Function*)error("Expected '->' after function interface");
     }
     nextToken();  // eat '->'
+    
+    // Is this potentially a multi-expression function body?
+    uint32_t bodyStartedAtLineIndentation = UINT32_MAX;
+    if (token_.type == Token::NewLine) {
+      rlog("Yup, potentially a multi-expression func body ahead. line ind (prev/curr): "
+           << previousLineIndentation_ << '/' << currentLineIndentation_);
+      bodyStartedAtLineIndentation = currentLineIndentation_;
+    }
 
     // Parse function body
-    Expression *body = parseExpression();
-    if (body == 0) {
-      delete interface;
-      return 0;
+    Block* body = new Block;
+    
+    while (1) {
+      // Read one expression
+      Expression *expr = parseExpression();
+      if (expr == 0) {
+        delete interface;
+        return 0;
+      }
+      
+      // Add the expression to the function body
+      body->addNode(expr);
+      
+      // If we know this is a single-expression body, break after the first expression
+      if (bodyStartedAtLineIndentation == UINT32_MAX) {
+        rlog("Body ended (single-expression body)");
+        break;
+      } else {
+        
+        // Body ends when we either get a non-newline (e.g. a terminating) token, or the
+        // line indentation drops below the first line of the body
+        if (token_.type != Token::NewLine || currentLineIndentation_ < bodyStartedAtLineIndentation) {
+          rlog("Body ended (" << (token_.type != Token::NewLine ? "line indent drop" : "terminating token") << ")");
+          break;
+        }
+      }
     }
     
     return new Function(interface, body);
@@ -491,6 +525,14 @@ public:
     Expression *lhs = parsePrimary();
     if (!lhs) return 0;
     
+    //// Backslash means "ignore the following sequence of linebreaks and comments
+    ////                  and treat whatever is after it as the same line"
+    //if (token_.type == Token::Backslash) {
+    //  // Eat <comment>*<LF><comment>* and continue
+    //  while (nextToken(/* newLineUpdatesLineIndentation = */false).type == Token::NewLine
+    //                                                     || token_.type == Token::Comment ) {}
+    //}
+    
     if (token_.type == Token::BinaryOperator) {
       // LHS binop RHS
       return parseBinOpRHS(0, lhs);
@@ -501,12 +543,11 @@ public:
       if (!assignment) delete lhs;
       return assignment;
     } else if (token_.type == Token::Unexpected) {
-      error("Unexpected token when expecting a left-hand side expression");
+      error("Unexpected token when expecting a left-hand-side expression");
       nextToken(); // Skip token for error recovery.
       delete lhs;
       return 0;
     } else {
-      // LHS
       return lhs;
     }
   }
@@ -561,11 +602,22 @@ public:
         nextToken();
         goto entry;
       }
-      default: return error("Unexpected token when expecting an expression");
+      default: return error("Unexpected token when expecting: id|intlit|floatlit|func|external|comment|newline");
     }
   }
   
   // ------------------------------------------------------------------------
+  
+  inline const Token& _nextToken() {
+    if (token_.isNull()) {
+      token_ = const_cast<Token&>(tokens_.next());
+      futureToken_ = const_cast<Token&>(tokens_.next());
+    } else {
+      token_ = futureToken_;
+      futureToken_ = const_cast<Token&>(tokens_.next());
+    }
+    return token_;
+  }
   
   // nextToken() -- Advances the token stream one token forward and returns
   //                the new token (a reference to the token_ instance variable).
@@ -587,13 +639,36 @@ public:
   //     The previous line number can be aquired from token_.line-1
   //
   const Token& nextToken() {
-    if (token_.isNull()) {
-      token_ = const_cast<Token&>(tokens_.next());
-      futureToken_ = const_cast<Token&>(tokens_.next());
+    _nextToken();
+    
+    recentComments_.clear();
+    
+    // Backslash means "ignore the following sequence of linebreaks and comments
+    //                  and treat whatever is after it as the same line"
+    if (token_.type == Token::Backslash) {
+      // Eat <comment>*<LF><comment>*
+      while (1) {
+        _nextToken();
+        if (token_.type == Token::Comment) {
+          recentComments_.push_back(token_);
+        } else if (token_.type != Token::NewLine) {
+          break;
+        }
+      }
     } else {
-      token_ = futureToken_;
-      futureToken_ = const_cast<Token&>(tokens_.next());
+      // Eat <comment>*
+      while (token_.type == Token::Comment) {
+        recentComments_.push_back(token_);
+        _nextToken();
+      }
     }
+    
+    // if (recentComments_.size()) {
+    //   std::vector<Token>::const_iterator it = recentComments_.begin();
+    //   for (; it != recentComments_.end(); ++it) {
+    //     rlog("recentComments_[" << "] = " << (*it).toString());
+    //   }
+    // }
     
     #if DEBUG_PARSER
     fprintf(stderr, "\e[34;1m>> %s\e[0m\n", token_.toString().c_str());

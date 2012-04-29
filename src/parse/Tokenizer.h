@@ -227,14 +227,14 @@ public:
       else {
 
         switch (input_->current()) {
-          case '<': {
+          case '<': { // '<-'?
             if (input_->futureCount() > 0 && input_->future(0) == '-') {
               token_.type = Token::LeftArrow;
               nextByte(); // consume '-'
               break;
             }
           }
-          case '-': {
+          case '-': { // '->'?
             if (input_->futureCount() > 0 && input_->future(0) == '>') {
               token_.type = Token::RightArrow;
               nextByte(); // consume '>'
@@ -246,6 +246,7 @@ public:
           case '*':
           case '/': token_.type = Token::BinaryOperator; break;
           
+          case '\\':token_.type = Token::Backslash; break;
           case '=': token_.type = Token::Assignment; break;
           case '(': token_.type = Token::LeftParen; break;
           case ')': token_.type = Token::RightParen; break;
