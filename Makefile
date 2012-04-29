@@ -1,5 +1,12 @@
 # Source files
-cxx_sources := src/main.cc
+cxx_sources := src/main.cc src/Logger.cc \
+               src/codegen/Visitor.cc \
+               src/codegen/assignment.cc \
+               src/codegen/binop.cc \
+               src/codegen/call.cc \
+               src/codegen/function.cc \
+               src/codegen/functionInterface.cc
+               
 
 # Tools
 CC = clang
@@ -53,6 +60,10 @@ libclang_flags := $(libclang_c_flags) $(libclang_ld_flags)
 
 #all: echo_state covec
 all: release
+
+internaldebug: CFLAGS += -fno-omit-frame-pointer
+internaldebug: LDFLAGS += -faddress-sanitizer -fno-omit-frame-pointer
+internaldebug: debug
 
 debug: CFLAGS += $(CFLAGS_DEBUG)
 debug: LDFLAGS += $(LDFLAGS_DEBUG)

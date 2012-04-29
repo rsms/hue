@@ -1,23 +1,35 @@
 # A function declaration
-atan2 = extern atan2 (a Float, b Float) Float
+A = extern atan2 (a Float, b Float) Float
+B Float = A 1.1 2.2
+C = func (x Float, y Float) Float -> A 3.3 4.4
+D Float = C 5.5 6.6
 
-# A function definition
-foo = func (x, y Float) Float -> 7.2 * x
-#  6 + x + foo 5 (foo y 4.0)
+E MUTABLE = func (x Float, y Float) Float -> C 7.7 8.8
+F Float = E 9.0 10.0
+X MUTABLE = F * A 4.5 2.3
 
-bar = func (x, y Float) Float -> foo 12.0 7.2 * x
+E = func (x Float, y Float) Float -> C 77.0 88.0
+F2 Float = E 9.1 X
 
-# Call the foo function with a number argument of 40
-M = foo 1.0 (bar 2.0 1.2)
+#E Float = D 3.1 # Should fail since D is not a callable
 
-# Alias 1983 as "Year"
-Year = 1983
-#x = 4.9
-#y = 3.1 + atan2 x 0.3
-Month = Year + M
-
-#Day MUTABLE = foo 3.1 4.1
-
-#x Int, y MUTABLE, z MUTABLE Float = ninja2000 34.4
-#MUTABLE y = 8
-# todo: (foo 10 (foo (foo 20 40) 30)) to express foo(10,foo(foo(20,40),30))
+## A function definition
+#foo = func (x, y Float) Float -> 7.2 * x
+##  6 + x + foo 5 (foo y 4.0)
+#
+#bar = func (x Float, y Float) Float -> math_atan2 12.0 7.2 * x
+#
+## Call the foo function with a number argument of 40
+#M = foo 1.0 (bar 2.0 1.2)
+#
+## Alias 1983 as "Year"
+#Year = 1983
+##x = 4.9
+##y = 3.1 + atan2 x 0.3
+#Month = Year + M
+#
+##Day MUTABLE = foo 3.1 4.1
+#
+##x Int, y MUTABLE, z MUTABLE Float = ninja2000 34.4
+##MUTABLE y = 8
+## todo: (foo 10 (foo (foo 20 40) 30)) to express foo(10,foo(foo(20,40),30))

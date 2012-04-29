@@ -36,6 +36,8 @@ public:
   Node(Type t = TNode) : type(t) {}
   virtual ~Node() {}
   
+  inline bool isFunctionType() const { return type == TFunction || type == TExternalFunction; }
+  
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss; NodeToStringHeader(level, ss); ss << "<Node>";
     return ss.str();

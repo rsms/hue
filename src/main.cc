@@ -3,12 +3,12 @@
 #include <iostream>
 #include <fstream>
 
+#include "codegen/Visitor.h"
+
 #include "parse/FileInput.h"
 #include "parse/Tokenizer.h"
 #include "parse/TokenBuffer.h"
 #include "parse/Parser.h"
-
-#include "codegen/LLVMVisitor.h"
 
 #include <llvm/Support/raw_ostream.h>
 #include <fcntl.h>
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
   std::cout << "Parsed module: " << moduleFunc->body()->toString() << std::endl;
   
   // Generate code
-  codegen::LLVMVisitor codegenVisitor;
+  codegen::Visitor codegenVisitor;
   llvm::Module *llvmModule = codegenVisitor.genModule(llvm::getGlobalContext(), "hello", moduleFunc);
   //std::cout << "moduleIR: " << llvmModule << std::endl;
   if (!llvmModule) {

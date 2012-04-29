@@ -33,13 +33,12 @@ public:
 
   VariableList *args() const { return args_; }
   TypeDeclarationList *returnTypes() const { return returnTypes_; }
+  size_t returnCount() const { return returnTypes_ != 0 ? returnTypes_->size() : 0; }
   
   bool isPublic() const { return isPublic_; }
   void setIsPublic(bool isPublic) { isPublic_ = isPublic; }
   
-  bool declaresReturnTypes() const {
-    return returnTypes_ != 0 && returnTypes_->size() != 0;
-  }
+
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
@@ -57,6 +56,7 @@ public:
     
     if (returnTypes_) {
       ss << ' ';
+      ss << "[" << returnTypes_->size() << "] ";
       TypeDeclarationList::const_iterator it2;
       it2 = returnTypes_->begin();
       if (it2 < returnTypes_->end()) { ss << (*it2)->toString(); it2++; }
