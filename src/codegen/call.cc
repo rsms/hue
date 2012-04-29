@@ -36,19 +36,6 @@ inline static bool valueIsCallable(Value* V) {
 }
 
 
-
-static std::ostringstream* _r_fmt_begin() {
-  return new std::ostringstream;
-}
-static std::string _r_fmt_end(std::ostringstream* s) {
-  std::string str = s->str();
-  delete s;
-  return str;
-}
-
-#define R_FMT(A) _r_fmt_end( static_cast<std::ostringstream*>(&((*_r_fmt_begin()) << A )) )
-
-
 Value *Visitor::codegenCallExpression(const ast::CallExpression* node) {
   DEBUG_TRACE_LLVM_VISITOR;
   
