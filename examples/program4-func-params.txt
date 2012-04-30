@@ -1,3 +1,10 @@
+
+
+# dg
+x = 4
+
+
 # a, b and c has the type Int. d has the type Float
-F = func (a, b, c Int, d Float) Int -> a / b * c
+F = func (a, b, c Int, d Float) Int: x = 45 / 6
+                                     a / b * c * x
 y = F 1 2 3 4.5

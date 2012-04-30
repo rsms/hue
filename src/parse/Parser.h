@@ -77,12 +77,14 @@ public:
 
 
 class Parser {
+  typedef uint32_t LineLevel;
+  static const LineLevel RootLineLevel = UINT32_MAX;
   TokenBuffer& tokens_;
   Token token_;
   Token& futureToken_;
   bool isParsingCallArguments_ = false;
-  uint32_t previousLineIndentation_ = 0;
-  uint32_t currentLineIndentation_ = 0;
+  LineLevel previousLineLevel_ = 0;
+  LineLevel currentLineLevel_ = 0;
   
   std::vector<Token> recentComments_;
   std::vector<std::string> errors_;
@@ -126,7 +128,7 @@ public:
         && token.type != Token::IntLiteral
         && token.type != Token::FloatLiteral
         && token.type != Token::LeftParen
-        && (token.type != Token::NewLine || currentLineIndentation_ <= previousLineIndentation_);
+        && (token.type != Token::NewLine || currentLineLevel_ <= previousLineLevel_);
   }
   
   bool tokenIsType(const Token& token) const {
@@ -466,62 +468,94 @@ public:
   }
   
   
-  /// func_definition
-  ///   ::= 'func' func_interface '->' expression
+  // BlockExpression = Expression+
+  // 
+  // Expressions are read as part of the block as long as:
+  //
+  //  In the case of a root block:
+  //    - There are valid tokens (any but End, Semicolon and Unexpected)
+  //  In the case of a non-root block:
+  //    -   line indentation > outer line indentation
+  //    or: token is Semicolon
+  //    or: token is End or Unexpected
+  // 
+  Block* parseBlock(LineLevel outerLineLevel) {
+    DEBUG_TRACE_PARSER;
+    Block* block = new Block();
+    bool notARootBlock = outerLineLevel != RootLineLevel;
+    
+    while (token_.type != Token::End) {
+      // Read one expression
+      Expression *expr = parseExpression();
+      if (expr == 0) {
+        delete block; // TODO: cleanup
+        return 0;
+      }
+      
+      // Add the expression to the function body
+      block->addNode(expr);
+      
+      // Read any linebreaks and check the line level after each linebreak, starting with the one
+      // we just read.
+      while (token_.type == Token::NewLine) {
+        if (notARootBlock && currentLineLevel_ <= outerLineLevel) {
+          #if DEBUG_PARSER
+          rlog("Block ended (line level drop)");
+          #endif
+          goto after_outer_loop;
+        }
+        nextToken();
+      }
+      
+      // Semicolon terminates a non-root block (and is illegal in a root block)
+      if (token_.type == Token::Semicolon) {
+        if (notARootBlock) {
+          nextToken(); // Eat the semicolon
+          break; // terminate block
+        } else {
+          error("Unexpected semicolon token while parsing non-root block");
+          delete block; // TODO: cleanup
+          return 0;
+        }
+      }
+      
+      // Woops, unexpected token?
+      if (token_.type == Token::Unexpected) {
+        nextToken(); // skip for error recovery
+        error("Unexpected token while parsing block");
+        delete block; // TODO: cleanup
+        return 0;
+      }
+    }
+    after_outer_loop:
+    
+    return block;
+  }
+  
+  
+  // Function = 'func' FunctionType ':' BlockExpression
   Function *parseFunction() {
     DEBUG_TRACE_PARSER;
     nextToken();  // eat 'func'
+    
+    LineLevel funcLineLevel = currentLineLevel_;
     
     // Parse function interface
     FunctionType *interface = parseFunctionType();
     if (interface == 0) return 0;
     
-    // Require '->'
-    if (token_.type != Token::RightArrow) {
+    // Require ':'
+    if (token_.type != Token::Colon) {
       delete interface;
-      return (Function*)error("Expected '->' after function interface");
+      return (Function*)error("Expected ':' after function interface");
     }
-    nextToken();  // eat '->'
+    nextToken();  // eat ':'
     
-    // Is this potentially a multi-expression function body?
-    uint32_t bodyStartedAtLineIndentation = UINT32_MAX;
-    if (token_.type == Token::NewLine) {
-      bodyStartedAtLineIndentation = currentLineIndentation_;
-    }
-
-    // Parse function body
-    Block* body = new Block;
+    // Parse body
+    Block* body = parseBlock(funcLineLevel);
+    if (body == 0) return 0;
     
-    while (1) {
-      // Read one expression
-      Expression *expr = parseExpression();
-      if (expr == 0) {
-        delete interface;
-        return 0;
-      }
-      
-      // Add the expression to the function body
-      body->addNode(expr);
-      
-      // If we know this is a single-expression body, break after the first expression
-      if (bodyStartedAtLineIndentation == UINT32_MAX) {
-        #if DEBUG_PARSER
-        rlog("Body ended (single-expression body)");
-        #endif
-        break;
-      } else {
-        
-        // Body ends when we either get a non-newline (e.g. a terminating) token, or the
-        // line indentation drops below the first line of the body
-        if (token_.type != Token::NewLine || currentLineIndentation_ < bodyStartedAtLineIndentation) {
-          #if DEBUG_PARSER
-          rlog("Body ended (" << (token_.type != Token::NewLine ? "line indent drop" : "terminating token") << ")");
-          #endif
-          break;
-        }
-      }
-    }
-    
+    // Create function node
     return new Function(interface, body);
   }
   
@@ -566,7 +600,7 @@ public:
   }
   
   
-  /// expression
+  /// Expression =
   ///   ::= primary binop_rhs
   ///   ::= primary '='
   ///   ::= primary
@@ -580,11 +614,14 @@ public:
     ////                  and treat whatever is after it as the same line"
     //if (token_.type == Token::Backslash) {
     //  // Eat <comment>*<LF><comment>* and continue
-    //  while (nextToken(/* newLineUpdatesLineIndentation = */false).type == Token::NewLine
+    //  while (nextToken(/* newLineUpdatesLineLevel = */false).type == Token::NewLine
     //                                                     || token_.type == Token::Comment ) {}
     //}
     
     if (token_.type == Token::BinaryOperator || token_.type == Token::BinaryComparisonOperator) {
+      // LHS binop RHS
+      return parseBinOpRHS(0, lhs);
+    } else if (token_.type == Token::BinaryOperator || token_.type == Token::BinaryComparisonOperator) {
       // LHS binop RHS
       return parseBinOpRHS(0, lhs);
     } else if (token_.type == Token::Assignment) {
@@ -707,11 +744,11 @@ public:
   //   futureToken_
   //     A reference to the next token to be read.
   //
-  //   currentLineIndentation_
+  //   currentLineLevel_
   //     Number of leading whitespace for the current line.
   //     The current line number can be aquired from token_.line
   //
-  //   previousLineIndentation_
+  //   previousLineLevel_
   //     Number of leading whitespace for the previous line.
   //     The previous line number can be aquired from token_.line-1
   //
@@ -740,6 +777,7 @@ public:
       }
     }
     
+    // XXX DEBUG: Dump comments using rlog
     // if (recentComments_.size()) {
     //   std::vector<Token>::const_iterator it = recentComments_.begin();
     //   for (; it != recentComments_.end(); ++it) {
@@ -752,66 +790,29 @@ public:
     #endif
     
     if (token_.type == Token::NewLine) {
-      previousLineIndentation_ = currentLineIndentation_;
-      currentLineIndentation_ = token_.length;
+      previousLineLevel_ = currentLineLevel_;
+      currentLineLevel_ = token_.length;
     }
     return token_;
   }
   
+  
   // parse() -- Parse a module. Returns the AST for the parsed code.
-  Function *parse() {
-    Block *moduleBlock = NULL;
+  Function *parseModule() {
+    DEBUG_TRACE_PARSER;
     
+    // Advance to first token in stream
     nextToken();
     
-    while (1) {
-      //switch (nextToken().type) {
-      switch (token_.type) {
-        
-        case Token::End:
-          goto done_parsing;
-        
-        case Token::Comment:
-        case Token::NewLine:
-          nextToken();
-          break; // ignore
-        
-        case Token::Identifier: {
-          Expression *expr = parseExpression();
-          if (expr) {
-            #if DEBUG_PARSER
-            std::cout << "Parsed module expression: " << expr->toString() << std::endl;
-            #endif
-            
-            if (moduleBlock == NULL) {
-              moduleBlock = new Block(expr);
-            } else {
-              moduleBlock->addNode(expr);
-            }
-          } else {
-            nextToken();  // Skip token for error recovery.
-          }
-          break;
-        }
-        
-        //case Token::Unexpected:
-        default: {
-          error("Unexpected token at module level when expecting an expression");
-          nextToken();  // Skip token for error recovery.
-          break;
-        }
-      }
-      
-    }
-    done_parsing:
+    // Parse the root block
+    Block* block = parseBlock(RootLineLevel);
     
-    if (moduleBlock) {
-      FunctionType *moduleFuncInterface = new FunctionType(0, 0, /* isPublic = */ true);
-      Function *moduleFunc = new Function(moduleFuncInterface, moduleBlock);
-      return moduleFunc;
+    // If we got a block, put it inside an anonymous func and return that func.
+    if (block) {
+      return new Function(new FunctionType(0, 0, /* isPublic = */ true), block);
+    } else {
+      return 0;
     }
-    
-    return 0;
   }
 };
 

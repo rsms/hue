@@ -34,14 +34,14 @@ int main(int argc, char **argv) {
   Parser parser(tokens);
   
   // Parse the input into an AST
-  ast::Function *moduleFunc = parser.parse();
+  ast::Function *moduleFunc = parser.parseModule();
   if (!moduleFunc) return 1;
   if (parser.errors().size() != 0) {
     std::cerr << parser.errors().size() << " parse error(s)." << std::endl;
     return 1;
   }
   std::cout << "Parsed module: " << moduleFunc->body()->toString() << std::endl;
-  //return 0; // xxx only parser
+  return 0; // xxx only parser
   
   // Generate code
   codegen::Visitor codegenVisitor;

@@ -5,12 +5,12 @@
 
 namespace rsms { namespace ast {
 
-class Block : public Node {
+class Block : public Expression {
 public:
   typedef std::vector<Node*> NodeList;
-  Block() : Node(TBlock) {}
-  Block(Node *node) : Node(TBlock), nodes_(1, node) {}
-  Block(const NodeList &nodes) : Node(TBlock), nodes_(nodes) {}
+  Block() : Expression(TBlock) {}
+  Block(Node *node) : Expression(TBlock), nodes_(1, node) {}
+  Block(const NodeList &nodes) : Expression(TBlock), nodes_(nodes) {}
   
   virtual ~Block() {
     // TODO: delete all nodes

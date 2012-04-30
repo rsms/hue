@@ -242,6 +242,9 @@ public:
           //case '=':
           case '/': token_.type = Token::BinaryOperator; break;
           
+          case ':': token_.type = Token::Colon; break;
+          case ';': token_.type = Token::Semicolon; break;
+          case '?': token_.type = Token::Question; break;
           case '\\':token_.type = Token::Backslash; break;
           case '=': token_.type = Token::Assignment; break;
           case '(': token_.type = Token::LeftParen; break;

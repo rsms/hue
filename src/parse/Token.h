@@ -33,6 +33,9 @@ public:
     Stop, // '.'
     Assignment, // '='
     Backslash, // '\'
+    Question, // '?'
+    Colon, // ':'
+    Semicolon, // ';'
     NewLine,
     
     // Literals
@@ -135,6 +138,9 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"Stop",                0,0,0},
   {"Assignment",          0,0,0},
   {"Backslash",           0,0,0},
+  {"Question",            0,0,0},
+  {"Colon",               0,0,0},
+  {"Semicolon",           0,0,0},
   {"NewLine",             0,0,0},
   
   {"IntLiteral",          .hasStringValue = 1,0, .hasIntValue = 1}, // intValue = radix
