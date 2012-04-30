@@ -15,8 +15,8 @@ Value *Visitor::codegenFunction(const ast::Function *node,
   
   // Figure out return type (unless it's been overridden by returnType) if
   // the interface declares the return type.
-  if (returnType == 0 && node->interface()->returnCount() != 0) {
-    returnType = returnTypeForFunctionInterface(node->interface());
+  if (returnType == 0 && node->functionType()->returnCount() != 0) {
+    returnType = returnTypeForFunctionType(node->functionType());
     if (returnType == 0) return error("Unable to transcode return type from AST to IR");
   }
   
@@ -24,8 +24,8 @@ Value *Visitor::codegenFunction(const ast::Function *node,
   //                                       llvm::Function::AppendingLinkage, "tmpfunc", module_);
   
   // Generate interface
-  Function* F = codegenFunctionInterface(node->interface(), name, returnType);
-  //Function* F = codegenFunctionInterface(node->interface(), "", returnType);
+  Function* F = codegenFunctionType(node->functionType(), name, returnType);
+  //Function* F = codegenFunctionType(node->functionType(), "", returnType);
   if (F == 0) return 0;
 
   // Setup function body
@@ -34,7 +34,7 @@ Value *Visitor::codegenFunction(const ast::Function *node,
   BlockScope bs(*this, BB);
   
   // setSymbol for arguments, and alloca+store if mutable
-  ast::VariableList *args = node->interface()->args();
+  ast::VariableList *args = node->functionType()->args();
   if (args) {
     unsigned i = 0;
     for (Function::arg_iterator AI = F->arg_begin(); i != args->size(); ++AI, ++i) {

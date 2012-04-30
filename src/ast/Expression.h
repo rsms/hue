@@ -2,7 +2,7 @@
 #ifndef RSMS_AST_EXPRESSION_H
 #define RSMS_AST_EXPRESSION_H
 #include "Node.h"
-#include "TypeDeclaration.h"
+#include "Type.h"
 #include "Variable.h"
 #include <vector>
 
@@ -11,7 +11,7 @@ namespace rsms { namespace ast {
 // Base class for all expression nodes.
 class Expression : public Node {
 public:
-  Expression(Type t = TExpression) : Node(t) {}
+  Expression(NodeTypeID t = TExpression) : Node(t) {}
   virtual ~Expression() {}
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;

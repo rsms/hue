@@ -13,7 +13,7 @@
 #include "../ast/Expression.h"
 #include "../ast/Function.h"
 #include "../ast/Block.h"
-#include "../ast/TypeDeclaration.h"
+#include "../ast/Type.h"
 #include "../ast/Variable.h"
 
 #include <stdlib.h>
@@ -147,29 +147,29 @@ protected:
   void dumpBlockSymbols();
   
   
-  llvm::Type* returnTypeForFunctionInterface(const ast::FunctionInterface *node) {
+  llvm::Type* returnTypeForFunctionType(const ast::FunctionType *node) {
     // Find out the return type of the function
-    ast::TypeDeclarationList *returnTypes = node->returnTypes();
+    ast::TypeList *returnTypes = node->returnTypes();
     if (returnTypes == 0 || returnTypes->size() == 0 /*TODO: || size==1 && type==TNull */) {
       return builder_.getVoidTy();
     } else {
       assert(returnTypes->size() == 1); // TODO: Support multiple return values
-      ast::TypeDeclaration *astType = (*returnTypes)[0];
-      switch (astType->type) {
-        case ast::TypeDeclaration::Int: return builder_.getInt64Ty();
-        case ast::TypeDeclaration::Float: return builder_.getDoubleTy();
-        //case ast::TypeDeclaration::Func: return builder_.getDoubleTy();
-        //case ast::TypeDeclaration::Named: return 1;
+      ast::Type *parsedT = (*returnTypes)[0];
+      switch (parsedT->typeID()) {
+        case ast::Type::Int: return builder_.getInt64Ty();
+        case ast::Type::Float: return builder_.getDoubleTy();
+        //case ast::Type::Func: return builder_.getDoubleTy();
+        //case ast::Type::Named: return 1;
         default: return 0;
       }
     }
   }
   
-  llvm::Type *IRTypeForASTTypeDecl(const ast::TypeDeclaration& typeDecl) {
-    switch (typeDecl.type) {
-      case ast::TypeDeclaration::Int: return builder_.getInt64Ty();
-      case ast::TypeDeclaration::Float: return builder_.getDoubleTy();
-      // case ast::TypeDeclaration::Named: -- Custom type
+  llvm::Type *IRTypeForASTTypeDecl(const ast::Type& T) {
+    switch (T.typeID()) {
+      case ast::Type::Int: return builder_.getInt64Ty();
+      case ast::Type::Float: return builder_.getDoubleTy();
+      // case ast::Type::Named: -- Custom type
       default: return 0;
     }
   }
@@ -179,11 +179,11 @@ protected:
   
   llvm::Value* createNewLocalSymbol(ast::Variable *variable, llvm::Value *rhsV);
   
-  inline std::string mangledName(const std::string& localName) {
+  inline std::string mangledName(const std::string& localName) const {
     return module_->getModuleIdentifier() + "$" + localName;
   }
   // Returns a module-global uniqe mangled name rooted in *name*
-  std::string uniqueMangledName(const std::string& name);
+  std::string uniqueMangledName(const std::string& name) const;
   
   // Create an alloca of type T
   llvm::AllocaInst *createAlloca(llvm::Type* T, const std::string& name) {
@@ -208,8 +208,8 @@ protected:
   // "Static Single Assignment (SSA) register" or "SSA value" in LLVM.
   llvm::Value *codegen(const ast::Node *node) {
     DEBUG_TRACE_LLVM_VISITOR;
-    //std::cout << "Node [" << node->type << "]" << std::endl;
-    switch (node->type) {
+    //std::cout << "Node [" << node->nodeTypeID() << "]" << std::endl;
+    switch (node->nodeTypeID()) {
       #define HANDLE(Name) case ast::Node::T##Name: return codegen##Name(static_cast<const ast::Name*>(node));
       HANDLE(Symbol);
       HANDLE(BinaryOp);
@@ -223,9 +223,9 @@ protected:
     }
   }
   
-  llvm::Function *codegenFunctionInterface(const ast::FunctionInterface *node,
-                                           std::string name = "",
-                                           llvm::Type *returnType = 0);
+  llvm::Function *codegenFunctionType(const ast::FunctionType *node,
+                                      std::string name = "",
+                                      llvm::Type *returnType = 0);
   
   llvm::Value *codegenExternalFunction(const ast::ExternalFunction* node);
   

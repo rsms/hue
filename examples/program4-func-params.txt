@@ -1,0 +1,3 @@
+# a, b and c has the type Int. d has the type Float
+F = func (a, b, c Int, d Float) Int -> a / b * c
+y = F 1 2 3 4.5

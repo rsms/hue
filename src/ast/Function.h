@@ -2,7 +2,7 @@
 #define RSMS_AST_PROTOTYPE_H
 #include "Node.h"
 #include "Expression.h"
-#include "TypeDeclaration.h"
+#include "Type.h"
 #include "Block.h"
 
 namespace rsms { namespace ast {
@@ -10,12 +10,12 @@ namespace rsms { namespace ast {
 class Argument {
 public:
   std::string identifier;
-  TypeDeclaration type;
+  Type type;
   
-  Argument(std::string identifier, const TypeDeclaration& type)
+  Argument(std::string identifier, const Type& type)
     : identifier(identifier), type(type) {}
 
-  Argument(std::string identifier) : identifier(identifier), type(TypeDeclaration::Unknown) {}
+  Argument(std::string identifier) : identifier(identifier), type(Type::Unknown) {}
   
   std::string toString() const {
     return identifier + " " + type.toString();
@@ -24,15 +24,15 @@ public:
 
 // Represents the "prototype" for a function, which captures its name, and its
 // argument names (thus implicitly the number of arguments the function takes).
-class FunctionInterface : public Node {
+class FunctionType : public Node {
 public:
-  FunctionInterface(VariableList *args = 0,
-                    TypeDeclarationList *returnTypes = 0,
-                    bool isPublic = false)
-    : Node(TFunctionInterface), args_(args), returnTypes_(returnTypes), isPublic_(isPublic) {}
+  FunctionType(VariableList *args = 0,
+               TypeList *returnTypes = 0,
+               bool isPublic = false)
+    : Node(TFunctionType), args_(args), returnTypes_(returnTypes), isPublic_(isPublic) {}
 
   VariableList *args() const { return args_; }
-  TypeDeclarationList *returnTypes() const { return returnTypes_; }
+  TypeList *returnTypes() const { return returnTypes_; }
   size_t returnCount() const { return returnTypes_ != 0 ? returnTypes_->size() : 0; }
   
   bool isPublic() const { return isPublic_; }
@@ -43,7 +43,7 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<FunctionInterface (";
+    ss << "<FunctionType (";
     
     if (args_) {
       VariableList::const_iterator it1;
@@ -57,7 +57,7 @@ public:
     if (returnTypes_) {
       ss << ' ';
       ss << "[" << returnTypes_->size() << "] ";
-      TypeDeclarationList::const_iterator it2;
+      TypeList::const_iterator it2;
       it2 = returnTypes_->begin();
       if (it2 < returnTypes_->end()) { ss << (*it2)->toString(); it2++; }
       for (; it2 < returnTypes_->end(); it2++) { ss << ", " << (*it2)->toString(); }
@@ -69,28 +69,28 @@ public:
   
 private:
   VariableList *args_;
-  TypeDeclarationList *returnTypes_;
+  TypeList *returnTypes_;
   bool isPublic_;
 };
 
 // Represents a function definition.
 class Function : public Expression {
-  FunctionInterface *interface_;
+  FunctionType *functionType_;
   Block *body_;
 public:
-  Function(FunctionInterface *interface, Block *body)
-    : Expression(TFunction), interface_(interface), body_(body) {}
-  Function(FunctionInterface *interface, Expression *body)
-    : Expression(TFunction), interface_(interface), body_(new Block(body)) {}
+  Function(FunctionType *functionType, Block *body)
+    : Expression(TFunction), functionType_(functionType), body_(body) {}
+  Function(FunctionType *functionType, Expression *body)
+    : Expression(TFunction), functionType_(functionType), body_(new Block(body)) {}
 
-  FunctionInterface *interface() const { return interface_; }
+  FunctionType *functionType() const { return functionType_; }
   Block *body() const { return body_; }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
     ss << "<Function "
-       << (interface_ ? interface_->toString(level+1) : "<null>")
+       << (functionType_ ? functionType_->toString(level+1) : "<null>")
        << " -> "
        << (body_ ? body_->toString(level+1) : "<null>")
        << '>';
@@ -101,19 +101,19 @@ public:
 // Represents an external function declaration.
 class ExternalFunction : public Expression {
   std::string name_;
-  FunctionInterface *interface_;
+  FunctionType *functionType_;
 public:
-  ExternalFunction(const std::string &name, FunctionInterface *interface)
-    : Expression(TExternalFunction), name_(name), interface_(interface) {}
+  ExternalFunction(const std::string &name, FunctionType *functionType)
+    : Expression(TExternalFunction), name_(name), functionType_(functionType) {}
   
-  const std::string& name() const { return name_; }
-  FunctionInterface *interface() const { return interface_; }
+  inline const std::string& name() const { return name_; }
+  inline FunctionType *functionType() const { return functionType_; }
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
     ss << "<ExternalFunction name='" << name_ 
-       << "' interface=" << (interface_ ? interface_->toString(level+1) : "<null>")
+       << "' " << (functionType_ ? functionType_->toString(level+1) : "?")
        << '>';
     return ss.str();
   }

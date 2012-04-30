@@ -4,10 +4,10 @@
 
 
 
-Function *Visitor::codegenFunctionInterface(const ast::FunctionInterface *node,
-                                            std::string name, // = "",
-                                            Type *returnType  // = 0
-                                            ) {
+Function *Visitor::codegenFunctionType(const ast::FunctionType *node,
+                                       std::string name, // = "",
+                                       Type *returnType  // = 0
+                                       ) {
   DEBUG_TRACE_LLVM_VISITOR;
   
   // No return type means void

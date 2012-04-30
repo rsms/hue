@@ -11,7 +11,7 @@
 
 #include <vector>
 
-#define DEBUG_PARSER 0
+#define DEBUG_PARSER 1
 #if DEBUG_PARSER
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_PARSER DEBUG_TRACE
@@ -129,7 +129,7 @@ public:
         && (token.type != Token::NewLine || currentLineIndentation_ <= previousLineIndentation_);
   }
   
-  bool tokenIsTypeDeclaration(const Token& token) const {
+  bool tokenIsType(const Token& token) const {
     return token.type == Token::Identifier
         || token.type == Token::IntSymbol
         || token.type == Token::FloatSymbol
@@ -138,34 +138,10 @@ public:
   
   // ------------------------------------------------------------------------
   
-  /// typedecl ::= id
-  TypeDeclaration *parseTypeDeclaration() {
-    DEBUG_TRACE_PARSER;
-    if (token_.type == Token::IntSymbol) {
-      nextToken();
-      return new TypeDeclaration(TypeDeclaration::Int);
-    } else if (token_.type == Token::FloatSymbol) {
-      nextToken();
-      return new TypeDeclaration(TypeDeclaration::Float);
-    } else if (token_.type == Token::Func) {
-      nextToken();
-      return new TypeDeclaration(TypeDeclaration::Func);
-    } else if (token_.type == Token::Identifier) {
-      std::string identifierName = token_.stringValue;
-      nextToken();
-      return new TypeDeclaration(identifierName);
-    } else {
-      error("Unexpected token while expecting type identifier");
-      nextToken(); // Skip token for error recovery.
-      return 0;
-    }
-  }
-  
-  /// var
-  ///   ::= id 'MUTABLE'? typedecl?
+  // Variable = Identifier 'MUTABLE'? Type?
   Variable *parseVariable(std::string identifierName) {
     DEBUG_TRACE_PARSER;
-    TypeDeclaration *typeDeclaration = NULL;
+    Type *typeDeclaration = NULL;
     bool isMutable = false;
     
     if (token_.type == Token::Mutable) {
@@ -173,16 +149,21 @@ public:
       nextToken(); // eat 'MUTABLE'
     }
     
-    if (tokenIsTypeDeclaration(token_)) {
-      typeDeclaration = parseTypeDeclaration();
+    if (tokenIsType(token_)) {
+      typeDeclaration = parseType();
       if (!typeDeclaration) return 0;
     }
     
     return new Variable(isMutable, identifierName, typeDeclaration);
   }
   
-  /// varlist
-  ///   ::= (var ',')* var
+  // VariableList = (Variable ',')* Variable
+  //
+  // Examples:
+  //   x
+  //   x Int, 
+  //   x 
+  //
   VariableList *parseVariableList(std::string firstVarIdentifierName = std::string()) {
     DEBUG_TRACE_PARSER;
     VariableList *varList = new VariableList();
@@ -215,6 +196,27 @@ public:
       }
     }
     
+    return varList;
+  }
+  
+  // Helper function that verifies the intergrity of a variable list and expands types.
+  VariableList* verifyAndUpdateVariableList(VariableList* varList) {
+    assert(varList != 0);
+    VariableList::const_reverse_iterator rit = varList->rbegin();
+    VariableList::const_reverse_iterator rend = varList->rend();
+    Type *currentT = 0;
+    for (; rit != rend; ++rit) {
+      Variable* var = *rit;
+      if (var->hasUnknownType()) {
+        if (currentT == 0) {
+          error("Malformed variable list (type declaration is missing from last variable)");
+          return 0;
+        }
+        var->setType(currentT);
+      } else {
+        currentT = var->type();
+      }
+    }
     return varList;
   }
   
@@ -272,9 +274,7 @@ public:
   }
   
   
-  /// identifierexpr
-  ///   ::= identifier
-  ///   ::= identifier '(' expression* ')'
+  // IdentifierExpr = Identifier (= | Expression+)?
   Expression *parseIdentifierExpr() {
     DEBUG_TRACE_PARSER;
     std::string identifierName = token_.stringValue;
@@ -291,8 +291,7 @@ public:
   }
   
   
-  /// assignment_expr
-  ///   ::= varlist '=' expr
+  // Assignment   = VariableList '=' Expression
   Assignment *parseAssignment(std::string firstVarIdentifierName) {
     DEBUG_TRACE_PARSER;
     VariableList *varList = parseVariableList(firstVarIdentifierName);
@@ -315,16 +314,17 @@ public:
     // TODO: Support more than one return value
     if (   varList->size() == 1
         && (    !(*varList)[0]->type()
-             || (*varList)[0]->type()->type == TypeDeclaration::Unknown ) 
+             || (*varList)[0]->type()->typeID() == Type::Unknown ) 
        )
     {
-      if (rhs->type == Node::TFunction || rhs->type == Node::TExternalFunction) {
-        (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Func));
-        //if (rhs->interface()->name().empty())
-      } else if (rhs->type == Node::TIntLiteral) {
-        (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Int));
-      } else if (rhs->type == Node::TFloatLiteral) {
-        (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Float));
+      // TODO: Use parseType()
+      if (rhs->isFunctionType()) {
+        (*varList)[0]->setType(new Type(Type::Func));
+        //if (rhs->functionType()->name().empty())
+      } else if (rhs->nodeTypeID() == Node::TIntLiteral) {
+        (*varList)[0]->setType(new Type(Type::Int));
+      } else if (rhs->nodeTypeID() == Node::TFloatLiteral) {
+        (*varList)[0]->setType(new Type(Type::Float));
       }
     }
     
@@ -371,67 +371,99 @@ public:
     }
   }
   
-  /// typelist
-  ///   ::= (typedecl ',')* typedecl
-  TypeDeclarationList *parseTypeDeclarations() {
-    TypeDeclarationList *typeList = new TypeDeclarationList();
+  // Type = 'Int' | 'Float' | 'func' | Identifier
+  Type *parseType() {
+    DEBUG_TRACE_PARSER;
+    if (token_.type == Token::IntSymbol) {
+      nextToken();
+      return new Type(Type::Int);
+    } else if (token_.type == Token::FloatSymbol) {
+      nextToken();
+      return new Type(Type::Float);
+    } else if (token_.type == Token::Func) {
+      nextToken();
+      return new Type(Type::Func);
+    } else if (token_.type == Token::Identifier) {
+      std::string identifierName = token_.stringValue;
+      nextToken();
+      return new Type(identifierName);
+    } else {
+      error("Unexpected token while expecting type identifier");
+      nextToken(); // Skip token for error recovery.
+      return 0;
+    }
+  }
+  
+  // TypeList = (Type ',')* Type
+  //
+  // Examples:
+  //   Int
+  //   Int, Float, foo
+  //
+  TypeList *parseTypeList() {
+    TypeList *typeList = new TypeList();
     
     while (1) {
-      TypeDeclaration *typeDeclaration = parseTypeDeclaration();
-      if (!typeDeclaration) {
+      Type *type = parseType();
+      if (!type) {
         delete typeList; // todo: delete contents
         return 0;
       }
       
-      typeList->push_back(typeDeclaration);
+      typeList->push_back(type);
       
       // Comma means there are more types
       if (token_.type != Token::Comma) break;
       nextToken(); // eat ','
-      
     }
     
     return typeList;
   }
   
-    
-  /// func_interface
-  ///   ::= arglist? typelist?
-  ///   arglist  ::= '(' varlist ')'
+  // Entry points:
+  //   FunctionExpr   = "func" FunctionType
+  //   ExternalExpr   = "external" Identifier FunctionType
+  //
+  // FunctionType     = Parameters? Result?
+  //   Result         = TypeList
+  //   Parameters     = "(" VariableList? ")"
   //
   // Examples:
-  //   func ->
-  //   func (Number x) ->
-  //   func (Number x) Number ->
-  //   func Number ->
-  //   func (Number x, Number y) Number ->
-  //   func (Number x, Number y) Number, Number ->
-  //   extern atan (Number x, Number y) Number linebreak
+  //   func
+  //   func (x Int)
+  //   func (x, y Int) Float
+  //   func Float
+  //   func (x, y Int, z Float) Int, Float
+  //   extern atan2 (x, y Float) Float
   //
-  FunctionInterface *parseFunctionInterface() {
+  FunctionType *parseFunctionType() {
     DEBUG_TRACE_PARSER;
     
     VariableList *variableList = NULL;
-    TypeDeclarationList *returnTypes = NULL;
+    TypeList *returnTypes = NULL;
   
-    /// arglist?
+    // Parameters =
     if (token_.type == Token::LeftParen) {
-      /// arglist  ::= '(' varlist ')'
+      // '('
       nextToken(); // eat '('
-      
+      // VariableList =
       variableList = parseVariableList();
-      if (!variableList) return 0;
+      if (variableList == 0) return 0;
+      
+      variableList = verifyAndUpdateVariableList(variableList);
+      if (variableList == 0) return 0;
     
-      // Require argument terminator: ')'
+      // ')'
       if (token_.type != Token::RightParen) {
-        return (FunctionInterface*)error("Expected ')' in function definition");
+        return (FunctionType*)error("Expected ')' in function definition");
       }
       nextToken();  // eat ')'.
     }
     
-    // return type declarations?
-    if (tokenIsTypeDeclaration(token_)) {
-      returnTypes = parseTypeDeclarations();
+    // Result =
+    if (tokenIsType(token_)) {
+      // TypeList =
+      returnTypes = parseTypeList();
       if (!returnTypes) {
         if (variableList) delete variableList;
         return 0;
@@ -439,7 +471,7 @@ public:
     }
   
     // Create function interface
-    return new FunctionInterface(variableList, returnTypes);
+    return new FunctionType(variableList, returnTypes);
   }
   
   
@@ -450,7 +482,7 @@ public:
     nextToken();  // eat 'func'
     
     // Parse function interface
-    FunctionInterface *interface = parseFunctionInterface();
+    FunctionType *interface = parseFunctionType();
     if (interface == 0) return 0;
     
     // Require '->'
@@ -516,7 +548,7 @@ public:
     std::string funcName = token_.stringValue;
     nextToken(); // eat id
     
-    FunctionInterface *funcInterface = parseFunctionInterface();
+    FunctionType *funcInterface = parseFunctionType();
     if (!funcInterface) return 0;
     
     // External functions are always public
@@ -777,7 +809,7 @@ public:
     done_parsing:
     
     if (moduleBlock) {
-      FunctionInterface *moduleFuncInterface = new FunctionInterface(0, 0, /* isPublic = */ true);
+      FunctionType *moduleFuncInterface = new FunctionType(0, 0, /* isPublic = */ true);
       Function *moduleFunc = new Function(moduleFuncInterface, moduleBlock);
       return moduleFunc;
     }

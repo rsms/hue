@@ -14,11 +14,11 @@ inline static void NodeToStringHeader(int level, std::ostream& ss) {
 
 class Node {
 public:
-  const enum Type {
+  enum NodeTypeID {
     TNode = 0,
     TBlock = 1,
     
-    TFunctionInterface = 2,
+    TFunctionType = 2,
     TFunction = 3,
     TExternalFunction = 4,
     
@@ -31,17 +31,21 @@ public:
     TCall = 11,
     
     _TypeCount
-  } type;
+  };
   
-  Node(Type t = TNode) : type(t) {}
+  Node(NodeTypeID t = TNode) : type_(t) {}
   virtual ~Node() {}
   
-  inline bool isFunctionType() const { return type == TFunction || type == TExternalFunction; }
+  inline const NodeTypeID& nodeTypeID() const { return type_; }
+  inline bool isFunctionType() const { return type_ == TFunction || type_ == TExternalFunction; }
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss; NodeToStringHeader(level, ss); ss << "<Node>";
     return ss.str();
   }
+  
+private:
+  const NodeTypeID type_;
 };
 
 }} // namespace rsms.ast

@@ -40,7 +40,7 @@ void Visitor::dumpBlockSymbols() {
 
 
 // Returns a module-global uniqe mangled name rooted in *name*
-std::string Visitor::uniqueMangledName(const std::string& name) {
+std::string Visitor::uniqueMangledName(const std::string& name) const {
   std::string mname;
   int i = 0;
   while (1) {
@@ -118,10 +118,10 @@ Value *Visitor::codegenExternalFunction(const ast::ExternalFunction* node) {
   
   // Figure out return type (unless it's been overridden by returnType) if
   // the interface declares the return type.
-  Type* returnType = returnTypeForFunctionInterface(node->interface());
+  Type* returnType = returnTypeForFunctionType(node->functionType());
   if (returnType == 0) return error("Unable to transcode return type from AST to IR");
   
-  return codegenFunctionInterface(node->interface(), node->name(), returnType);
+  return codegenFunctionType(node->functionType(), node->name(), returnType);
 }
 
 // Block
@@ -136,17 +136,8 @@ Value *Visitor::codegenBlock(const ast::Block *block, llvm::BasicBlock *BB) {
   ast::Block::NodeList::const_iterator it1 = nodes.begin();
   Value *lastValue = 0;
   for (; it1 < nodes.end(); it1++) {
-    
-    // xxx
-    // if ((*it1)->type == Node::TAssignment && (
-    //              ((Assignment*)(*it1))->rhs()->type == Node::TIntLiteral
-    //           || ((Assignment*)(*it1))->rhs()->type == Node::TFloatLiteral
-    //           || ((Assignment*)(*it1))->rhs()->type == Node::TBinaryOp
-    //           || ((Assignment*)(*it1))->rhs()->type == Node::TExternalFunction
-    //         )) {
-      lastValue = codegen(*it1);
-      if (lastValue == 0) return 0;
-    //}
+    lastValue = codegen(*it1);
+    if (lastValue == 0) return 0;
   }
   
   return lastValue;
