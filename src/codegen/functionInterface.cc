@@ -1,5 +1,9 @@
 #include "_VisitorImplHeader.h"
 
+
+
+
+
 Function *Visitor::codegenFunctionInterface(const ast::FunctionInterface *node,
                                             std::string name, // = "",
                                             Type *returnType  // = 0
@@ -11,16 +15,15 @@ Function *Visitor::codegenFunctionInterface(const ast::FunctionInterface *node,
     returnType = builder_.getVoidTy();
   }
   
-  // Make the function type:  double(double,double) etc.
+  // Build argument spec and create the function type:  double(double,double) etc.
   FunctionType *FT;
-  ast::VariableList *args = node->args();
-  if (args != 0) {
-    std::vector<Type*> floatArgs(args->size(), Type::getDoubleTy(getGlobalContext()));
-    FT = FunctionType::get(returnType, floatArgs, /*isVararg = */false);
-  } else {
-    //std::vector<Type*> noArgs();
-    FT = FunctionType::get(returnType, /*isVararg = */false);
-  }
+  ast::VariableList *argVars = node->args();
+  std::vector<Type*> argSpec;
+  if (!IRTypesForASTVariables(argSpec, argVars)) return 0;
+  FT = FunctionType::get(returnType, argSpec, /*isVararg = */false);
+  //std::vector<Type*> v(argVars->size(), Type::getDoubleTy(getGlobalContext()));
+  //FT = FunctionType::get(returnType, v, /*isVararg = */false);
+  
   if (!FT) return (Function*)error("Failed to create function type");
 
   // Create function
@@ -48,16 +51,16 @@ Function *Visitor::codegenFunctionInterface(const ast::FunctionInterface *node,
     }
   
     // If F took a different number of args, reject.
-    if ( (args == 0 && F->arg_size() != 0) || (args && F->arg_size() != args->size()) ) {
+    if ( (argVars == 0 && F->arg_size() != 0) || (argVars != 0 && F->arg_size() != argVars->size()) ) {
       return (Function*)error("redefinition of a function with different arguments");
     }
   }
 
   // Set names for all arguments.
-  if (args) {
+  if (argVars) {
     unsigned i = 0;
-    for (Function::arg_iterator AI = F->arg_begin(); i != args->size(); ++AI, ++i) {
-      const std::string& argName = (*args)[i]->name();
+    for (Function::arg_iterator AI = F->arg_begin(); i != argVars->size(); ++AI, ++i) {
+      const std::string& argName = (*argVars)[i]->name();
       AI->setName(argName);
     }
   }

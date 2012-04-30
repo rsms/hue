@@ -36,7 +36,7 @@ inline static bool valueIsCallable(Value* V) {
 }
 
 
-Value *Visitor::codegenCallExpression(const ast::CallExpression* node) {
+Value *Visitor::codegenCall(const ast::Call* node) {
   DEBUG_TRACE_LLVM_VISITOR;
   
   // Find value that the symbol references.
@@ -48,7 +48,7 @@ Value *Visitor::codegenCallExpression(const ast::CallExpression* node) {
   if (!FT) return error("Trying to call something that is not a function");
 
   // Local ref to input arguments, for our convenience.
-  const ast::CallExpression::ArgumentList& inputArgs = node->arguments();
+  const ast::Call::ArgumentList& inputArgs = node->arguments();
   
   // Check arguments.
   if (static_cast<size_t>(FT->getNumParams()) != inputArgs.size()) {
@@ -57,7 +57,7 @@ Value *Visitor::codegenCallExpression(const ast::CallExpression* node) {
 
   // Build argument list by codegen'ing all input variables
   std::vector<Value*> argValues;
-  ast::CallExpression::ArgumentList::const_iterator inIt = inputArgs.begin();
+  ast::Call::ArgumentList::const_iterator inIt = inputArgs.begin();
   FunctionType::param_iterator ftIt = FT->param_begin();
   unsigned i = 0;
   for (; inIt < inputArgs.end(); ++inIt, ++ftIt, ++i) {
@@ -67,11 +67,34 @@ Value *Visitor::codegenCallExpression(const ast::CallExpression* node) {
     
     // Verify that the input type matches the expected type
     Type* expectedT = *ftIt;
-    if (inputV->getType()->getTypeID() != expectedT->getTypeID()) {
-      if (inputV->getType()->canLosslesslyBitCastTo(expectedT))
+    Type* inputT = inputV->getType();
+    
+    if (inputT->getTypeID() != expectedT->getTypeID()) {
+      if (inputT->canLosslesslyBitCastTo(expectedT))
         rlogw("TODO: canLosslesslyBitCastTo == true");
       // TODO: Potentially cast simple values like numbers
       return error(R_FMT("Invalid type for argument " << i << " in call to " << node->calleeName()));
+    
+    } else if (expectedT->isIntegerTy() && expectedT->getPrimitiveSizeInBits() != inputT->getPrimitiveSizeInBits()) {
+      // Cast integer
+      if (   expectedT->getPrimitiveSizeInBits() < inputT->getPrimitiveSizeInBits()
+          && !inputT->canLosslesslyBitCastTo(expectedT)) {
+        warning("Implicit truncation of integer");
+      }
+      
+      // This helper function will make either a bit cast, int extension or int truncation
+      inputV = builder_.CreateIntCast(inputV, expectedT, /*isSigned = */true);
+
+    } else if (expectedT->isDoubleTy() && expectedT->getPrimitiveSizeInBits() != inputT->getPrimitiveSizeInBits()) {
+      // Cast floating point number
+      if (inputT->canLosslesslyBitCastTo(expectedT)) {
+        inputV = builder_.CreateBitCast(inputV, expectedT, "bcasttmp");
+      } else if (expectedT->getPrimitiveSizeInBits() < inputT->getPrimitiveSizeInBits()) {
+        warning("Implicit truncation of floating point number");
+        inputV = builder_.CreateFPTrunc(inputV, expectedT, "fptrunctmp");
+      } else {
+        inputV = builder_.CreateFPExt(inputV, expectedT, "fpexttmp");
+      }
     }
     
     argValues.push_back(inputV);

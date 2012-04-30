@@ -11,7 +11,7 @@
 
 #include <vector>
 
-#define DEBUG_PARSER 1
+#define DEBUG_PARSER 0
 #if DEBUG_PARSER
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_PARSER DEBUG_TRACE
@@ -25,18 +25,39 @@ using namespace ast;
 
 
 // Precedence of the pending binary operator token.
+// This acts as a parse tree terminator -- when this returns -1, whatever expression
+// is being parsed has reached its end and the parse branch ends/returns.
 static int BinaryOperatorPrecedence(const Token& token) {
-  if (token.type != Token::BinaryOperator)
-    return -1;
-  switch (token.stringValue[0]) {
-    case '*': return 40;
-    case '/': return 40;
-    case '-': return 20;
-    case '+': return 20;
-    case '<': return 10;
-    case '>': return 10;
-    default: return -1;
+  // Modeled after JS op precedence, see:
+  // https://developer.mozilla.org/en/JavaScript/Reference/Operators/Operator_Precedence
+  if (token.type == Token::BinaryOperator) {
+    switch (token.stringValue[0]) {
+      // TODO: unary logical-not '!'
+      //       unary + '+'
+      //       unary negation '-'
+      //       
+      case '*': case '/': return 100; //todo: '%' ?
+      case '+': case '-': return 90;
+      // todo: bitwise shift?
+      case '<': case '>': return 70;
+      // equality ops (in separate branch for Token::BinaryComparisonOperator)
+      case '&': return 50; // Logical AND (C equiv: '&&')
+      case '|': return 40; // Logical OR  (C equiv: '||')
+      
+      case '=': return 30;
+      
+      default: return -1;
+    }
+  } else if (token.type == Token::BinaryComparisonOperator) {
+    // '<=' '>=' '!=' '=='
+    // We only check first byte since second byte is always '='
+    switch (token.stringValue[0]) {
+      case '<': case '>': return 70;
+      case '=': case '!': return 60;
+      default: return -1;
+    }
   }
+  return -1;
 }
 
 
@@ -197,47 +218,6 @@ public:
     return varList;
   }
   
-  
-  /// assignment_expr
-  ///   ::= varlist '=' expr
-  AssignmentExpression *parseAssignmentExpression(std::string firstVarIdentifierName) {
-    DEBUG_TRACE_PARSER;
-    VariableList *varList = parseVariableList(firstVarIdentifierName);
-    if (!varList) return 0;
-    
-    if (token_.type != Token::Assignment) {
-      error("Expected assignment operator");
-      nextToken(); // Skip token for error recovery.
-      return 0; // TODO: cleanup
-    }
-    nextToken(); // eat '='
-    
-    // After '='
-    Expression *rhs = parseExpression();
-    if (rhs == 0) {
-      return 0; // TODO: cleanup
-    }
-    
-    // LHS type inference
-    // TODO: Support more than one return value
-    if (   varList->size() == 1
-        && (    !(*varList)[0]->type()
-             || (*varList)[0]->type()->type == TypeDeclaration::Unknown ) 
-       )
-    {
-      if (rhs->type == Node::TFunction || rhs->type == Node::TExternalFunction) {
-        (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Func));
-        //if (rhs->interface()->name().empty())
-      } else if (rhs->type == Node::TIntLiteralExpression) {
-        (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Int));
-      } else if (rhs->type == Node::TFloatLiteralExpression) {
-        (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Float));
-      }
-    }
-    
-    return new AssignmentExpression(varList, rhs);
-  }
-  
   /// callexpr
   ///   ::= expr*
   // Examples:
@@ -255,7 +235,7 @@ public:
   //
   // foo a b (c = x d)  -->  foo(a, b, (c = x(d)))
   //
-  Expression *parseCallExpression(std::string identifierName) {
+  Expression *parseCall(std::string identifierName) {
     DEBUG_TRACE_PARSER;
     
     ScopeFlag<bool> isParsingCallArguments(&isParsingCallArguments_, true);
@@ -287,8 +267,8 @@ public:
       args.push_back(arg);
     } while (token_.type == Token::LeftParen || !tokenTerminatesCall(token_.type));
     
-    //printf("CallExpression to '%s' w/ %lu args\n", identifierName.c_str(), args.size());
-    return new CallExpression(identifierName, args);
+    //printf("Call to '%s' w/ %lu args\n", identifierName.c_str(), args.size());
+    return new Call(identifierName, args);
   }
   
   
@@ -302,12 +282,53 @@ public:
     
     if (token_.type == Token::Assignment || futureToken_.type == Token::Assignment) {
       // Look-ahead to solve the case: foo Bar = ... vs foo Bar baz (call)
-      return parseAssignmentExpression(identifierName);
+      return parseAssignment(identifierName);
     } if (isParsingCallArguments_ || tokenTerminatesCall(token_)) {
-       return new SymbolExpression(identifierName);
+       return new Symbol(identifierName);
     }
     
-    return parseCallExpression(identifierName);
+    return parseCall(identifierName);
+  }
+  
+  
+  /// assignment_expr
+  ///   ::= varlist '=' expr
+  Assignment *parseAssignment(std::string firstVarIdentifierName) {
+    DEBUG_TRACE_PARSER;
+    VariableList *varList = parseVariableList(firstVarIdentifierName);
+    if (!varList) return 0;
+    
+    if (token_.type != Token::Assignment) {
+      error("Expected assignment operator");
+      nextToken(); // Skip token for error recovery.
+      return 0; // TODO: cleanup
+    }
+    nextToken(); // eat '='
+    
+    // After '='
+    Expression *rhs = parseExpression();
+    if (rhs == 0) {
+      return 0; // TODO: cleanup
+    }
+    
+    // LHS type inference
+    // TODO: Support more than one return value
+    if (   varList->size() == 1
+        && (    !(*varList)[0]->type()
+             || (*varList)[0]->type()->type == TypeDeclaration::Unknown ) 
+       )
+    {
+      if (rhs->type == Node::TFunction || rhs->type == Node::TExternalFunction) {
+        (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Func));
+        //if (rhs->interface()->name().empty())
+      } else if (rhs->type == Node::TIntLiteral) {
+        (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Int));
+      } else if (rhs->type == Node::TFloatLiteral) {
+        (*varList)[0]->setType(new TypeDeclaration(TypeDeclaration::Float));
+      }
+    }
+    
+    return new Assignment(varList, rhs);
   }
   
   
@@ -326,6 +347,11 @@ public:
     
       // Okay, we know this is a binop.
       char binOperator = token_.stringValue[0];
+      BinaryOp::Type binType = BinaryOp::SimpleLTR;
+      if (token_.type == Token::BinaryComparisonOperator) {
+        binType = BinaryOp::EqualityLTR;
+      }
+      
       nextToken();  // eat binop
     
       // Parse the primary expression after the binary operator.
@@ -341,7 +367,7 @@ public:
       }
     
       // Merge LHS and RHS
-      lhs = new BinaryExpression(binOperator, lhs, rhs);
+      lhs = new BinaryOp(binOperator, lhs, rhs, binType);
     }
   }
   
@@ -437,8 +463,6 @@ public:
     // Is this potentially a multi-expression function body?
     uint32_t bodyStartedAtLineIndentation = UINT32_MAX;
     if (token_.type == Token::NewLine) {
-      rlog("Yup, potentially a multi-expression func body ahead. line ind (prev/curr): "
-           << previousLineIndentation_ << '/' << currentLineIndentation_);
       bodyStartedAtLineIndentation = currentLineIndentation_;
     }
 
@@ -458,14 +482,18 @@ public:
       
       // If we know this is a single-expression body, break after the first expression
       if (bodyStartedAtLineIndentation == UINT32_MAX) {
+        #if DEBUG_PARSER
         rlog("Body ended (single-expression body)");
+        #endif
         break;
       } else {
         
         // Body ends when we either get a non-newline (e.g. a terminating) token, or the
         // line indentation drops below the first line of the body
         if (token_.type != Token::NewLine || currentLineIndentation_ < bodyStartedAtLineIndentation) {
+          #if DEBUG_PARSER
           rlog("Body ended (" << (token_.type != Token::NewLine ? "line indent drop" : "terminating token") << ")");
+          #endif
           break;
         }
       }
@@ -511,7 +539,7 @@ public:
     DEBUG_TRACE_PARSER;
     Expression *rhs = parseExpression();
     if (!rhs) return 0;
-    return new BinaryExpression('=', lhs, rhs);
+    return new BinaryOp('=', lhs, rhs, BinaryOp::SimpleLTR);
   }
   
   
@@ -533,7 +561,7 @@ public:
     //                                                     || token_.type == Token::Comment ) {}
     //}
     
-    if (token_.type == Token::BinaryOperator) {
+    if (token_.type == Token::BinaryOperator || token_.type == Token::BinaryComparisonOperator) {
       // LHS binop RHS
       return parseBinOpRHS(0, lhs);
     } else if (token_.type == Token::Assignment) {
@@ -555,7 +583,7 @@ public:
   /// intliteral ::= '0' | [1-9][0-9]*
   Expression *parseIntLiteralExpr() {
     DEBUG_TRACE_PARSER;
-    Expression *expression = new IntLiteralExpression(token_.stringValue, token_.intValue);
+    Expression *expression = new IntLiteral(token_.stringValue, token_.intValue);
     nextToken(); // consume the number
     return expression;
   }
@@ -563,8 +591,26 @@ public:
   /// loatliteral ::= [0-9] '.' [0-9]*
   Expression *parseFloatLiteralExpr() {
     DEBUG_TRACE_PARSER;
-    Expression *expression = new FloatLiteralExpression(token_.stringValue);
+    Expression *expression = new FloatLiteral(token_.stringValue);
     nextToken(); // consume the number
+    return expression;
+  }
+  
+  Expression *parseParen() {
+    DEBUG_TRACE_PARSER;
+    nextToken(); // eat '('
+    
+    ScopeFlag<bool> sf0(&isParsingCallArguments_, false);
+    
+    Expression* expression = parseExpression();
+    if (expression == 0) return 0;
+    
+    // Expect terminating ')'
+    if (token_.type != Token::RightParen) {
+      return error("Unexpected token when expecting ')'");
+    }
+    nextToken(); // eat ')'
+    
     return expression;
   }
   
@@ -596,7 +642,9 @@ public:
       case Token::External:
         return parseExternalFunction();
 
-      //case '(':            return ParseParenExpr();
+      case Token::LeftParen:
+        return parseParen();
+
       case Token::Comment:
       case Token::NewLine: { // ignore
         nextToken();
@@ -731,9 +779,6 @@ public:
     if (moduleBlock) {
       FunctionInterface *moduleFuncInterface = new FunctionInterface(0, 0, /* isPublic = */ true);
       Function *moduleFunc = new Function(moduleFuncInterface, moduleBlock);
-      #if DEBUG_PARSER
-      std::cout << "Parsed module: " << moduleBlock->toString() << std::endl;
-      #endif
       return moduleFunc;
     }
     

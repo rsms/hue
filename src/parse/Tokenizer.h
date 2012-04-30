@@ -6,6 +6,7 @@
 #include <fstream>
 
 #include "../fastcmp.h"
+#include "../Logger.h"
 #include "ByteInput.h"
 #include "Token.h"
 
@@ -216,10 +217,11 @@ public:
            ) )
       {
         token_.stringValue = input_->current();
-        token_.stringValue += input_->future(1);
+        token_.stringValue += '='; //input_->future(0);
         token_.line = line_;
         token_.column = column_;
-        token_.type = Token::ComparisonOperator;
+        token_.type = Token::BinaryComparisonOperator;
+        //rlog("BinaryComparisonOperator: " << token_.toString());
         nextByte(); // consume
       }
       
@@ -244,6 +246,7 @@ public:
           case '>':
           case '+':
           case '*':
+          //case '=':
           case '/': token_.type = Token::BinaryOperator; break;
           
           case '\\':token_.type = Token::Backslash; break;

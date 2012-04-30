@@ -61,6 +61,34 @@ std::string Visitor::uniqueMangledName(const std::string& name) {
 }
 
 
+bool Visitor::IRTypesForASTVariables(std::vector<Type*>& argSpec, ast::VariableList *argVars) {
+  if (argVars != 0 && argVars->size() != 0) {
+    argSpec.reserve(argVars->size());
+    ast::VariableList::const_iterator it = argVars->begin();
+    
+    for (; it != argVars->end(); ++it) {
+      ast::Variable* var = *it;
+      
+      // Type should be inferred?
+      if (var->hasUnknownType()) {
+        // TODO: runtime type inference support.
+        return !!error("NOT IMPLEMENTED: runtime type inference of func arguments");
+      }
+      
+      // Lookup IR type for AST type
+      Type* T = IRTypeForASTTypeDecl(*var->type());
+      if (T == 0)
+        return !!error(R_FMT("No conversion for AST type " << var->toString() << " to IR type"));
+      
+      // Use T
+      argSpec.push_back(T);
+    }
+  }
+  
+  return true;
+}
+
+
 // ----------- trivial generators ------------
 
 
@@ -110,11 +138,11 @@ Value *Visitor::codegenBlock(const ast::Block *block, llvm::BasicBlock *BB) {
   for (; it1 < nodes.end(); it1++) {
     
     // xxx
-    // if ((*it1)->type == Node::TAssignmentExpression && (
-    //              ((AssignmentExpression*)(*it1))->rhs()->type == Node::TIntLiteralExpression
-    //           || ((AssignmentExpression*)(*it1))->rhs()->type == Node::TFloatLiteralExpression
-    //           || ((AssignmentExpression*)(*it1))->rhs()->type == Node::TBinaryExpression
-    //           || ((AssignmentExpression*)(*it1))->rhs()->type == Node::TExternalFunction
+    // if ((*it1)->type == Node::TAssignment && (
+    //              ((Assignment*)(*it1))->rhs()->type == Node::TIntLiteral
+    //           || ((Assignment*)(*it1))->rhs()->type == Node::TFloatLiteral
+    //           || ((Assignment*)(*it1))->rhs()->type == Node::TBinaryOp
+    //           || ((Assignment*)(*it1))->rhs()->type == Node::TExternalFunction
     //         )) {
       lastValue = codegen(*it1);
       if (lastValue == 0) return 0;
@@ -125,7 +153,7 @@ Value *Visitor::codegenBlock(const ast::Block *block, llvm::BasicBlock *BB) {
 }
 
 // Int
-Value *Visitor::codegenIntLiteral(const ast::IntLiteralExpression *intLiteral, bool fixedSize) {
+Value *Visitor::codegenIntLiteral(const ast::IntLiteral *intLiteral, bool fixedSize) {
   DEBUG_TRACE_LLVM_VISITOR;
   dumpBlockSymbols();
   // TODO: Infer the minimal size needed if fixedSize is false
@@ -134,7 +162,7 @@ Value *Visitor::codegenIntLiteral(const ast::IntLiteralExpression *intLiteral, b
 }
 
 // Float
-Value *Visitor::codegenFloatLiteral(const ast::FloatLiteralExpression *floatLiteral, bool fixedSize) {
+Value *Visitor::codegenFloatLiteral(const ast::FloatLiteral *floatLiteral, bool fixedSize) {
   DEBUG_TRACE_LLVM_VISITOR;
   // TODO: Infer the minimal size needed if fixedSize is false
   const fltSemantics& size = APFloat::IEEEdouble;
@@ -177,7 +205,7 @@ Value *Visitor::resolveSymbol(const std::string& name) {
 }
 
 
-Value *Visitor::codegenSymbolExpression(ast::SymbolExpression *symbolExpr) {
+Value *Visitor::codegenSymbol(const ast::Symbol *symbolExpr) {
   DEBUG_TRACE_LLVM_VISITOR;
   assert(symbolExpr != 0);
   return resolveSymbol(symbolExpr->name());

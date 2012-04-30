@@ -22,12 +22,12 @@ public:
 };
 
 // Numeric integer literals like "3".
-class IntLiteralExpression : public Expression {
+class IntLiteral : public Expression {
   std::string value_;
   const uint8_t radix_;
 public:
-  IntLiteralExpression(std::string value, uint8_t radix = 10)
-    : Expression(TIntLiteralExpression), value_(value), radix_(radix) {}
+  IntLiteral(std::string value, uint8_t radix = 10)
+    : Expression(TIntLiteral), value_(value), radix_(radix) {}
 
   const std::string& text() const { return value_; }
   const uint8_t& radix() const { return radix_; }
@@ -35,45 +35,45 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<IntLiteralExpression value=" << value_ << '>';
+    ss << "<IntLiteral value=" << value_ << '>';
     return ss.str();
   }
 };
 
 // Numeric fractional literals like "1.2".
-class FloatLiteralExpression : public Expression {
+class FloatLiteral : public Expression {
   std::string value_;
 public:
-  FloatLiteralExpression(std::string value) : Expression(TFloatLiteralExpression), value_(value) {}
+  FloatLiteral(std::string value) : Expression(TFloatLiteral), value_(value) {}
   const std::string& text() const { return value_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<FloatLiteralExpression value=" << value_ << '>';
+    ss << "<FloatLiteral value=" << value_ << '>';
     return ss.str();
   }
 };
 
 // Referencing a symbol, like "a".
-class SymbolExpression : public Expression {
+class Symbol : public Expression {
   std::string name_;
 public:
-  SymbolExpression(const std::string &name) : Expression(TSymbolExpression), name_(name) {}
+  Symbol(const std::string &name) : Expression(TSymbol), name_(name) {}
   const std::string& name() const { return name_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<SymbolExpression name=" << name_ << '>';
+    ss << "<Symbol name=" << name_ << '>';
     return ss.str();
   }
 };
 
 /// Assigning a value to a symbol or variable, e.g. foo = 5
-class AssignmentExpression : public Expression {
+class Assignment : public Expression {
 public:
   
-  AssignmentExpression(VariableList *varList, Expression *rhs)
-    : Expression(TAssignmentExpression), varList_(varList), rhs_(rhs) {}
+  Assignment(VariableList *varList, Expression *rhs)
+    : Expression(TAssignment), varList_(varList), rhs_(rhs) {}
 
   const VariableList *variables() const { return varList_; };
   const Expression *rhs() const { return rhs_; }
@@ -89,7 +89,7 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<AssignmentExpression ";
+    ss << "<Assignment ";
     
     VariableList::const_iterator it;
     if ((it = varList_->begin()) < varList_->end()) { ss << (*it)->toString(level+1); it++; }
@@ -104,34 +104,55 @@ private:
 };
 
 // Binary operators.
-class BinaryExpression : public Expression {
-  char operator_;
-  Expression *lhs_, *rhs_;
+class BinaryOp : public Expression {
 public:
-  BinaryExpression(char op, Expression *lhs, Expression *rhs)
-      : Expression(TBinaryExpression), operator_(op) , lhs_(lhs) , rhs_(rhs) {}
-  const char& operatorValue() const { return operator_; }
+  enum Type {
+    SimpleLTR = 0, // '=', '+', '>', '&', etc -- operator_ holds the value
+    EqualityLTR, // '<=' '>=' '!=' '==' -- operator_ holds the value of the first byte
+  };
+  
+  BinaryOp(char op, Expression *lhs, Expression *rhs, Type type)
+      : Expression(TBinaryOp), operator_(op) , lhs_(lhs) , rhs_(rhs), type_(type) {}
+  
+  inline Type type() const { return type_; }
+  inline bool isEqualityLTRType() const { return type_ == EqualityLTR; }
+  inline char operatorValue() const { return operator_; }
   Expression *lhs() const { return lhs_; }
   Expression *rhs() const { return rhs_; }
+  
+  std::string operatorName() const {
+    if (type_ == EqualityLTR) {
+      return std::string(1, '=') + operator_;
+    } else {
+      return std::string(1, operator_);
+    }
+  }
+  
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<BinaryExpression '" << operator_ << "' ("
+    ss << "<BinaryOp '" << operator_;
+    if (type_ == EqualityLTR) ss << '=';
+    ss << "' ("
        << (lhs_ ? lhs_->toString(level+1) : "<null>")
        << ", "
        << (rhs_ ? rhs_->toString(level+1) : "<null>")
        << ")>";
     return ss.str();
   }
+private:
+  char operator_;
+  Expression *lhs_, *rhs_;
+  Type type_;
 };
 
 // Function calls.
-class CallExpression : public Expression {
+class Call : public Expression {
 public:
   typedef std::vector<Expression*> ArgumentList;
   
-  CallExpression(const std::string &calleeName, ArgumentList &args)
-    : Expression(TCallExpression), calleeName_(calleeName), args_(args) {}
+  Call(const std::string &calleeName, ArgumentList &args)
+    : Expression(TCall), calleeName_(calleeName), args_(args) {}
 
   const std::string& calleeName() const { return calleeName_; }
   const ArgumentList& arguments() const { return args_; }
@@ -139,7 +160,7 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<CallExpression calleeName='" << calleeName_ << "' args=(";
+    ss << "<Call calleeName='" << calleeName_ << "' args=(";
     ArgumentList::const_iterator it;
     if ((it = args_.begin()) < args_.end()) { ss << (*it)->toString(level+1); it++; }
     for (; it < args_.end(); it++) {          ss << ", " << (*it)->toString(level+1); }

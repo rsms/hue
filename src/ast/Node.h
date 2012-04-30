@@ -23,12 +23,12 @@ public:
     TExternalFunction = 4,
     
     TExpression = 5,
-    TIntLiteralExpression = 6,
-    TFloatLiteralExpression = 7,
-    TSymbolExpression = 8,
-    TAssignmentExpression = 9,
-    TBinaryExpression = 10,
-    TCallExpression = 11,
+    TIntLiteral = 6,
+    TFloatLiteral = 7,
+    TSymbol = 8,
+    TAssignment = 9,
+    TBinaryOp = 10,
+    TCall = 11,
     
     _TypeCount
   } type;

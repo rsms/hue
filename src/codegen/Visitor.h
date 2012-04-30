@@ -174,6 +174,9 @@ protected:
     }
   }
   
+  // Returns false if an error occured
+  bool IRTypesForASTVariables(std::vector<llvm::Type*>& argSpec, ast::VariableList *argVars);
+  
   llvm::Value* createNewLocalSymbol(ast::Variable *variable, llvm::Value *rhsV);
   
   inline std::string mangledName(const std::string& localName) {
@@ -207,14 +210,15 @@ protected:
     DEBUG_TRACE_LLVM_VISITOR;
     //std::cout << "Node [" << node->type << "]" << std::endl;
     switch (node->type) {
-      case ast::Node::TSymbolExpression:        return codegenSymbolExpression((ast::SymbolExpression*)node);
-      case ast::Node::TBinaryExpression:        return codegenBinaryExpression((ast::BinaryExpression*)node);
-      case ast::Node::TFunction:                return codegenFunction        ((ast::Function*)node);
-      case ast::Node::TIntLiteralExpression:    return codegenIntLiteral      ((ast::IntLiteralExpression*)node);
-      case ast::Node::TFloatLiteralExpression:  return codegenFloatLiteral    ((ast::FloatLiteralExpression*)node);
-      case ast::Node::TAssignmentExpression:    return codegenAssignment      ((ast::AssignmentExpression*)node);
-      case ast::Node::TExternalFunction:        return codegenExternalFunction((ast::ExternalFunction*)node);
-      case ast::Node::TCallExpression:          return codegenCallExpression  ((ast::CallExpression*)node);
+      #define HANDLE(Name) case ast::Node::T##Name: return codegen##Name(static_cast<const ast::Name*>(node));
+      HANDLE(Symbol);
+      HANDLE(BinaryOp);
+      HANDLE(Function);
+      HANDLE(IntLiteral);
+      HANDLE(FloatLiteral);
+      HANDLE(Assignment);
+      HANDLE(Call);
+      #undef HANDLE
       default: return error("Unable to generate code for node");
     }
   }
@@ -232,16 +236,16 @@ protected:
   
   llvm::Value *codegenBlock(const ast::Block *block, llvm::BasicBlock *BB);
   
-  llvm::Value *codegenAssignment(const ast::AssignmentExpression* node);
+  llvm::Value *codegenAssignment(const ast::Assignment* node);
   
-  llvm::Value *codegenCallExpression(const ast::CallExpression* node);
+  llvm::Value *codegenCall(const ast::Call* node);
   
-  llvm::Value *codegenIntLiteral(const ast::IntLiteralExpression *intLiteral, bool fixedSize = true);
-  llvm::Value *codegenFloatLiteral(const ast::FloatLiteralExpression *floatLiteral, bool fixedSize = true);
+  llvm::Value *codegenIntLiteral(const ast::IntLiteral *intLiteral, bool fixedSize = true);
+  llvm::Value *codegenFloatLiteral(const ast::FloatLiteral *floatLiteral, bool fixedSize = true);
   
-  llvm::Value *codegenBinaryExpression(ast::BinaryExpression *binExpr);
+  llvm::Value *codegenBinaryOp(const ast::BinaryOp *binExpr);
   
-  llvm::Value *codegenSymbolExpression(ast::SymbolExpression *symbolExpr);
+  llvm::Value *codegenSymbol(const ast::Symbol *symbolExpr);
 
 
 private:

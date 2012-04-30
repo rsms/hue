@@ -27,10 +27,11 @@ Value* Visitor::createNewLocalSymbol(ast::Variable *variable, Value *rhsValue) {
         //warning("Implicit conversion of integer value to floating point storage");
         V = builder_.CreateSIToFP(V, storageType, "casttmp");
       } else if (storageType->isIntegerTy() && VT->isDoubleTy()) { // Demote Float constant to Int
-        warning("Implicit conversion of floating point value to integer storage");
-        V = builder_.CreateFPToSI(V, storageType, "casttmp");
+        // warning("Implicit conversion of floating point value to integer storage");
+        // V = builder_.CreateFPToSI(V, storageType, "casttmp");
+        return error("Illegal conversion from floating point number to integer");
       } else {
-        return error("Symbol/variable storage type is different than value type");
+        return error("Symbol/variable type is different than value type");
       }
     }
   }
@@ -68,8 +69,8 @@ Value* Visitor::createNewLocalSymbol(ast::Variable *variable, Value *rhsValue) {
 }
 
 
-// AssignmentExpression
-Value *Visitor::codegenAssignment(const ast::AssignmentExpression* node) {
+// Assignment
+Value *Visitor::codegenAssignment(const ast::Assignment* node) {
   DEBUG_TRACE_LLVM_VISITOR;
   
   // TODO: Make assignments that occur in the module block

@@ -22,8 +22,8 @@ public:
     External, // "extern"
     Mutable, // "MUTABLE"
     Identifier,
-    BinaryOperator,
-    ComparisonOperator,
+    BinaryOperator,  // '+', '*', '>', etc.
+    BinaryComparisonOperator, // '!=' '<=' '>=' '=='. First byte is key.
     Structure,
     RightArrow, // '->'
     LeftArrow, // '<-'
@@ -122,7 +122,7 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"Mutable",             0,0,0},
   {"Identifier",          .hasStringValue = 1, 0,0},
   {"BinaryOperator",      .hasStringValue = 1, 0,0},
-  {"ComparisonOperator",  .hasStringValue = 1, 0,0},
+  {"BinaryComparisonOperator",  .hasStringValue = 1, 0,0},
   {"Structure",           .hasStringValue = 1, 0,0},
   {"RightArrow",          0,0,0},
   {"LeftArrow",           0,0,0},
