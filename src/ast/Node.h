@@ -31,6 +31,7 @@ public:
     TAssignment = 10,
     TBinaryOp = 11,
     TCall = 12,
+    TConditional = 13,
     
     _TypeCount
   };

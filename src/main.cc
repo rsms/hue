@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   std::cout << "Parsed module: " << moduleFunc->body()->toString() << std::endl;
-  //return 0; // xxx only parser
+  return 0; // xxx only parser
   
   // Generate code
   codegen::Visitor codegenVisitor;

@@ -15,7 +15,6 @@ public:
   virtual ~Expression() {}
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
     ss << "<Expression>";
     return ss.str();
   }
@@ -34,7 +33,6 @@ public:
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
     ss << "<IntLiteral value=" << value_ << '>';
     return ss.str();
   }
@@ -48,7 +46,6 @@ public:
   const std::string& text() const { return value_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
     ss << "<FloatLiteral value=" << value_ << '>';
     return ss.str();
   }
@@ -62,7 +59,6 @@ public:
   inline bool isTrue() const { return value_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
     ss << "<BoolLiteral " << (value_ ? "true" : "false") << '>';
     return ss.str();
   }
@@ -76,7 +72,6 @@ public:
   const std::string& name() const { return name_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
     ss << "<Symbol name=" << name_ << '>';
     return ss.str();
   }
@@ -145,13 +140,13 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<BinaryOp '" << operator_;
-    if (type_ == EqualityLTR) ss << '=';
-    ss << "' ("
+    ss << "<BinaryOp "
        << (lhs_ ? lhs_->toString(level+1) : "<null>")
-       << ", "
+       << " '" << operator_;
+    if (type_ == EqualityLTR) ss << '=';
+    ss << "' "
        << (rhs_ ? rhs_->toString(level+1) : "<null>")
-       << ")>";
+       << ">";
     return ss.str();
   }
 private:

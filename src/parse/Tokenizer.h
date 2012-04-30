@@ -106,7 +106,9 @@ public:
       #define _I8CMP(LEN, ...) (datac >= LEN && rsms_i8cmp##LEN(datav, __VA_ARGS__))
       #define if_i8CMP_then_CONSUME_SYMBOL(TYPE, LEN, ...) if (_I8CMP(LEN, __VA_ARGS__)) CONSUME_SYMBOL(TYPE, LEN)
 
-           if_i8CMP_then_CONSUME_SYMBOL(Func,         4, 'f','u','n','c');
+           if_i8CMP_then_CONSUME_SYMBOL(If,           2, 'i','f');
+      else if_i8CMP_then_CONSUME_SYMBOL(Else,         4, 'e','l','s','e');
+      else if_i8CMP_then_CONSUME_SYMBOL(Func,         4, 'f','u','n','c');
       else if_i8CMP_then_CONSUME_SYMBOL(External,     6, 'e','x','t','e','r','n');
       else if_i8CMP_then_CONSUME_SYMBOL(None,         4, 'n','o','n','e');
       else if_i8CMP_then_CONSUME_SYMBOL(Bool,         4, 'B','o','o','l');

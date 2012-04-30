@@ -45,10 +45,12 @@ public:
     // TODO: BinaryLiteral, TextLiteral
     
     // Symbols
-    None,         // 'none' --> void
-    IntSymbol,    // 'Int'  --> i64
-    FloatSymbol,  // 'Float --> double
-    Bool,         // 'Bool' --> i1
+    None,         // 'none'
+    IntSymbol,    // 'Int'
+    FloatSymbol,  // 'Float'
+    Bool,         // 'Bool'
+    If,           // 'if'
+    Else,         // 'else'
     
     End,
     
@@ -151,6 +153,9 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"IntSymbol",           0,0,0},
   {"FloatSymbol",         0,0,0},
   {"Bool",                0,0,0},
+  {"If",                  0,0,0},
+  {"Else",                0,0,0},
+  
   {"End",                 0,0,0},
 };
 

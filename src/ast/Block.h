@@ -22,8 +22,8 @@ public:
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
+    NodeToStringHeader(level, ss);
     ss << "<Block nodes[" << nodes_.size() << "]=(";
-    
     NodeList::const_iterator it1;
     it1 = nodes_.begin();
     if (it1 < nodes_.end()) {
