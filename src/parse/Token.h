@@ -33,16 +33,19 @@ public:
     Stop, // '.'
     Assignment, // '='
     Backslash, // '\'
-    
     NewLine,
     
     // Literals
     IntLiteral,
     FloatLiteral,
+    BoolLiteral,    // intValue denotes value: 0 = false, !0 = true
+    // TODO: BinaryLiteral, TextLiteral
     
-    // Built-in types
-    IntSymbol,
-    FloatSymbol,
+    // Symbols
+    None,         // 'none' --> void
+    IntSymbol,    // 'Int'  --> i64
+    FloatSymbol,  // 'Float --> double
+    Bool,         // 'Bool' --> i1
     
     End,
     
@@ -133,10 +136,15 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"Assignment",          0,0,0},
   {"Backslash",           0,0,0},
   {"NewLine",             0,0,0},
+  
   {"IntLiteral",          .hasStringValue = 1,0, .hasIntValue = 1}, // intValue = radix
   {"FloatLiteral",        .hasStringValue = 1,0,0},
+  {"BoolLiteral",         0,0, .hasIntValue = 1}, // intValue = !0
+  
+  {"Nil",                 0,0,0},
   {"IntSymbol",           0,0,0},
   {"FloatSymbol",         0,0,0},
+  {"Bool",                0,0,0},
   {"End",                 0,0,0},
 };
 

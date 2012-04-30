@@ -12,6 +12,7 @@ public:
     Named,
     Int,
     Float,
+    Bool,
     Func,
   };
   
@@ -26,6 +27,7 @@ public:
       case Named: return name_;
       case Int: return "Int";
       case Float: return "Float";
+      case Bool: return "Bool";
       case Func: return "func";
       default: return "?";
     }

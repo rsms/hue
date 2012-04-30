@@ -54,6 +54,20 @@ public:
   }
 };
 
+// Boolean literal, namely "true" or "false"
+class BoolLiteral : public Expression {
+  bool value_;
+public:
+  BoolLiteral(bool value) : Expression(TBoolLiteral), value_(value) {}
+  inline bool isTrue() const { return value_; }
+  virtual std::string toString(int level = 0) const {
+    std::ostringstream ss;
+    NodeToStringHeader(level, ss);
+    ss << "<BoolLiteral " << (value_ ? "true" : "false") << '>';
+    return ss.str();
+  }
+};
+
 // Referencing a symbol, like "a".
 class Symbol : public Expression {
   std::string name_;

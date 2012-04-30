@@ -25,10 +25,12 @@ public:
     TExpression = 5,
     TIntLiteral = 6,
     TFloatLiteral = 7,
-    TSymbol = 8,
-    TAssignment = 9,
-    TBinaryOp = 10,
-    TCall = 11,
+    TBoolLiteral = 8,
+    
+    TSymbol = 9,
+    TAssignment = 10,
+    TBinaryOp = 11,
+    TCall = 12,
     
     _TypeCount
   };

@@ -133,6 +133,7 @@ public:
     return token.type == Token::Identifier
         || token.type == Token::IntSymbol
         || token.type == Token::FloatSymbol
+        || token.type == Token::Bool
         || token.type == Token::Func;
   }
   
@@ -141,7 +142,7 @@ public:
   // Variable = Identifier 'MUTABLE'? Type?
   Variable *parseVariable(std::string identifierName) {
     DEBUG_TRACE_PARSER;
-    Type *typeDeclaration = NULL;
+    Type *T = NULL;
     bool isMutable = false;
     
     if (token_.type == Token::Mutable) {
@@ -150,11 +151,11 @@ public:
     }
     
     if (tokenIsType(token_)) {
-      typeDeclaration = parseType();
-      if (!typeDeclaration) return 0;
+      T = parseType();
+      if (!T) return 0;
     }
     
-    return new Variable(isMutable, identifierName, typeDeclaration);
+    return new Variable(isMutable, identifierName, T);
   }
   
   // VariableList = (Variable ',')* Variable
@@ -317,10 +318,8 @@ public:
              || (*varList)[0]->type()->typeID() == Type::Unknown ) 
        )
     {
-      // TODO: Use parseType()
       if (rhs->isFunctionType()) {
         (*varList)[0]->setType(new Type(Type::Func));
-        //if (rhs->functionType()->name().empty())
       } else if (rhs->nodeTypeID() == Node::TIntLiteral) {
         (*varList)[0]->setType(new Type(Type::Int));
       } else if (rhs->nodeTypeID() == Node::TFloatLiteral) {
@@ -371,27 +370,19 @@ public:
     }
   }
   
-  // Type = 'Int' | 'Float' | 'func' | Identifier
+  // Type = 'Int' | 'Float' | 'func' | 'extern' | Identifier
   Type *parseType() {
     DEBUG_TRACE_PARSER;
-    if (token_.type == Token::IntSymbol) {
-      nextToken();
-      return new Type(Type::Int);
-    } else if (token_.type == Token::FloatSymbol) {
-      nextToken();
-      return new Type(Type::Float);
-    } else if (token_.type == Token::Func) {
-      nextToken();
-      return new Type(Type::Func);
-    } else if (token_.type == Token::Identifier) {
-      std::string identifierName = token_.stringValue;
-      nextToken();
-      return new Type(identifierName);
-    } else {
-      error("Unexpected token while expecting type identifier");
-      nextToken(); // Skip token for error recovery.
-      return 0;
-    }
+    Type* T = 0;
+         if (token_.type == Token::IntSymbol)   T = new Type(Type::Int);
+    else if (token_.type == Token::FloatSymbol) T = new Type(Type::Float);
+    else if (token_.type == Token::Func)        T = new Type(Type::Func);
+    else if (token_.type == Token::Bool)        T = new Type(Type::Bool);
+    else if (token_.type == Token::Identifier)  T = new Type(token_.stringValue);
+    else error("Unexpected token while expecting type identifier");
+    
+    nextToken(); // eat token
+    return T;
   }
   
   // TypeList = (Type ',')* Type
@@ -449,15 +440,15 @@ public:
       // VariableList =
       variableList = parseVariableList();
       if (variableList == 0) return 0;
-      
-      variableList = verifyAndUpdateVariableList(variableList);
-      if (variableList == 0) return 0;
     
       // ')'
       if (token_.type != Token::RightParen) {
-        return (FunctionType*)error("Expected ')' in function definition");
+        return (FunctionType*)error("Expected ')' after function parameters");
       }
       nextToken();  // eat ')'.
+      
+      variableList = verifyAndUpdateVariableList(variableList);
+      if (variableList == 0) return 0;
     }
     
     // Result =
@@ -612,22 +603,6 @@ public:
     }
   }
   
-  /// intliteral ::= '0' | [1-9][0-9]*
-  Expression *parseIntLiteralExpr() {
-    DEBUG_TRACE_PARSER;
-    Expression *expression = new IntLiteral(token_.stringValue, token_.intValue);
-    nextToken(); // consume the number
-    return expression;
-  }
-  
-  /// loatliteral ::= [0-9] '.' [0-9]*
-  Expression *parseFloatLiteralExpr() {
-    DEBUG_TRACE_PARSER;
-    Expression *expression = new FloatLiteral(token_.stringValue);
-    nextToken(); // consume the number
-    return expression;
-  }
-  
   Expression *parseParen() {
     DEBUG_TRACE_PARSER;
     nextToken(); // eat '('
@@ -646,11 +621,32 @@ public:
     return expression;
   }
   
-  /// primary
-  ///   ::= identifier
-  ///   ::= number
-  ///   ::= paren
-  Expression *parsePrimary() {
+  // IntLiteral = '0' | [1-9][0-9]*
+  Expression *parseIntLiteral() {
+    DEBUG_TRACE_PARSER;
+    Expression *expression = new IntLiteral(token_.stringValue, token_.intValue);
+    nextToken(); // consume
+    return expression;
+  }
+  
+  // FloatLiteral = [0-9] '.' [0-9]*
+  Expression *parseFloatLiteral() {
+    DEBUG_TRACE_PARSER;
+    Expression *expression = new FloatLiteral(token_.stringValue);
+    nextToken(); // consume
+    return expression;
+  }
+  
+  // BoolLiteral = 'true' | 'false'
+  Expression *parseBoolLiteral() {
+    DEBUG_TRACE_PARSER;
+    Expression *expression = new BoolLiteral(static_cast<bool>(token_.intValue));
+    nextToken(); // consume
+    return expression;
+  }
+  
+  // Primary = Literal | Identifier
+  Expression* parsePrimary() {
     entry:
     DEBUG_TRACE_PARSER;
     switch (token_.type) {
@@ -659,14 +655,16 @@ public:
         return expr;
       }
       case Token::IntLiteral:
-        return parseIntLiteralExpr();
+        return parseIntLiteral();
       case Token::FloatLiteral:
-        return parseFloatLiteralExpr();
+        return parseFloatLiteral();
+      case Token::BoolLiteral:
+        return parseBoolLiteral();
 
       case Token::Func: {
         Function *func = parseFunction();
         #if DEBUG_PARSER
-        std::cout << "Parsed function: " << func->toString() << std::endl;
+        std::cout << "Parsed function: " << (func ? func->toString() : std::string("<nil>")) << std::endl;
         #endif
         return func;
       }
@@ -677,12 +675,11 @@ public:
       case Token::LeftParen:
         return parseParen();
 
-      case Token::Comment:
       case Token::NewLine: { // ignore
         nextToken();
         goto entry;
       }
-      default: return error("Unexpected token when expecting: id|intlit|floatlit|func|external|comment|newline");
+      default: return error("Unexpected token");
     }
   }
   
@@ -814,7 +811,7 @@ public:
       return moduleFunc;
     }
     
-    return NULL;
+    return 0;
   }
 };
 

@@ -11,7 +11,7 @@ Value* Visitor::createNewLocalSymbol(ast::Variable *variable, Value *rhsValue) {
   // If storage type is explicit/known --and-- RHS is a primitive: cast if needed
   if (storageTypeIsKnown && rhsOriginalType->isPrimitiveType()) {
     // Map AST type to LLVM type
-    Type *storageType = IRTypeForASTTypeDecl(*variable->type());
+    Type *storageType = IRTypeForASTType(*variable->type());
     if (storageType == 0) return error("No encoding for AST type");
   
     // If storage type is different than value, attempt to convert the value

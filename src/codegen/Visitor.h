@@ -155,21 +155,17 @@ protected:
     } else {
       assert(returnTypes->size() == 1); // TODO: Support multiple return values
       ast::Type *parsedT = (*returnTypes)[0];
-      switch (parsedT->typeID()) {
-        case ast::Type::Int: return builder_.getInt64Ty();
-        case ast::Type::Float: return builder_.getDoubleTy();
-        //case ast::Type::Func: return builder_.getDoubleTy();
-        //case ast::Type::Named: return 1;
-        default: return 0;
-      }
+      return IRTypeForASTType(*parsedT);
     }
   }
   
-  llvm::Type *IRTypeForASTTypeDecl(const ast::Type& T) {
+  llvm::Type *IRTypeForASTType(const ast::Type& T) {
     switch (T.typeID()) {
       case ast::Type::Int: return builder_.getInt64Ty();
       case ast::Type::Float: return builder_.getDoubleTy();
-      // case ast::Type::Named: -- Custom type
+      case ast::Type::Bool:  return builder_.getInt1Ty();
+      //case ast::Type::Func: ...
+      //case ast::Type::Named: ...
       default: return 0;
     }
   }
@@ -216,10 +212,11 @@ protected:
       HANDLE(Function);
       HANDLE(IntLiteral);
       HANDLE(FloatLiteral);
+      HANDLE(BoolLiteral);
       HANDLE(Assignment);
       HANDLE(Call);
       #undef HANDLE
-      default: return error("Unable to generate code for node");
+      default: return error(std::string("Unable to generate code for node ")+node->toString());
     }
   }
   
@@ -240,8 +237,9 @@ protected:
   
   llvm::Value *codegenCall(const ast::Call* node);
   
-  llvm::Value *codegenIntLiteral(const ast::IntLiteral *intLiteral, bool fixedSize = true);
-  llvm::Value *codegenFloatLiteral(const ast::FloatLiteral *floatLiteral, bool fixedSize = true);
+  llvm::Value *codegenIntLiteral(const ast::IntLiteral *literal, bool fixedSize = true);
+  llvm::Value *codegenFloatLiteral(const ast::FloatLiteral *literal, bool fixedSize = true);
+  llvm::Value *codegenBoolLiteral(const ast::BoolLiteral *literal);
   
   llvm::Value *codegenBinaryOp(const ast::BinaryOp *binExpr);
   

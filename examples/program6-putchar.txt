@@ -1,0 +1,23 @@
+# Writes "Hello World\n" to stdout
+p = extern putchar (ch Int) Int
+H = 72
+e = 101
+l = 108
+o = 111
+_ = 32
+W = 87
+r = 114
+d = 100
+LF = 10
+p H
+p e
+p l
+p l
+p o
+p _
+p W
+p o
+p r
+p l
+p d
+p LF

@@ -76,7 +76,7 @@ bool Visitor::IRTypesForASTVariables(std::vector<Type*>& argSpec, ast::VariableL
       }
       
       // Lookup IR type for AST type
-      Type* T = IRTypeForASTTypeDecl(*var->type());
+      Type* T = IRTypeForASTType(*var->type());
       if (T == 0)
         return !!error(R_FMT("No conversion for AST type " << var->toString() << " to IR type"));
       
@@ -97,13 +97,12 @@ llvm::Module *Visitor::genModule(llvm::LLVMContext& context, std::string moduleN
   llvm::Module *module = new Module(moduleName, context);
   
   module_ = module;
-  
   llvm::Value *returnValue = llvm::ConstantInt::get(llvm::getGlobalContext(), APInt(64, 0, true));
   //llvm::Value *moduleFunc = codegenFunction(root, std::string("minit__") + moduleName, builder_.getInt64Ty());
   llvm::Value *moduleFunc = codegenFunction(root, "main", returnValue->getType(), returnValue);
-  
   module_ = 0;
   
+  // Failure?
   if (moduleFunc == 0) {
     delete module;
     module = 0;
@@ -144,20 +143,25 @@ Value *Visitor::codegenBlock(const ast::Block *block, llvm::BasicBlock *BB) {
 }
 
 // Int
-Value *Visitor::codegenIntLiteral(const ast::IntLiteral *intLiteral, bool fixedSize) {
+Value *Visitor::codegenIntLiteral(const ast::IntLiteral *literal, bool fixedSize) {
   DEBUG_TRACE_LLVM_VISITOR;
-  dumpBlockSymbols();
   // TODO: Infer the minimal size needed if fixedSize is false
   const unsigned numBits = 64;
-  return ConstantInt::get(getGlobalContext(), APInt(numBits, intLiteral->text(), intLiteral->radix()));
+  return ConstantInt::get(getGlobalContext(), APInt(numBits, literal->text(), literal->radix()));
 }
 
 // Float
-Value *Visitor::codegenFloatLiteral(const ast::FloatLiteral *floatLiteral, bool fixedSize) {
+Value *Visitor::codegenFloatLiteral(const ast::FloatLiteral *literal, bool fixedSize) {
   DEBUG_TRACE_LLVM_VISITOR;
   // TODO: Infer the minimal size needed if fixedSize is false
   const fltSemantics& size = APFloat::IEEEdouble;
-  return ConstantFP::get(getGlobalContext(), APFloat(size, floatLiteral->text()));
+  return ConstantFP::get(getGlobalContext(), APFloat(size, literal->text()));
+}
+
+Value *Visitor::codegenBoolLiteral(const ast::BoolLiteral *literal) {
+  DEBUG_TRACE_LLVM_VISITOR;
+  return literal->isTrue() ? ConstantInt::getTrue(getGlobalContext())
+                           : ConstantInt::getFalse(getGlobalContext());
 }
 
 // Reference or load a symbol

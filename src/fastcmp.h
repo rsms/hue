@@ -28,7 +28,6 @@
     (*(uint32_t *) (m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
         && ((uint32_t *) (m))[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4) && (m)[8] == c8)
 
-
 #endif // RSMS_FASTCMP_H
 
 // uint8_t *m = new uint8_t[sizeof("abcdefghijklmnopqrstuvwxyz")];

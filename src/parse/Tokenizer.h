@@ -97,49 +97,38 @@ public:
       size_t datac;
       const uint8_t *datav = input_->data(datac);
       
-      // keyword: func
-      if (datac > 3 && rsms_i8cmp4(datav, 'f','u','n','c')) {
+      #define CONSUME_SYMBOL(TYPE, LEN) do {\
+        token_.line = line_; \
+        token_.column = startColumn; \
+        token_.length = LEN; \
+        token_.type = Token::TYPE; \
+        nextByte(LEN); } while(0)
+      #define _I8CMP(LEN, ...) (datac >= LEN && rsms_i8cmp##LEN(datav, __VA_ARGS__))
+      #define if_i8CMP_then_CONSUME_SYMBOL(TYPE, LEN, ...) if (_I8CMP(LEN, __VA_ARGS__)) CONSUME_SYMBOL(TYPE, LEN)
+
+           if_i8CMP_then_CONSUME_SYMBOL(Func,         4, 'f','u','n','c');
+      else if_i8CMP_then_CONSUME_SYMBOL(External,     6, 'e','x','t','e','r','n');
+      else if_i8CMP_then_CONSUME_SYMBOL(None,         4, 'n','o','n','e');
+      else if_i8CMP_then_CONSUME_SYMBOL(Bool,         4, 'B','o','o','l');
+      else if_i8CMP_then_CONSUME_SYMBOL(IntSymbol,    3, 'I','n','t');
+      else if_i8CMP_then_CONSUME_SYMBOL(FloatSymbol,  5, 'F','l','o','a','t');
+      else if_i8CMP_then_CONSUME_SYMBOL(Mutable,      7, 'M','U','T','A','B','L','E');
+      
+      else if (_I8CMP(4, 't','r','u','e')) {
         token_.line = line_;
         token_.column = startColumn;
         token_.length = 4;
-        token_.type = Token::Func;
-        nextByte(4); // advance
+        token_.intValue = 1;
+        token_.type = Token::BoolLiteral;
+        nextByte(4);
       }
-      
-      // keyword: extern
-      else if (datac > 5 && rsms_i8cmp6(datav, 'e','x','t','e','r','n')) {
-        token_.line = line_;
-        token_.column = startColumn;
-        token_.length = 6;
-        token_.type = Token::External;
-        nextByte(6); // advance
-      }
-      
-      // keyword: Int
-      else if (datac > 2 && rsms_i8cmp3(datav, 'I','n','t')) {
-        token_.line = line_;
-        token_.column = startColumn;
-        token_.length = 3;
-        token_.type = Token::IntSymbol;
-        nextByte(3); // advance
-      }
-      
-      // keyword: Float
-      else if (datac > 4 && rsms_i8cmp5(datav, 'F','l','o','a','t')) {
+      else if (_I8CMP(5, 'f','a','l','s','e')) {
         token_.line = line_;
         token_.column = startColumn;
         token_.length = 5;
-        token_.type = Token::FloatSymbol;
-        nextByte(5); // advance
-      }
-      
-      // keyword: MUTABLE
-      else if (datac > 6 && rsms_i8cmp7(datav, 'M','U','T','A','B','L','E')) {
-        token_.line = line_;
-        token_.column = startColumn;
-        token_.length = 7;
-        token_.type = Token::Mutable;
-        nextByte(7); // advance
+        token_.intValue = 0;
+        token_.type = Token::BoolLiteral;
+        nextByte(5);
       }
       
       else {
@@ -151,6 +140,10 @@ public:
         while (isalnum(nextByte()) || input_->current() == '_')
           token_.stringValue += input_->current();
       }
+      
+      #undef if_i8CMP_then_CONSUME_SYMBOL
+      #undef if_I8CMP
+      #undef CONSUME_SYMBOL
     }
     
     /// numberliteral
