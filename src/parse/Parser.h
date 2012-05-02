@@ -12,7 +12,7 @@
 
 #include <vector>
 
-#define DEBUG_PARSER 1
+#define DEBUG_PARSER 0
 #if DEBUG_PARSER
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_PARSER DEBUG_TRACE
@@ -627,11 +627,10 @@ public:
     LineLevel lineLevel = token_.column;
     //LineLevel lineLevel = currentLineLevel_;
     //LineLevel lineLevel = InferLineLevel;
-    
-    nextToken(); // eat 'if'
   
     // Conditional : Expression
-    Conditional* conditionals = new Conditional();
+    Conditional* outerConditional = NULL;
+    Conditional* lastConditional = NULL;
     
     // Treat this scope as parsing arguments -- this means that precedence changes so
     // we can do "if A B else C" --> (ifexpr ((if A) B), (else C)). Oterwise we would get:
@@ -639,41 +638,43 @@ public:
     //{ ScopeFlag<bool> sf0(&isParsingCallArguments_, true);
     
       while (1) {
+        Conditional* conditional = new Conditional();
+        
+        nextToken(); // eat 'if'
+        
         // Parse the test expression
-        Expression* testExpr = parseExpression();
-        if (testExpr == 0) return 0;
+        if (conditional->setTestExpression(parseExpression()) == 0) return 0;
+        
+        // Expect ':'
+        if (token_.type != Token::Colon) return error("Expected ':'");
+        nextToken(); // Eat ':'
     
         // Parse the block expression to be the branch of the test expression
-        Block* block = parseBlock(lineLevel);
-        if (block == 0) return 0;
-      
-        // Add to conditionals
-        //rlog("IF " << testExpr->toString() << " THEN " << block->toString());
-        conditionals->addConditionalBranch(testExpr, block);
+        if (conditional->setTrueBlock(parseBlock(lineLevel)) == 0) return 0;
+        
+        // Branch
+        if (outerConditional == 0) {
+          outerConditional = conditional;
+        } else {
+          lastConditional->setFalseBlock(new Block(conditional));
+        }
+        lastConditional = conditional;
       
         // Expect 'if' | 'else'
-        if (token_.type == Token::If) {
-          // Another test in the chain
-          nextToken(); // Eat 'if'
-        } else if (token_.type == Token::Else) {
-          // Fallback branch in the chain -- break
+        if (token_.type == Token::End) {
+          return error("Premature end of conditional (expected an expression)");
+        } else if (token_.type != Token::If) {
           break;
-        } else {
-          nextToken(); // Attempt error recovery
-          return error("Expected 'if' or 'else'");
         }
       }
     // } // end of ScopeFlag<bool> sf0(&isParsingCallArguments_, true);
     
-    // Parse the default branch
-    assert(token_.type == Token::Else);
-    nextToken(); // Eat 'else'
-    Block* block = parseBlock(lineLevel);
-    if (block == 0) return 0;
-    conditionals->setDefaultBlock(block);
+    // Parse the "else" branch
+    //rlog("lineLevel: " << lineLevel);
+    if (lastConditional->setFalseBlock(parseBlock(lineLevel)) == 0) return 0;
     
-    //rlog("Parsed conditionals: " << conditionals->toString());
-    return conditionals;
+    //rlog("Parsed conditional: " << outerConditional->toString());
+    return outerConditional;
   }
   
   // RHS = Expression

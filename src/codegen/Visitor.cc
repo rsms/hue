@@ -124,14 +124,10 @@ Value *Visitor::codegenExternalFunction(const ast::ExternalFunction* node) {
 }
 
 // Block
-Value *Visitor::codegenBlock(const ast::Block *block, llvm::BasicBlock *BB) {
+Value *Visitor::codegenBlock(const ast::Block *block) {
   DEBUG_TRACE_LLVM_VISITOR;
   
   const ast::Block::NodeList& nodes = block->nodes();
-  if (nodes.size() == 0) {
-    return error("Empty function implementation when expecting one or more expressions or statements");
-  }
-  
   ast::Block::NodeList::const_iterator it1 = nodes.begin();
   Value *lastValue = 0;
   for (; it1 < nodes.end(); it1++) {
@@ -139,7 +135,7 @@ Value *Visitor::codegenBlock(const ast::Block *block, llvm::BasicBlock *BB) {
     if (lastValue == 0) return 0;
   }
   
-  return lastValue;
+  return (lastValue == 0) ? error("Empty block") : lastValue;
 }
 
 // Int

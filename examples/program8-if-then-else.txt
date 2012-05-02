@@ -1,0 +1,32 @@
+putc = extern putchar (ch Int) Int
+
+A = 65
+B = 66
+C = 67
+
+N = 1
+char = if N > 2: A; if N > 1: B; C
+#x = if N < 2: 10; if N > 4: 20; N
+
+putc char
+putc 10
+
+#y = 10
+
+# x = if N < 2: 10
+#     if N > 4: 20
+#     N
+
+# (= x
+#   (if
+#     (N < 2)
+#     (10)
+#     (if
+#       (N < 3)
+#       (20)
+#       (N)
+#     )
+#   )
+# ) -> N(..1) => 10, N(2) => 20, N(3..) => N
+
+#x = if N < 2: 10; 20

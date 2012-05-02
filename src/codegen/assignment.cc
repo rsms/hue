@@ -6,7 +6,7 @@ Value* Visitor::createNewLocalSymbol(ast::Variable *variable, Value *rhsValue) {
   Type* rhsOriginalType = rhsValue->getType();
   Value* V = rhsValue;
   const bool storageTypeIsKnown = variable->hasUnknownType() == false;
-  bool requireAlloca = false;
+  //bool requireAlloca = false;
   
   // If storage type is explicit/known --and-- RHS is a primitive: cast if needed
   if (storageTypeIsKnown && rhsOriginalType->isPrimitiveType()) {
@@ -16,23 +16,9 @@ Value* Visitor::createNewLocalSymbol(ast::Variable *variable, Value *rhsValue) {
   
     // If storage type is different than value, attempt to convert the value
     if (storageType->getTypeID() != V->getType()->getTypeID()) {
-      // RHS type is different that storage type
-      Type* VT = V->getType();
-      
-      // Require an alloca since we are replacing 
-      requireAlloca = true;
-    
-      // Numbers: cast to storage
-      if (storageType->isDoubleTy() && VT->isIntegerTy()) { // Promote Int constant to Float
-        //warning("Implicit conversion of integer value to floating point storage");
-        V = builder_.CreateSIToFP(V, storageType, "casttmp");
-      } else if (storageType->isIntegerTy() && VT->isDoubleTy()) { // Demote Float constant to Int
-        // warning("Implicit conversion of floating point value to integer storage");
-        // V = builder_.CreateFPToSI(V, storageType, "casttmp");
-        return error("Illegal conversion from floating point number to integer");
-      } else {
-        return error("Symbol/variable type is different than value type");
-      }
+      //requireAlloca = true; // Require an alloca since we are replacing V with a cast instr
+      V = castValueTo(V, storageType);
+      if (V == 0) return error("Symbol/variable type is different than value type");
     }
   }
   

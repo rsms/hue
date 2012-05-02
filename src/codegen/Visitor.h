@@ -15,6 +15,7 @@
 #include "../ast/Block.h"
 #include "../ast/Type.h"
 #include "../ast/Variable.h"
+#include "../ast/Conditional.h"
 
 #include <stdlib.h>
 
@@ -197,6 +198,10 @@ protected:
     return allocaInst;
   }
   
+  llvm::Type* highestFidelityType(llvm::Type* T1, llvm::Type* T2);
+  llvm::Value* castValueToBool(llvm::Value* V);
+  llvm::Value* castValueTo(llvm::Value* V, llvm::Type* destT);
+  
   // ------------------------------------------------
   
   // Emit LLVM IR for this AST node along with all the things it depends on.
@@ -215,6 +220,7 @@ protected:
       HANDLE(BoolLiteral);
       HANDLE(Assignment);
       HANDLE(Call);
+      HANDLE(Conditional);
       #undef HANDLE
       default: return error(std::string("Unable to generate code for node ")+node->toString());
     }
@@ -231,11 +237,12 @@ protected:
                                llvm::Type* returnType = 0,
                                llvm::Value* returnValue = 0);
   
-  llvm::Value *codegenBlock(const ast::Block *block, llvm::BasicBlock *BB);
+  llvm::Value *codegenBlock(const ast::Block *block);
   
   llvm::Value *codegenAssignment(const ast::Assignment* node);
   
   llvm::Value *codegenCall(const ast::Call* node);
+  llvm::Value *codegenConditional(const ast::Conditional* node);
   
   llvm::Value *codegenIntLiteral(const ast::IntLiteral *literal, bool fixedSize = true);
   llvm::Value *codegenFloatLiteral(const ast::FloatLiteral *literal, bool fixedSize = true);

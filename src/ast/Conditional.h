@@ -8,59 +8,33 @@ namespace rsms { namespace ast {
 
 class Conditional : public Expression {
 public:
-  class ConditionalBranch {
-  public:
-    explicit ConditionalBranch(Expression* testExpr, Block* block) : testExpr_(testExpr), block_(block) {}
-    std::string toString(int level = 0) const {
-      std::ostringstream ss;
-      NodeToStringHeader(level, ss);
-      ss << "<IF " << (testExpr_ ? testExpr_->toString(level+1) : "<nil>")
-         << " THEN " << (block_ ? block_->toString(level+1) : "<nil>")
-         << '>';
-      return ss.str();
-    }
-  private:
-    Expression* testExpr_;
-    Block* block_;
-  };
+  Conditional() : Expression(TConditional), testExpression_(0), trueBlock_(0), falseBlock_(0) {}
   
-  typedef std::vector<ConditionalBranch> ConditionalBranchList;
+  Expression* setTestExpression(Expression* testExpression) { return testExpression_ = testExpression; }
+  inline Expression* testExpression() const { return testExpression_; }
+
+  Block* setTrueBlock(Block* trueBlock) { return trueBlock_ = trueBlock; }
+  inline Block* trueBlock() const { return trueBlock_; }
   
-  Conditional() : Expression(TConditional), defaultBlock_(0) {}
-  
-  void addConditionalBranch(const ConditionalBranch& cb) { conditionalBranches_.push_back(cb); }
-  void addConditionalBranch(Expression* testExpr, Block* block) {
-    addConditionalBranch(ConditionalBranch(testExpr, block));
-  }
-  inline const ConditionalBranchList& conditionalBranches() const { return conditionalBranches_; }
-  
-  void setDefaultBlock(Block* defaultBlock) { defaultBlock_ = defaultBlock; }
-  inline Block* defaultBlock() const { return defaultBlock_; }
+  Block* setFalseBlock(Block* falseBlock) { return falseBlock_ = falseBlock; }
+  inline Block* falseBlock() const { return falseBlock_; }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<Conditional ";
-    ConditionalBranchList::const_iterator it1;
-    it1 = conditionalBranches_.begin();
-    if (it1 < conditionalBranches_.end()) {
-      ss << (*it1).toString(level+1);
-      it1++;
-    }
-    for (; it1 < conditionalBranches_.end(); it1++) {
-      ss << ", " << (*it1).toString(level+1);
-    }
-    if (defaultBlock_) {
-      NodeToStringHeader(level+1, ss);
-      ss << "default: " << defaultBlock_->toString(level+2);
-    }
+    ss << "<Conditional " << (testExpression_ ? testExpression_->toString(level+1) : "<nil>");
+    NodeToStringHeader(level+1, ss);
+    ss << "then: " << (trueBlock_ ? trueBlock_->toString(level+1) : "<nil>");
+    NodeToStringHeader(level+1, ss);
+    ss << "else: " << (falseBlock_ ? falseBlock_->toString(level+1) : "<nil>");
     ss << ">";
     return ss.str();
   }
   
 private:
-  ConditionalBranchList conditionalBranches_;
-  Block* defaultBlock_;
+  Expression* testExpression_;
+  Block* trueBlock_;
+  Block* falseBlock_;
 };
 
 }} // namespace rsms.ast

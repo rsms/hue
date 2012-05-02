@@ -69,7 +69,7 @@ Value *Visitor::codegenFunction(const ast::Function *node,
   dumpBlockSymbols();
   
   // Generate block code
-  Value *lastValue = codegenBlock(node->body(), BB);
+  Value *lastValue = codegenBlock(node->body());
   
   // Failed to generate body?
   if (lastValue == 0) {

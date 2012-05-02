@@ -22,15 +22,16 @@ public:
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
-    ss << "<Block nodes[" << nodes_.size() << "]=(";
+    ss << "<Block [" << nodes_.size() << "](";
     NodeList::const_iterator it1;
     it1 = nodes_.begin();
     if (it1 < nodes_.end()) {
+      //NodeToStringHeader(level, ss);
       ss << (*it1)->toString(level+1);
       it1++;
     }
     for (; it1 < nodes_.end(); it1++) {
+      //NodeToStringHeader(level, ss);
       ss << ", " << (*it1)->toString(level+1);
     }
     ss << ")>";

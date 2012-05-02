@@ -20,19 +20,6 @@ static FunctionType* functionTypeForValue(Value* V) {
 // Returns true if V can be used as the target in a call instruction
 inline static bool valueIsCallable(Value* V) {
   return !!functionTypeForValue(V);
-  //if (V == 0) return 0;
-  //
-  //Type* T = V->getType();
-  //
-  //if (T->isFunctionTy()) {
-  //  return true;
-  //} else if (   T->isPointerTy()
-  //           && T->getNumContainedTypes() == 1
-  //           && T->getContainedType(0)->isFunctionTy() ) {
-  //  return true;
-  //} else {
-  //  return false;
-  //}
 }
 
 
@@ -65,37 +52,11 @@ Value *Visitor::codegenCall(const ast::Call* node) {
     Value* inputV = codegen(*inIt);
     if (inputV == 0) return 0;
     
-    // Verify that the input type matches the expected type
+    // Cast input value to argument type if needed
     Type* expectedT = *ftIt;
-    Type* inputT = inputV->getType();
-    
-    if (inputT->getTypeID() != expectedT->getTypeID()) {
-      if (inputT->canLosslesslyBitCastTo(expectedT))
-        rlogw("TODO: canLosslesslyBitCastTo == true");
-      // TODO: Potentially cast simple values like numbers
+    inputV = castValueTo(inputV, expectedT);
+    if (inputV == 0)
       return error(R_FMT("Invalid type for argument " << i << " in call to " << node->calleeName()));
-    
-    } else if (expectedT->isIntegerTy() && expectedT->getPrimitiveSizeInBits() != inputT->getPrimitiveSizeInBits()) {
-      // Cast integer
-      if (   expectedT->getPrimitiveSizeInBits() < inputT->getPrimitiveSizeInBits()
-          && !inputT->canLosslesslyBitCastTo(expectedT)) {
-        warning("Implicit truncation of integer");
-      }
-      
-      // This helper function will make either a bit cast, int extension or int truncation
-      inputV = builder_.CreateIntCast(inputV, expectedT, /*isSigned = */true);
-
-    } else if (expectedT->isDoubleTy() && expectedT->getPrimitiveSizeInBits() != inputT->getPrimitiveSizeInBits()) {
-      // Cast floating point number
-      if (inputT->canLosslesslyBitCastTo(expectedT)) {
-        inputV = builder_.CreateBitCast(inputV, expectedT, "bcasttmp");
-      } else if (expectedT->getPrimitiveSizeInBits() < inputT->getPrimitiveSizeInBits()) {
-        warning("Implicit truncation of floating point number");
-        inputV = builder_.CreateFPTrunc(inputV, expectedT, "fptrunctmp");
-      } else {
-        inputV = builder_.CreateFPExt(inputV, expectedT, "fpexttmp");
-      }
-    }
     
     argValues.push_back(inputV);
   }
