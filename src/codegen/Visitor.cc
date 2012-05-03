@@ -135,6 +135,14 @@ Value *Visitor::codegenBlock(const ast::Block *block) {
     if (lastValue == 0) return 0;
   }
   
+  BasicBlock* BB = builder_.GetInsertBlock();
+  rlog("codegen'd block: "); BB->dump();
+  
+  rlog("block's last value: "); lastValue->dump();
+  if (lastValue->getType()->isFunctionTy()) {
+    rlog("ZOMG FUNC");
+  }
+  
   return (lastValue == 0) ? error("Empty block") : lastValue;
 }
 

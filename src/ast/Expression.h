@@ -169,10 +169,11 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<Call calleeName='" << calleeName_ << "' args=(";
+    ss << "<Call " << calleeName_ << " (";
     ArgumentList::const_iterator it;
     if ((it = args_.begin()) < args_.end()) { ss << (*it)->toString(level+1); it++; }
     for (; it < args_.end(); it++) {          ss << ", " << (*it)->toString(level+1); }
+    ss << ")>";
     return ss.str();
   }
 private:

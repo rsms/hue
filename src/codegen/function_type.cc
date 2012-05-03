@@ -2,8 +2,6 @@
 
 
 
-
-
 Function *Visitor::codegenFunctionType(const ast::FunctionType *node,
                                        std::string name, // = "",
                                        Type *returnType  // = 0

@@ -8,33 +8,45 @@ namespace rsms { namespace ast {
 
 class Conditional : public Expression {
 public:
-  Conditional() : Expression(TConditional), testExpression_(0), trueBlock_(0), falseBlock_(0) {}
+  class Branch {
+  public:
+    Branch(Expression* a, Block* b) : testExpression(a), block(b) {}
+    Expression* testExpression;
+    Block* block;
+    std::string toString(int level = 0) const {
+      std::ostringstream ss;
+      ss << (testExpression ? testExpression->toString(level) : "<nil>")
+         << " -> " << (block ? block->toString(level) : "<nil>");
+      return ss.str();
+    }
+  };
+  typedef std::vector<Branch> BranchList;
+  Conditional() : Expression(TConditional), defaultBlock_(0) {}
   
-  Expression* setTestExpression(Expression* testExpression) { return testExpression_ = testExpression; }
-  inline Expression* testExpression() const { return testExpression_; }
-
-  Block* setTrueBlock(Block* trueBlock) { return trueBlock_ = trueBlock; }
-  inline Block* trueBlock() const { return trueBlock_; }
+  void addBranch(Expression* test1, Block* block1) {
+    branches_.push_back(Branch(test1, block1));
+  }
+  inline const BranchList& branches() const { return branches_; }
   
-  Block* setFalseBlock(Block* falseBlock) { return falseBlock_ = falseBlock; }
-  inline Block* falseBlock() const { return falseBlock_; }
+  Block* defaultBlock() const { return defaultBlock_; }
+  void setDefaultBlock(Block* B) { defaultBlock_ = B; }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<Conditional " << (testExpression_ ? testExpression_->toString(level+1) : "<nil>");
+    ss << "<Conditional ";
+    BranchList::const_iterator it = branches_.begin();
+    for (; it != branches_.end(); ++ it) {
+      ss << (*it).toString(level+1);
+    }
     NodeToStringHeader(level+1, ss);
-    ss << "then: " << (trueBlock_ ? trueBlock_->toString(level+1) : "<nil>");
-    NodeToStringHeader(level+1, ss);
-    ss << "else: " << (falseBlock_ ? falseBlock_->toString(level+1) : "<nil>");
-    ss << ">";
+    ss << (defaultBlock_ ? defaultBlock_->toString(level+1) : "<nil>") << ">";
     return ss.str();
   }
   
 private:
-  Expression* testExpression_;
-  Block* trueBlock_;
-  Block* falseBlock_;
+  BranchList branches_;
+  Block* defaultBlock_;
 };
 
 }} // namespace rsms.ast

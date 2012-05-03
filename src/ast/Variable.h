@@ -20,7 +20,7 @@ public:
   
   std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
+    //NodeToStringHeader(level, ss);
     ss << "<Variable "
        << name_ << ' '
        << (isMutable_ ? "MUTABLE " : "const ")

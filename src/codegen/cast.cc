@@ -45,7 +45,7 @@ Value* Visitor::castValueTo(Value* inputV, Type* destT) {
     return castValueToBool(inputV);
   
   // Different types?
-  if (inputT->getTypeID() != destT->getTypeID()) {
+  if (inputT != destT) {
     
     // Int->Float:
     if (inputT->isIntegerTy() && destT->isDoubleTy()) {

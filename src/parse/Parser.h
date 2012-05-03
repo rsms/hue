@@ -12,7 +12,7 @@
 
 #include <vector>
 
-#define DEBUG_PARSER 0
+#define DEBUG_PARSER 1
 #if DEBUG_PARSER
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_PARSER DEBUG_TRACE
@@ -130,6 +130,7 @@ public:
         && token.type != Token::IntLiteral
         && token.type != Token::FloatLiteral
         && token.type != Token::LeftParen
+        && token.type != Token::If
         && (token.type != Token::NewLine || currentLineLevel_ <= previousLineLevel_);
   }
   
@@ -266,6 +267,8 @@ public:
         }
         nextToken();  // eat ')'.
       
+      } else if (token_.type == Token::NewLine) {
+        break;
       } else {
         arg = parseExpression();
         if (!arg) return 0;
@@ -485,6 +488,7 @@ public:
     DEBUG_TRACE_PARSER;
     Block* block = new Block();
     bool notARootBlock = outerLineLevel != RootLineLevel;
+    uint32_t startLine = token_.line;
     
     while (token_.type != Token::End) {
       
@@ -506,15 +510,30 @@ public:
       
       // Read any linebreaks and check the line level after each linebreak, starting with the one
       // we just read.
-      while (token_.type == Token::NewLine) {
-        if (notARootBlock && currentLineLevel_ <= outerLineLevel) {
-          #if DEBUG_PARSER
-          rlog("Block ended (line level drop)");
-          #endif
-          nextToken(); // eat NewLine
-          goto after_outer_loop;
+      if (token_.type == Token::NewLine) {
+        while (token_.type == Token::NewLine) {
+          if (notARootBlock && currentLineLevel_ <= outerLineLevel) {
+            #if DEBUG_PARSER
+            rlog("Block ended (line level drop)");
+            #endif
+            nextToken(); // eat NewLine
+            goto after_outer_loop;
+          }
+          nextToken();
         }
-        nextToken();
+      
+      // We might have dropped our level already (if parseExpression() just returned from
+      // a block inside this block).
+      } else if (notARootBlock && (
+             (token_.line == startLine && token_.column < outerLineLevel)
+          || (token_.line != startLine && currentLineLevel_ <= outerLineLevel)
+      )) {
+        #if DEBUG_PARSER
+        rlog("Block ended (line level drop) [2]");
+        rlog("  token_.line: " << token_.line << ", startLine: " << startLine);
+        rlog("  currentLineLevel_: " << currentLineLevel_ << ", outerLineLevel: " << outerLineLevel);
+        #endif
+        goto after_outer_loop;
       }
       
       // Semicolon terminates a non-root block (and is illegal in a root block)
@@ -549,9 +568,9 @@ public:
   // Function = 'func' FunctionType ':' BlockExpression
   Function *parseFunction() {
     DEBUG_TRACE_PARSER;
+    LineLevel funcLineLevel = token_.column;
     nextToken();  // eat 'func'
     
-    LineLevel funcLineLevel = currentLineLevel_;
     
     // Parse function interface
     FunctionType *interface = parseFunctionType();
@@ -602,24 +621,40 @@ public:
     return new ExternalFunction(funcName, funcInterface);
   }
   
-  // IfTestExpr = Expression ':'
-  Expression* parseIfTestExpr() {
+  // IfTestExpr = 'if' Expression ':' BlockExpression
+  Expression* parseIfTestExpr(Block*& block, const LineLevel& lineLevel) {
     DEBUG_TRACE_PARSER;
+    nextToken(); // eat 'if'
     
-    // Parse the expression to be tested for truth
-    Expression *testExpr = parseExpression();
+    // Parse the test expression
+    Expression* testExpression = parseExpression();
+    if (testExpression == 0) return 0;
     
-    // expect ':' and return
-    if (testExpr != 0 && token_.type != Token::Colon)
-      return error("Expected colon after logical '?' test");
-    nextToken(); // eat ':' (or try to recover from error)
+    // Expect ':'
+    if (token_.type != Token::Colon) return error("Expected ':'");
+    nextToken(); // Eat ':'
+
+    // Parse the block expression to be the branch of the test expression
+    block = parseBlock(lineLevel);
+    if (block == 0) return 0;
     
-    rlog("TEST " << (testExpr ? testExpr->toString() : "<nil>"));
-    
-    return testExpr;
+    return testExpression;
   }
   
-  // IfExpr = (IfTestExpr BlockExpression)+ BlockExpression
+  // ElseExpr = 'else' ':' Expression
+  Block* parseElseExpr(const LineLevel& lineLevel) {
+    DEBUG_TRACE_PARSER;
+    nextToken(); // eat 'else'
+    
+    // Expect ':'
+    if (token_.type != Token::Colon) return static_cast<Block*>(error("Expected ':'"));
+    nextToken(); // Eat ':'
+
+    // Parse the block expression to be the branch
+    return parseBlock(lineLevel);
+  }
+  
+  // IfExpr = IfTestExpr+ ElseExpr
   Expression* parseIfExpr() {
     DEBUG_TRACE_PARSER;
     
@@ -629,52 +664,30 @@ public:
     //LineLevel lineLevel = InferLineLevel;
   
     // Conditional : Expression
-    Conditional* outerConditional = NULL;
-    Conditional* lastConditional = NULL;
+    Conditional* conditional = new Conditional();
     
-    // Treat this scope as parsing arguments -- this means that precedence changes so
-    // we can do "if A B else C" --> (ifexpr ((if A) B), (else C)). Oterwise we would get:
-    // "if A B else C" --> (ifexpr ((if (A B else C))
-    //{ ScopeFlag<bool> sf0(&isParsingCallArguments_, true);
-    
-      while (1) {
-        Conditional* conditional = new Conditional();
-        
-        nextToken(); // eat 'if'
-        
-        // Parse the test expression
-        if (conditional->setTestExpression(parseExpression()) == 0) return 0;
-        
-        // Expect ':'
-        if (token_.type != Token::Colon) return error("Expected ':'");
-        nextToken(); // Eat ':'
-    
-        // Parse the block expression to be the branch of the test expression
-        if (conditional->setTrueBlock(parseBlock(lineLevel)) == 0) return 0;
-        
-        // Branch
-        if (outerConditional == 0) {
-          outerConditional = conditional;
-        } else {
-          lastConditional->setFalseBlock(new Block(conditional));
-        }
-        lastConditional = conditional;
+    while (1) {
+      Block* block = 0;
       
-        // Expect 'if' | 'else'
-        if (token_.type == Token::End) {
-          return error("Premature end of conditional (expected an expression)");
-        } else if (token_.type != Token::If) {
-          break;
-        }
+      if (token_.type == Token::If) {
+        // Parse a test block
+        Expression* test = parseIfTestExpr(block, lineLevel);
+        if (test == 0) return 0;
+        conditional->addBranch(test, block);
+      } else if (token_.type == Token::Else) {
+        // Parse the default block
+        block = parseElseExpr(lineLevel);
+        if (block == 0) return 0;
+        conditional->setDefaultBlock(block);
+        
+        break; // IfExpr ends
+      } else {
+        return error("Premature end of conditional (expected 'else')");
       }
-    // } // end of ScopeFlag<bool> sf0(&isParsingCallArguments_, true);
+    }
     
-    // Parse the "else" branch
-    //rlog("lineLevel: " << lineLevel);
-    if (lastConditional->setFalseBlock(parseBlock(lineLevel)) == 0) return 0;
-    
-    //rlog("Parsed conditional: " << outerConditional->toString());
-    return outerConditional;
+    //rlog("Parsed conditional: " << conditional->toString());
+    return conditional;
   }
   
   // RHS = Expression

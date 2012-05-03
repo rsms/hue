@@ -1,32 +1,47 @@
-putc = extern putchar (ch Int) Int
+#foo = extern foo (_ Int) Int
+#x = foo 0
 
-A = 65
-B = 66
-C = 67
+#c = if x < 1: foo 100; if x < 2: foo 200; else: foo 300
+# PASS
 
-N = 1
-char = if N > 2: A; if N > 1: B; C
-#x = if N < 2: 10; if N > 4: 20; N
+#c = if x < 1:
+#      foo 100
+#    if x < 2:
+#      foo 200
+#    else:
+#      300
+## PASS
 
-putc char
-putc 10
+#c = if x < 1:
+#      Y = foo 100
+#      if x < 2:
+#        foo Y
+#      else:
+#        300
+#    else:
+#      400
+# PASS
 
-#y = 10
+foobarbaz = func (x, y Int) Int: z = x * y * 9
+                                 z / 4
 
-# x = if N < 2: 10
-#     if N > 4: 20
-#     N
+foobarbaz2 = if 5 < 1:
+              func (x, y Int) Int:
+                foobarbaz x * y * 2 5
+             else:
+              func (x, y Int) Int:
+                x * y * 3
 
-# (= x
-#   (if
-#     (N < 2)
-#     (10)
-#     (if
-#       (N < 3)
-#       (20)
-#       (N)
-#     )
-#   )
-# ) -> N(..1) => 10, N(2) => 20, N(3..) => N
+#a = foo if x < 1: 100; else: 300
 
-#x = if N < 2: 10; 20
+#putc = extern putchar (ch Int) Int
+#
+#A = 65
+#B = 66
+#C = 67
+#
+#N = 1
+#char = if N > 2: A; if N > 1: B; C
+#
+#putc char
+#putc 10

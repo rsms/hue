@@ -5,7 +5,7 @@ cxx_sources := src/main.cc src/Logger.cc \
                src/codegen/binop.cc \
                src/codegen/call.cc \
                src/codegen/function.cc \
-               src/codegen/functionInterface.cc \
+               src/codegen/function_type.cc \
                src/codegen/cast.cc \
                src/codegen/conditional.cc
                

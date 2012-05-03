@@ -66,7 +66,7 @@ Value *Visitor::codegenFunction(const ast::Function *node,
     //block()->
   //}
   
-  dumpBlockSymbols();
+  //dumpBlockSymbols();
   
   // Generate block code
   Value *lastValue = codegenBlock(node->body());
