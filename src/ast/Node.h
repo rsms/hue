@@ -15,23 +15,25 @@ inline static void NodeToStringHeader(int level, std::ostream& ss) {
 class Node {
 public:
   enum NodeTypeID {
-    TNode = 0,
-    TBlock = 1,
+    TNode,
+    TBlock,
     
-    TFunctionType = 2,
-    TFunction = 3,
-    TExternalFunction = 4,
+    TFunctionType,
+    TFunction,
+    TExternalFunction,
     
-    TExpression = 5,
-    TIntLiteral = 6,
-    TFloatLiteral = 7,
-    TBoolLiteral = 8,
+    TExpression,
+    TIntLiteral,
+    TFloatLiteral,
+    TBoolLiteral,
+    TDataLiteral,
+    TTextLiteral,
     
-    TSymbol = 9,
-    TAssignment = 10,
-    TBinaryOp = 11,
-    TCall = 12,
-    TConditional = 13,
+    TSymbol,
+    TAssignment,
+    TBinaryOp,
+    TCall,
+    TConditional,
     
     _TypeCount
   };

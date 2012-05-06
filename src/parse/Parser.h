@@ -10,6 +10,7 @@
 #include "../ast/Function.h"
 #include "../ast/Conditional.h"
 #include "../ast/DataLiteral.h"
+#include "../ast/TextLiteral.h"
 
 #include <vector>
 
@@ -146,7 +147,7 @@ public:
   // ------------------------------------------------------------------------
   
   // Variable = Identifier 'MUTABLE'? Type?
-  Variable *parseVariable(std::string identifierName) {
+  Variable *parseVariable(const Text& identifierName) {
     DEBUG_TRACE_PARSER;
     Type *T = NULL;
     bool isMutable = false;
@@ -171,7 +172,7 @@ public:
   //   x Int, 
   //   x 
   //
-  VariableList *parseVariableList(std::string firstVarIdentifierName = std::string()) {
+  VariableList *parseVariableList(Text firstVarIdentifierName = Text()) {
     DEBUG_TRACE_PARSER;
     VariableList *varList = new VariableList();
     bool useArg0 = !firstVarIdentifierName.empty();
@@ -184,7 +185,7 @@ public:
         variable = parseVariable(firstVarIdentifierName);
         useArg0 = false;
       } else {
-        std::string identifierName = token_.textValue;
+        Text identifierName = token_.textValue;
         nextToken(); // eat id
         variable = parseVariable(token_.textValue);
       }
@@ -244,7 +245,7 @@ public:
   //
   // foo a b (c = x d)  -->  foo(a, b, (c = x(d)))
   //
-  Expression *parseCall(std::string identifierName) {
+  Expression *parseCall(Text identifierName) {
     DEBUG_TRACE_PARSER;
     
     ScopeFlag<bool> isParsingCallArguments(&isParsingCallArguments_, true);
@@ -286,7 +287,7 @@ public:
   // IdentifierExpr = Identifier (= | Expression+)?
   Expression *parseIdentifierExpr() {
     DEBUG_TRACE_PARSER;
-    std::string identifierName = token_.textValue;
+    Text identifierName = token_.textValue;
     nextToken();  // eat identifier.
     
     if (token_.type == Token::Assignment || futureToken_.type == Token::Assignment) {
@@ -301,7 +302,7 @@ public:
   
   
   // Assignment = VariableList '=' Expression
-  Assignment *parseAssignment(std::string firstVarIdentifierName) {
+  Assignment *parseAssignment(Text firstVarIdentifierName) {
     DEBUG_TRACE_PARSER;
     VariableList *varList = parseVariableList(firstVarIdentifierName);
     if (!varList) return 0;
@@ -495,7 +496,7 @@ public:
 
       // Tonizer error?
       if (token_.type == Token::Error) {
-        error(token_.textValue);
+        error(token_.textValue.UTF8String());
         return 0;
       }
       
@@ -609,7 +610,7 @@ public:
     }
     
     // Remember id
-    std::string funcName = token_.textValue;
+    Text funcName = token_.textValue;
     nextToken(); // eat id
     
     FunctionType *funcInterface = parseFunctionType();
@@ -791,7 +792,7 @@ public:
   // DataLiteral = ''' <any octet excluding ''' unless after '\'>* '''
   Expression *parseDataLiteral() {
     DEBUG_TRACE_PARSER;
-    Expression *expression = new DataLiteral(token_.textValue);
+    Expression *expression = new DataLiteral(token_.textValue.rawByteString());
     nextToken(); // consume
     return expression;
   }
@@ -799,10 +800,9 @@ public:
   // TextLiteral = '"' <any octet excluding '"' unless after '\'>* '"'
   Expression *parseTextLiteral() {
     DEBUG_TRACE_PARSER;
-    // TODO
-    //Expression *expression = new DataLiteral(token_.textValue);
+    Expression *expression = new TextLiteral(token_.textValue);
     nextToken(); // consume
-    return 0;
+    return expression;
   }
   
   // Primary = Literal | Identifier | IfExpr
@@ -847,7 +847,7 @@ public:
         goto entry;
       }
       
-      case Token::Error: return error(token_.textValue);
+      case Token::Error: { rloge("<- NULL"); return error(token_.textValue.UTF8String()); }
       case Token::End:   return error("Premature end");
       default:           return error("Unexpected token");
     }

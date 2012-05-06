@@ -15,9 +15,6 @@ data = 'foo
 data = 'foo\
  bar\
  baz'
-data = 'Hello John "Monkey" \\ Smith. \n  A: €\n  B: \x0A FOO'
+data = 'Hello John "Monkey" \\ Smith. \n  A: €\n  B: \x0A ﾈ b 👍ob'
 text = "Hello John \"Monkey\" \\ Smith. \n  A: €\n  B: \u1F44D"
 
-AnAtom
-You:Hello
-func if else

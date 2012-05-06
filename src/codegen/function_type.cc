@@ -58,8 +58,8 @@ Function *Visitor::codegenFunctionType(const ast::FunctionType *node,
   if (argVars) {
     unsigned i = 0;
     for (Function::arg_iterator AI = F->arg_begin(); i != argVars->size(); ++AI, ++i) {
-      const std::string& argName = (*argVars)[i]->name();
-      AI->setName(argName);
+      const Text& argName = (*argVars)[i]->name();
+      AI->setName(argName.UTF8String());
     }
   }
 

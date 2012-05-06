@@ -1,7 +1,9 @@
 #ifndef RSMS_AST_TYPE_DECLARATION_H
 #define RSMS_AST_TYPE_DECLARATION_H
+#include "../Text.h"
 #include <string>
 #include <vector>
+
 namespace rsms { namespace ast {
 
 // Declares a type, e.g. Float (double precision number) or [Int] (list of integer numbers)
@@ -17,14 +19,14 @@ public:
   };
   
   Type(TypeID typeID) : typeID_(typeID) {}
-  Type(const std::string& name) : typeID_(Named), name_(name) {}
+  Type(const Text& name) : typeID_(Named), name_(name) {}
   
   inline const TypeID& typeID() const { return typeID_; }
-  inline const std::string& name() const { return name_; }
+  inline const Text& name() const { return name_; }
   
   std::string toString() const {
     switch (typeID_) {
-      case Named: return name_;
+      case Named: return name_.UTF8String();
       case Int: return "Int";
       case Float: return "Float";
       case Bool: return "Bool";
@@ -34,7 +36,7 @@ public:
   }
 private:
   TypeID typeID_;
-  std::string name_;
+  Text name_;
 };
 
 typedef std::vector<Type*> TypeList;

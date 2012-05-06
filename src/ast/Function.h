@@ -9,16 +9,16 @@ namespace rsms { namespace ast {
 
 class Argument {
 public:
-  std::string identifier;
+  Text identifier;
   Type type;
   
-  Argument(std::string identifier, const Type& type)
+  Argument(Text identifier, const Type& type)
     : identifier(identifier), type(type) {}
 
-  Argument(std::string identifier) : identifier(identifier), type(Type::Unknown) {}
+  Argument(Text identifier) : identifier(identifier), type(Type::Unknown) {}
   
   std::string toString() const {
-    return identifier + " " + type.toString();
+    return identifier.UTF8String() + " " + type.toString();
   }
 };
 
@@ -100,19 +100,19 @@ public:
 
 // Represents an external function declaration.
 class ExternalFunction : public Expression {
-  std::string name_;
+  Text name_;
   FunctionType *functionType_;
 public:
-  ExternalFunction(const std::string &name, FunctionType *functionType)
+  ExternalFunction(const Text &name, FunctionType *functionType)
     : Expression(TExternalFunction), name_(name), functionType_(functionType) {}
   
-  inline const std::string& name() const { return name_; }
+  inline const Text& name() const { return name_; }
   inline FunctionType *functionType() const { return functionType_; }
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<ExternalFunction name='" << name_ 
+    ss << "<ExternalFunction name='" << name_
        << "' " << (functionType_ ? functionType_->toString(level+1) : "?")
        << '>';
     return ss.str();

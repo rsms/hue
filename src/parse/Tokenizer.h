@@ -135,19 +135,23 @@ public:
           default: {
             if (currentChar() == delimiterChar) {
               token_.textValue.append(1, delimiterChar); break;
-            } else if (Text::isWhitespace(currentChar())) {
+
+            } else if (Text::isWhitespaceOrLineSeparator(currentChar())) {
               // eat and ignore whitespace
+
             } else if (isText && currentChar() == 'u') {
               // Read up to 8 digits (32-bit Unicode value).
               nextChar(); // eat 'u'
               token_.textValue += _parseHexLiteral(8);
               continue; // to avoid nextChar() since we have already advanced
+
             } else if (!isText && currentChar() == 'x') {
               nextChar(); // eat 'x'
               UChar value = _parseHexLiteral(2);
               assert((0x000000ff & value) == value);
               token_.textValue += value;
               continue; // to avoid nextChar() since we have already advanced
+
             } else {
               token_.type = Token::Error;
               token_.textValue = isText ? "Invalid escape sequence in text literal"
@@ -190,7 +194,7 @@ public:
     }
     
     // Skip any whitespace.
-    if (Text::isWhitespace(currentChar())) {
+    if (Text::isWhitespaceOrLineSeparator(currentChar())) {
       uint32_t lengthAfterLF = 0;
       bool afterLF = false;
       
@@ -205,7 +209,7 @@ public:
         } else if (afterLF) {
           ++lengthAfterLF;
         }
-      } while (Text::isWhitespace(nextChar()));
+      } while (Text::isWhitespaceOrLineSeparator(nextChar()));
       
       if (afterLF) {
         token_.line = line_;

@@ -1,6 +1,6 @@
 #ifndef RSMS_AST_BLOCK_H
 #define RSMS_AST_BLOCK_H
-#include "Node.h"
+#include "Expression.h"
 #include <vector>
 
 namespace rsms { namespace ast {

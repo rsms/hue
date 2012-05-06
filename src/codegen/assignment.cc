@@ -74,8 +74,7 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
   
   if (node->rhs()->nodeTypeID() == ast::Node::TFunction) {
     // Generate a globally unique mangled name
-    const std::string& varName = (*variables)[0]->name();
-    std::string mangledName = uniqueMangledName(varName);
+    std::string mangledName = uniqueMangledName((*variables)[0]->name());
     
     // Generate function
     rhsValue = codegenFunction(static_cast<const ast::Function*>(node->rhs()), mangledName);

@@ -17,6 +17,8 @@
 #include "../ast/Variable.h"
 #include "../ast/Conditional.h"
 
+#include "../Text.h"
+
 #include <stdlib.h>
 
 #include <iostream>
@@ -54,8 +56,8 @@ class Visitor {
   // Represents a scope of named symbols.
   class BlockScope {
   public:
-    //typedef std::map<std::string,Symbol> SymbolMap;
-    typedef std::tr1::unordered_map<std::string,Symbol> SymbolMap;
+    //typedef std::map<Text,Symbol> SymbolMap;
+    typedef std::tr1::unordered_map<Text,Symbol> SymbolMap;
     
     BlockScope(Visitor& visitor, llvm::BasicBlock *block) : visitor_(visitor), block_(block) {
       visitor_.blockStack_.push_back(this);
@@ -73,7 +75,7 @@ class Visitor {
     inline llvm::BasicBlock *block() const { return block_; }
     inline const SymbolMap& symbols() const { return symbols_; }
     
-    void setSymbol(const std::string& name, llvm::Value *V, bool isMutable = true) {
+    void setSymbol(const Text& name, llvm::Value *V, bool isMutable = true) {
       Symbol& symbol = symbols_[name];
       symbol.value = V;
       symbol.isMutable = isMutable;
@@ -82,7 +84,7 @@ class Visitor {
     
     // Look up a symbol only in this scope.
     // Use Visitor::lookupSymbol to lookup stuff in any scope
-    const Symbol& lookupSymbol(const std::string& name, bool deep = true) const {
+    const Symbol& lookupSymbol(const Text& name, bool deep = true) const {
       SymbolMap::const_iterator it = symbols_.find(name);
       if (it != symbols_.end()) return it->second;
       return Symbol::Empty;
@@ -119,7 +121,7 @@ public:
   inline const std::vector<std::string>& warnings() const { return warnings_; };
   
   // Generate code for a module rooting at *root*
-  llvm::Module *genModule(llvm::LLVMContext& context, std::string moduleName, const ast::Function *root);
+  llvm::Module *genModule(llvm::LLVMContext& context, const Text moduleName, const ast::Function *root);
   
   
 protected:
@@ -129,7 +131,7 @@ protected:
   // Current block, or 0 if none
   inline llvm::BasicBlock* block() const { return builder_.GetInsertBlock(); }
   
-  const Symbol& lookupSymbol(const std::string& name, bool deep = true) const {
+  const Symbol& lookupSymbol(const Text& name, bool deep = true) const {
     // Scan symbol maps starting at top of stack moving down
     BlockStack::const_reverse_iterator bsit = blockStack_.rbegin();
     for (; bsit != blockStack_.rend(); ++bsit) {
@@ -142,7 +144,7 @@ protected:
     return Symbol::Empty;
   }
   
-  llvm::Value *resolveSymbol(const std::string& name);
+  llvm::Value *resolveSymbol(const Text& name);
   
   // Dump all symbols in the current block stack to stderr
   void dumpBlockSymbols();
@@ -176,11 +178,11 @@ protected:
   
   llvm::Value* createNewLocalSymbol(ast::Variable *variable, llvm::Value *rhsV);
   
-  inline std::string mangledName(const std::string& localName) const {
-    return module_->getModuleIdentifier() + "$" + localName;
+  inline std::string mangledName(const Text& localName) const {
+    return module_->getModuleIdentifier() + "$" + localName.UTF8String();
   }
   // Returns a module-global uniqe mangled name rooted in *name*
-  std::string uniqueMangledName(const std::string& name) const;
+  std::string uniqueMangledName(const Text& name) const;
   
   // Create an alloca of type T
   llvm::AllocaInst *createAlloca(llvm::Type* T, const std::string& name) {

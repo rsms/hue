@@ -8,11 +8,11 @@ namespace rsms { namespace ast {
 
 class Variable : public Node {
 public:
-  Variable(bool isMutable, const std::string& name, Type *type)
+  Variable(bool isMutable, const Text& name, Type *type)
     : isMutable_(isMutable), name_(name), type_(type) {}
   
   const bool& isMutable() const { return isMutable_; }
-  const std::string& name() const { return name_; }
+  const Text& name() const { return name_; }
   
   Type *type() const { return type_; }
   bool hasUnknownType() const { return !type_ || type_->typeID() == Type::Unknown; }
@@ -30,7 +30,7 @@ public:
   }
 private:
   bool isMutable_;
-  std::string name_;
+  Text name_;
   Type *type_;
 };
 

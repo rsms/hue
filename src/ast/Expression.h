@@ -1,9 +1,13 @@
 // Expressions
 #ifndef RSMS_AST_EXPRESSION_H
 #define RSMS_AST_EXPRESSION_H
+
 #include "Node.h"
 #include "Type.h"
 #include "Variable.h"
+
+#include "../Text.h"
+
 #include <vector>
 
 namespace rsms { namespace ast {
@@ -22,13 +26,13 @@ public:
 
 // Numeric integer literals like "3".
 class IntLiteral : public Expression {
-  std::string value_;
+  Text value_;
   const uint8_t radix_;
 public:
-  IntLiteral(std::string value, uint8_t radix = 10)
+  IntLiteral(Text value, uint8_t radix = 10)
     : Expression(TIntLiteral), value_(value), radix_(radix) {}
 
-  const std::string& text() const { return value_; }
+  const Text& text() const { return value_; }
   const uint8_t& radix() const { return radix_; }
   
   virtual std::string toString(int level = 0) const {
@@ -40,10 +44,10 @@ public:
 
 // Numeric fractional literals like "1.2".
 class FloatLiteral : public Expression {
-  std::string value_;
+  Text value_;
 public:
-  FloatLiteral(std::string value) : Expression(TFloatLiteral), value_(value) {}
-  const std::string& text() const { return value_; }
+  FloatLiteral(Text value) : Expression(TFloatLiteral), value_(value) {}
+  const Text& text() const { return value_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     ss << "<FloatLiteral value=" << value_ << '>';
@@ -66,10 +70,10 @@ public:
 
 // Referencing a symbol, like "a".
 class Symbol : public Expression {
-  std::string name_;
+  Text name_;
 public:
-  Symbol(const std::string &name) : Expression(TSymbol), name_(name) {}
-  const std::string& name() const { return name_; }
+  Symbol(const Text &name) : Expression(TSymbol), name_(name) {}
+  const Text& name() const { return name_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     ss << "<Symbol name=" << name_ << '>';
@@ -160,10 +164,10 @@ class Call : public Expression {
 public:
   typedef std::vector<Expression*> ArgumentList;
   
-  Call(const std::string &calleeName, ArgumentList &args)
+  Call(const Text &calleeName, ArgumentList &args)
     : Expression(TCall), calleeName_(calleeName), args_(args) {}
 
-  const std::string& calleeName() const { return calleeName_; }
+  const Text& calleeName() const { return calleeName_; }
   const ArgumentList& arguments() const { return args_; }
 
   virtual std::string toString(int level = 0) const {
@@ -177,7 +181,7 @@ public:
     return ss.str();
   }
 private:
-  std::string calleeName_;
+  Text calleeName_;
   ArgumentList args_;
 };
 

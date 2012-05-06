@@ -40,7 +40,7 @@ void Visitor::dumpBlockSymbols() {
 
 
 // Returns a module-global uniqe mangled name rooted in *name*
-std::string Visitor::uniqueMangledName(const std::string& name) const {
+std::string Visitor::uniqueMangledName(const Text& name) const {
   std::string mname;
   int i = 0;
   while (1) {
@@ -92,9 +92,9 @@ bool Visitor::IRTypesForASTVariables(std::vector<Type*>& argSpec, ast::VariableL
 // ----------- trivial generators ------------
 
 
-llvm::Module *Visitor::genModule(llvm::LLVMContext& context, std::string moduleName, const ast::Function *root) {
+llvm::Module *Visitor::genModule(llvm::LLVMContext& context, const Text moduleName, const ast::Function *root) {
   DEBUG_TRACE_LLVM_VISITOR;
-  llvm::Module *module = new Module(moduleName, context);
+  llvm::Module *module = new Module(moduleName.UTF8String(), context);
   
   module_ = module;
   llvm::Value *returnValue = llvm::ConstantInt::get(llvm::getGlobalContext(), APInt(64, 0, true));
@@ -169,13 +169,13 @@ Value *Visitor::codegenBoolLiteral(const ast::BoolLiteral *literal) {
 }
 
 // Reference or load a symbol
-Value *Visitor::resolveSymbol(const std::string& name) {
+Value *Visitor::resolveSymbol(const Text& name) {
   DEBUG_TRACE_LLVM_VISITOR;
   
   // Lookup symbol
   const Symbol& symbol = lookupSymbol(name);
   if (symbol.empty())
-    return error((std::string("Unknown variable \"") + name + "\"").c_str());
+    return error((std::string("Unknown variable \"") + name.UTF8String() + "\"").c_str());
   
   // Value must be either a global or in the same scope
   assert(blockScope() != 0);
@@ -183,7 +183,7 @@ Value *Visitor::resolveSymbol(const std::string& name) {
     if (!GlobalValue::classof(symbol.value)) {
       // TODO: Future: If we support funcs that capture its environment, that code should
       // likely live here.
-      return error((std::string("Unknown variable \"") + name + "\" (no reachable symbols in scope)").c_str());
+      return error((std::string("Unknown variable \"") + name.UTF8String() + "\" (no reachable symbols in scope)").c_str());
     } else {
       rlog("Resolving \"" << name << "\" to a global constant");
     }
