@@ -2,13 +2,14 @@
 #ifndef RSMS_TOKEN_H
 #define RSMS_TOKEN_H
 
+#include "../Text.h"
 #include <string>
 
 namespace rsms {
 
 typedef struct {
   const char *name;
-  const bool hasStringValue;
+  const bool hasTextValue;
   const bool hasDoubleValue;
   const bool hasIntValue;
 } TokenTypeInfo;
@@ -42,7 +43,9 @@ public:
     IntLiteral,
     FloatLiteral,
     BoolLiteral,    // intValue denotes value: 0 = false, !0 = true
-    // TODO: BinaryLiteral, TextLiteral
+    TextLiteral,    // textValue is the data
+    DataLiteral,    // textValue is the data
+    // TODO: BinaryLiteral
     
     // Symbols
     None,         // 'none'
@@ -52,6 +55,8 @@ public:
     If,           // 'if'
     Else,         // 'else'
     
+    // Special meaning
+    Error,        // textValue = message, intValue = code
     End,
     
     _TypeCount,
@@ -59,7 +64,7 @@ public:
   // The above enum MUST be aligned with the following array:
   static const TokenTypeInfo TypeInfo[_TypeCount];
   
-  std::string stringValue;
+  Text textValue;
   union {
     double doubleValue;
     uint8_t intValue;
@@ -78,7 +83,7 @@ public:
     // Value
     if (type >= 0 && type < _TypeCount) {
       const TokenTypeInfo& info = TypeInfo[type];
-      if (info.hasStringValue) stringValue = other.stringValue;
+      if (info.hasTextValue) textValue = other.textValue;
       if (info.hasDoubleValue) doubleValue = other.doubleValue;
       if (info.hasIntValue)     intValue = other.intValue;
     }
@@ -104,8 +109,8 @@ public:
     
     if (type >= 0 && type < _TypeCount) {
       const TokenTypeInfo& info = TypeInfo[type];
-      if (info.hasStringValue) {
-        return_fstr("%s@%u:%u,%u = '%s'", info.name, line, column, length, stringValue.c_str());
+      if (info.hasTextValue) {
+        return_fstr("%s@%u:%u,%u = %s", info.name, line, column, length, textValue.UTF8String().c_str());
       } else if (info.hasDoubleValue) {
         return_fstr("%s@%u:%u,%u = %f", info.name, line, column, length, doubleValue);
       } else if (info.hasIntValue) {
@@ -122,16 +127,16 @@ public:
 static const Token NullToken;
 
 const TokenTypeInfo Token::TypeInfo[] = {
-  // name                // hasStringValue  hasDoubleValue  hasIntValue
-  {"Unexpected",          .hasStringValue = 1, 0,0},
-  {"Comment",             .hasStringValue = 1, 0,0},
+  // name                // hasTextValue  hasDoubleValue  hasIntValue
+  {"Unexpected",          .hasTextValue = 1, 0,0},
+  {"Comment",             .hasTextValue = 1, 0,0},
   {"Func",                0,0,0},
   {"External",            0,0,0},
   {"Mutable",             0,0,0},
-  {"Identifier",          .hasStringValue = 1, 0,0},
-  {"BinaryOperator",      .hasStringValue = 1, 0,0},
-  {"BinaryComparisonOperator",  .hasStringValue = 1, 0,0},
-  {"Structure",           .hasStringValue = 1, 0,0},
+  {"Identifier",          .hasTextValue = 1, 0,0},
+  {"BinaryOperator",      .hasTextValue = 1, 0,0},
+  {"BinaryComparisonOperator",  .hasTextValue = 1, 0,0},
+  {"Structure",           .hasTextValue = 1, 0,0},
   {"RightArrow",          0,0,0},
   {"LeftArrow",           0,0,0},
   {"LeftParen",           0,0,0},
@@ -145,9 +150,11 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"Semicolon",           0,0,0},
   {"NewLine",             0,0,0},
   
-  {"IntLiteral",          .hasStringValue = 1,0, .hasIntValue = 1}, // intValue = radix
-  {"FloatLiteral",        .hasStringValue = 1,0,0},
+  {"IntLiteral",          .hasTextValue = 1,0, .hasIntValue = 1}, // intValue = radix
+  {"FloatLiteral",        .hasTextValue = 1,0,0},
   {"BoolLiteral",         0,0, .hasIntValue = 1}, // intValue = !0
+  {"TextLiteral",         .hasTextValue = 1,0,0},
+  {"DataLiteral",         .hasTextValue = 1,0,0},
   
   {"Nil",                 0,0,0},
   {"IntSymbol",           0,0,0},
@@ -156,6 +163,7 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"If",                  0,0,0},
   {"Else",                0,0,0},
   
+  {"Error",               .hasTextValue = 1,0, .hasIntValue = 1},
   {"End",                 0,0,0},
 };
 

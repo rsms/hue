@@ -1,6 +1,9 @@
 // Fast byte comparison. Inspired by Igor Sysoev's Nginx.
+// Works with LE systems that can handle 32-bit integers in one register.
 #ifndef RSMS_FASTCMP_H
 #define RSMS_FASTCMP_H
+
+// bool rsms_<T>cmp<N>(const T*, T1, ..) -- compare vector of T items of N length for equality
 
 #define rsms_i8cmp2(m, c0, c1) ((m)[0] == c0 && (m)[1] == c1)
 
@@ -24,9 +27,55 @@
     (*(uint32_t *) (m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
         && ((uint32_t *) (m))[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4))
 
-#define rsms_i8cmp9(m, c0, c1, c2, c3, c4, c5, c6, c7, c8)                    \
-    (*(uint32_t *) (m) == ((c3 << 24) | (c2 << 16) | (c1 << 8) | c0)             \
-        && ((uint32_t *) (m))[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4) && (m)[8] == c8)
+
+#define rsms_i32cmp2(m, c0, c1) \
+     ( (m)[0] == ((uint32_t)(c0)) \
+    && (m)[1] == ((uint32_t)(c1)) )
+                                     
+#define rsms_i32cmp3(m, c0, c1, c2) \
+     ( (m)[0] == ((uint32_t)(c0)) \
+    && (m)[1] == ((uint32_t)(c1)) \
+    && (m)[2] == ((uint32_t)(c2)) )
+                                     
+#define rsms_i32cmp4(m, c0, c1, c2, c3) \
+     ( (m)[0] == ((uint32_t)(c0)) \
+    && (m)[1] == ((uint32_t)(c1)) \
+    && (m)[2] == ((uint32_t)(c2)) \
+    && (m)[3] == ((uint32_t)(c3)) )
+                                     
+#define rsms_i32cmp5(m, c0, c1, c2, c3, c4) \
+     ( (m)[0] == ((uint32_t)(c0)) \
+    && (m)[1] == ((uint32_t)(c1)) \
+    && (m)[2] == ((uint32_t)(c2)) \
+    && (m)[3] == ((uint32_t)(c3)) \
+    && (m)[4] == ((uint32_t)(c4)) )
+                                     
+#define rsms_i32cmp6(m, c0, c1, c2, c3, c4, c5) \
+     ( (m)[0] == ((uint32_t)(c0)) \
+    && (m)[1] == ((uint32_t)(c1)) \
+    && (m)[2] == ((uint32_t)(c2)) \
+    && (m)[3] == ((uint32_t)(c3)) \
+    && (m)[4] == ((uint32_t)(c4)) \
+    && (m)[5] == ((uint32_t)(c5)) )
+                                     
+#define rsms_i32cmp7(m, c0, c1, c2, c3, c4, c5, c6) \
+     ( (m)[0] == ((uint32_t)(c0)) \
+    && (m)[1] == ((uint32_t)(c1)) \
+    && (m)[2] == ((uint32_t)(c2)) \
+    && (m)[3] == ((uint32_t)(c3)) \
+    && (m)[4] == ((uint32_t)(c4)) \
+    && (m)[5] == ((uint32_t)(c5)) \
+    && (m)[6] == ((uint32_t)(c6)) )
+                                     
+#define rsms_i32cmp8(m, c0, c1, c2, c3, c4, c5, c6, c7) \
+     ( (m)[0] == ((uint32_t)(c0)) \
+    && (m)[1] == ((uint32_t)(c1)) \
+    && (m)[2] == ((uint32_t)(c2)) \
+    && (m)[3] == ((uint32_t)(c3)) \
+    && (m)[4] == ((uint32_t)(c4)) \
+    && (m)[5] == ((uint32_t)(c5)) \
+    && (m)[6] == ((uint32_t)(c6)) \
+    && (m)[7] == ((uint32_t)(c7)) )
 
 #endif // RSMS_FASTCMP_H
 

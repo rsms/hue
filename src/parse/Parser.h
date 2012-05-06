@@ -9,6 +9,7 @@
 #include "../ast/Expression.h"
 #include "../ast/Function.h"
 #include "../ast/Conditional.h"
+#include "../ast/DataLiteral.h"
 
 #include <vector>
 
@@ -32,7 +33,7 @@ static int BinaryOperatorPrecedence(const Token& token) {
   // Modeled after JS op precedence, see:
   // https://developer.mozilla.org/en/JavaScript/Reference/Operators/Operator_Precedence
   if (token.type == Token::BinaryOperator) {
-    switch (token.stringValue[0]) {
+    switch (token.textValue[0]) {
       // TODO: unary logical-not '!'
       //       unary + '+'
       //       unary negation '-'
@@ -52,7 +53,7 @@ static int BinaryOperatorPrecedence(const Token& token) {
   } else if (token.type == Token::BinaryComparisonOperator) {
     // '<=' '>=' '!=' '=='
     // We only check first byte since second byte is always '='
-    switch (token.stringValue[0]) {
+    switch (token.textValue[0]) {
       case '<': case '>': return 70;
       case '=': case '!': return 60;
       default: return -1;
@@ -101,13 +102,13 @@ public:
   
   // ------------------------------------------------------------------------
   // Error handling
-  Expression *error(const char *str) {
+  Expression *error(const std::string& str) {
     std::ostringstream ss;
     ss << str << " (" << token_.toString() << ")";
     errors_.push_back(ss.str());
     
     #if DEBUG_PARSER
-    fprintf(stderr, "\e[31;1mError: %s\e[0m (%s)\n Token trace:\n", str, token_.toString().c_str());
+    fprintf(stderr, "\e[31;1mError: %s\e[0m (%s)\n Token trace:\n", str.c_str(), token_.toString().c_str());
     // list token trace
     size_t n = 1; // excluding the futureToken_
     while (n < tokens_.count()) {
@@ -117,7 +118,7 @@ public:
       std::cerr << "  " << tokens_[n++].toString() << std::endl;
     }
     #else
-    fprintf(stderr, "\e[31;1mError: %s\e[0m (%s)\n", str, token_.toString().c_str());
+    fprintf(stderr, "\e[31;1mError: %s\e[0m (%s)\n", str.c_str(), token_.toString().c_str());
     #endif
     
     return 0;
@@ -183,9 +184,9 @@ public:
         variable = parseVariable(firstVarIdentifierName);
         useArg0 = false;
       } else {
-        std::string identifierName = token_.stringValue;
+        std::string identifierName = token_.textValue;
         nextToken(); // eat id
-        variable = parseVariable(token_.stringValue);
+        variable = parseVariable(token_.textValue);
       }
       
       if (variable == 0) return 0; // TODO: cleanup
@@ -285,7 +286,7 @@ public:
   // IdentifierExpr = Identifier (= | Expression+)?
   Expression *parseIdentifierExpr() {
     DEBUG_TRACE_PARSER;
-    std::string identifierName = token_.stringValue;
+    std::string identifierName = token_.textValue;
     nextToken();  // eat identifier.
     
     if (token_.type == Token::Assignment || futureToken_.type == Token::Assignment) {
@@ -352,7 +353,7 @@ public:
         return lhs;
     
       // Okay, we know this is a binop.
-      char binOperator = token_.stringValue[0];
+      char binOperator = token_.textValue[0];
       BinaryOp::Type binType = BinaryOp::SimpleLTR;
       if (token_.type == Token::BinaryComparisonOperator) {
         binType = BinaryOp::EqualityLTR;
@@ -385,7 +386,7 @@ public:
     else if (token_.type == Token::FloatSymbol) T = new Type(Type::Float);
     else if (token_.type == Token::Func)        T = new Type(Type::Func);
     else if (token_.type == Token::Bool)        T = new Type(Type::Bool);
-    else if (token_.type == Token::Identifier)  T = new Type(token_.stringValue);
+    else if (token_.type == Token::Identifier)  T = new Type(token_.textValue);
     else error("Unexpected token while expecting type identifier");
     
     nextToken(); // eat token
@@ -491,11 +492,17 @@ public:
     uint32_t startLine = token_.line;
     
     while (token_.type != Token::End) {
+
+      // Tonizer error?
+      if (token_.type == Token::Error) {
+        error(token_.textValue);
+        return 0;
+      }
       
       // If we should infer the line level, take the line level from the line we just parsed
       if (outerLineLevel == InferLineLevel) {
         outerLineLevel = currentLineLevel_;
-        rlog("Inferred outerLineLevel to " << outerLineLevel);
+        //rlog("Inferred outerLineLevel to " << outerLineLevel);
       }
       
       // Read one expression
@@ -602,7 +609,7 @@ public:
     }
     
     // Remember id
-    std::string funcName = token_.stringValue;
+    std::string funcName = token_.textValue;
     nextToken(); // eat id
     
     FunctionType *funcInterface = parseFunctionType();
@@ -760,7 +767,7 @@ public:
   // IntLiteral = '0' | [1-9][0-9]*
   Expression *parseIntLiteral() {
     DEBUG_TRACE_PARSER;
-    Expression *expression = new IntLiteral(token_.stringValue, token_.intValue);
+    Expression *expression = new IntLiteral(token_.textValue, token_.intValue);
     nextToken(); // consume
     return expression;
   }
@@ -768,7 +775,7 @@ public:
   // FloatLiteral = [0-9] '.' [0-9]*
   Expression *parseFloatLiteral() {
     DEBUG_TRACE_PARSER;
-    Expression *expression = new FloatLiteral(token_.stringValue);
+    Expression *expression = new FloatLiteral(token_.textValue);
     nextToken(); // consume
     return expression;
   }
@@ -779,6 +786,23 @@ public:
     Expression *expression = new BoolLiteral(static_cast<bool>(token_.intValue));
     nextToken(); // consume
     return expression;
+  }
+  
+  // DataLiteral = ''' <any octet excluding ''' unless after '\'>* '''
+  Expression *parseDataLiteral() {
+    DEBUG_TRACE_PARSER;
+    Expression *expression = new DataLiteral(token_.textValue);
+    nextToken(); // consume
+    return expression;
+  }
+  
+  // TextLiteral = '"' <any octet excluding '"' unless after '\'>* '"'
+  Expression *parseTextLiteral() {
+    DEBUG_TRACE_PARSER;
+    // TODO
+    //Expression *expression = new DataLiteral(token_.textValue);
+    nextToken(); // consume
+    return 0;
   }
   
   // Primary = Literal | Identifier | IfExpr
@@ -796,6 +820,10 @@ public:
         return parseFloatLiteral();
       case Token::BoolLiteral:
         return parseBoolLiteral();
+      case Token::DataLiteral:
+        return parseDataLiteral();
+      case Token::TextLiteral:
+        return parseTextLiteral();
 
       case Token::Func: {
         Function *func = parseFunction();
@@ -818,7 +846,10 @@ public:
         nextToken();
         goto entry;
       }
-      default: return error("Unexpected token");
+      
+      case Token::Error: return error(token_.textValue);
+      case Token::End:   return error("Premature end");
+      default:           return error("Unexpected token");
     }
   }
   

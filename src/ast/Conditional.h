@@ -1,6 +1,6 @@
 #ifndef RSMS_AST_CONDITIONALS_H
 #define RSMS_AST_CONDITIONALS_H
-#include "Node.h"
+#include "Expression.h"
 #include "Block.h"
 #include <vector>
 

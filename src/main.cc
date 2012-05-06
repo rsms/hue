@@ -10,6 +10,8 @@
 #include "parse/TokenBuffer.h"
 #include "parse/Parser.h"
 
+#include "Text.h"
+
 #include <llvm/Support/raw_ostream.h>
 #include <fcntl.h>
 
@@ -17,18 +19,49 @@ using namespace rsms;
 
 int main(int argc, char **argv) {
   
-  // A FileInput reads from a file, feeding bytes to a Tokenizer
-  FileInput<> input(argc > 1 ? argv[1] : "examples/program1.txt");
-  if (input.failed()) {
-    std::cerr << "Failed to open input." << std::endl;
+  // Read input file
+  Text textSource;
+  if (!textSource.setFromUTF8FileContents(argc > 1 ? argv[1] : "examples/program1.txt")) {
+    std::cerr << "Failed to read input file" << std::endl;
     return 1;
   }
   
   // A tokenizer produce tokens parsed from a ByteInput
-  Tokenizer tokenizer(&input);
+  Tokenizer tokenizer(textSource);
   
   // A TokenBuffer reads tokens from a Tokenizer and maintains limited history
   TokenBuffer tokens(tokenizer);
+  
+  
+  while (1) {
+    const Token &token = tokens.next();
+    
+    if (token.type == Token::Unexpected) {
+      std::cout << "Error: Unexpected token '" << token.textValue
+                << "' at " << token.line << ':' << token.column << std::endl;
+      break;
+    }
+    
+    std::cout << "\e[34;1m>> " << token.toString() << "\e[0m";
+    
+    // list all available historical tokens
+    // size_t n = 1;
+    // while (n < tokens.count()) {
+    //   std::cout << "\n  " << tokens[n++].toString() << ")";
+    // }
+    std::cout << std::endl;
+    
+    // An End token indicates the end of the token stream and we must
+    // stop reading the stream.
+    if (token.type == Token::End || token.type == Token::Error) break;
+  }
+  
+  return 0;
+  
+  
+  
+  
+  
   
   // A parser reads the token buffer and produce an AST
   Parser parser(tokens);
@@ -40,8 +73,8 @@ int main(int argc, char **argv) {
     std::cerr << parser.errors().size() << " parse error(s)." << std::endl;
     return 1;
   }
-  std::cout << "Parsed module: " << moduleFunc->body()->toString() << std::endl;
-  //return 0; // xxx only parser
+  std::cerr << "Parsed module: " << moduleFunc->body()->toString() << std::endl;
+  return 0; // xxx only parser
   
   // Generate code
   codegen::Visitor codegenVisitor;

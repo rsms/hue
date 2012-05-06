@@ -1,5 +1,5 @@
 // Tokenizes a program -- essentially reading lexical components.
-// clang++ -std=c++11 -o tokenize tokenize.cc && ./tokenize
+// clang++ -std=c++11 -o tokenize examples/tokenize.cc src/Text.cc src/Logger.cc && ./tokenize
 #include "../src/parse/Tokenizer.h"
 #include "../src/parse/TokenBuffer.h"
 #include "../src/parse/FileInput.h"
@@ -9,16 +9,16 @@
 using namespace rsms;
 
 int main(int argc, char **argv) {
-
-  // A FileInput reads from a file, feeding bytes to a Tokenizer
-  FileInput<> input(argc > 1 ? argv[1] : "program1.txt");
-  if (input.failed()) {
-    std::cerr << "Failed to open input." << std::endl;
+  // Read input file
+  Text textSource;
+  const char* filename = argc > 1 ? argv[1] : "examples/program1.txt";
+  if (!textSource.setFromUTF8FileContents(filename)) {
+    std::cerr << "Failed to read file '" << filename << "'" << std::endl;
     return 1;
   }
   
   // A tokenizer produce tokens parsed from a ByteInput
-  Tokenizer tokenizer(&input);
+  Tokenizer tokenizer(textSource);
   
   // A TokenBuffer reads tokens from a Tokenizer and maintains limited history
   TokenBuffer tokens(tokenizer);
@@ -27,7 +27,7 @@ int main(int argc, char **argv) {
     const Token &token = tokens.next();
     
     if (token.type == Token::Unexpected) {
-      std::cout << "Error: Unexpected token '" << token.stringValue
+      std::cout << "Error: Unexpected token '" << token.textValue
                 << "' at " << token.line << ':' << token.column << std::endl;
       break;
     }
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     
     // An End token indicates the end of the token stream and we must
     // stop reading the stream.
-    if (token.type == Token::End) break;
+    if (token.type == Token::End || token.type == Token::Error) break;
   }
 
   return 0;

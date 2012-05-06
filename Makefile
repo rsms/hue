@@ -1,5 +1,5 @@
 # Source files
-cxx_sources := src/main.cc src/Logger.cc \
+cxx_sources := src/main.cc src/Logger.cc src/Text.cc \
                src/codegen/Visitor.cc \
                src/codegen/assignment.cc \
                src/codegen/binop.cc \
@@ -54,9 +54,10 @@ libllvm_c_flags += -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMI
 libllvm_cxx_flags := $(libllvm_c_flags) -fno-rtti -fno-common
 
 # --- libclang ---------------------------------------------------------------------
-libclang_c_flags := -I$(libllvm_inc_dir)
 libclang_ld_flags := -L$(libllvm_lib_dir) -lclang -lclangARCMigrate -lclangAST -lclangAnalysis -lclangBasic -lclangCodeGen -lclangDriver -lclangFrontend -lclangFrontendTool -lclangIndex -lclangLex -lclangParse -lclangRewrite -lclangSema -lclangSerialization -lclangStaticAnalyzerCheckers -lclangStaticAnalyzerCore -lclangStaticAnalyzerFrontend
-libclang_flags := $(libclang_c_flags) $(libclang_ld_flags)
+
+libclang_c_flags := -I$(libllvm_inc_dir)
+libclang_cxx_flags := $(libclang_c_flags)
 
 # --- targets ---------------------------------------------------------------------
 

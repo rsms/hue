@@ -1,0 +1,23 @@
+f = 1.2
+f = .2
+f = 125E+1.2.3
+f = 0.2_51
+åland = 4.25E+90
+f = 0.e-4
+i = 123
+ﾈ = 01_23
+x = 0x01fa3
+x = 0x33_fe
+
+data = 'foo
+ bar
+ baz'
+data = 'foo\
+ bar\
+ baz'
+data = 'Hello John "Monkey" \\ Smith. \n  A: €\n  B: \x0A FOO'
+text = "Hello John \"Monkey\" \\ Smith. \n  A: €\n  B: \u1F44D"
+
+AnAtom
+You:Hello
+func if else
