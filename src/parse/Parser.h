@@ -131,17 +131,28 @@ public:
     return token.type != Token::Identifier
         && token.type != Token::IntLiteral
         && token.type != Token::FloatLiteral
+        && token.type != Token::DataLiteral
+        && token.type != Token::TextLiteral
         && token.type != Token::LeftParen
         && token.type != Token::If
         && (token.type != Token::NewLine || currentLineLevel_ <= previousLineLevel_);
   }
   
-  bool tokenIsType(const Token& token) const {
-    return token.type == Token::Identifier
-        || token.type == Token::IntSymbol
-        || token.type == Token::FloatSymbol
-        || token.type == Token::Bool
-        || token.type == Token::Func;
+  // bool tokenIsType() const {
+  //   return token_.type == Token::Identifier
+  //       || token_.type == Token::IntSymbol
+  //       || token_.type == Token::FloatSymbol
+  //       || token_.type == Token::Bool
+  //       || token_.type == Token::Func;
+  // }
+  
+  bool tokenIsCommonSeparator() const {
+    return token_.type == Token::Colon
+        || token_.type == Token::Comma
+        || token_.type == Token::End
+        || token_.type == Token::NewLine
+        || token_.type == Token::Assignment
+        || token_.type == Token::Semicolon;
   }
   
   // ------------------------------------------------------------------------
@@ -157,7 +168,8 @@ public:
       nextToken(); // eat 'MUTABLE'
     }
     
-    if (tokenIsType(token_)) {
+    //if (tokenIsType()) {
+    if (!tokenIsCommonSeparator()) {
       T = parseType();
       if (!T) return 0;
     }
@@ -170,7 +182,7 @@ public:
   // Examples:
   //   x
   //   x Int, 
-  //   x 
+  //   x, y Int, foo [Byte]
   //
   VariableList *parseVariableList(Text firstVarIdentifierName = Text()) {
     DEBUG_TRACE_PARSER;
@@ -290,7 +302,16 @@ public:
     Text identifierName = token_.textValue;
     nextToken();  // eat identifier.
     
-    if (token_.type == Token::Assignment || futureToken_.type == Token::Assignment) {
+    // TODO: Refactor this mess...
+    
+    if (   token_.type       == Token::Assignment
+        || token_.type       == Token::Mutable
+        || futureToken_.type == Token::Assignment
+        || token_.type       == Token::LeftSqBracket ) {
+
+      // if (token_.type == Token::Assignment) {
+      //   nextToken(); // Eat '='
+      // }
       // Look-ahead to solve the case: foo Bar = ... vs foo Bar baz (call)
       return parseAssignment(identifierName);
     } if (isParsingCallArguments_ || tokenTerminatesCall(token_)) {
@@ -320,21 +341,20 @@ public:
       return 0; // TODO: cleanup
     }
     
-    // LHS type inference
-    // TODO: Support more than one return value
-    if (   varList->size() == 1
-        && (    !(*varList)[0]->type()
-             || (*varList)[0]->type()->typeID() == Type::Unknown ) 
-       )
-    {
-      if (rhs->isFunctionType()) {
-        (*varList)[0]->setType(new Type(Type::Func));
-      } else if (rhs->nodeTypeID() == Node::TIntLiteral) {
-        (*varList)[0]->setType(new Type(Type::Int));
-      } else if (rhs->nodeTypeID() == Node::TFloatLiteral) {
-        (*varList)[0]->setType(new Type(Type::Float));
-      }
-    }
+    // LHS type inference (note: this is done in codegen nowadays)
+    //if (   varList->size() == 1
+    //    && (    !(*varList)[0]->type()
+    //         || (*varList)[0]->type()->typeID() == Type::Unknown ) 
+    //   )
+    //{
+    //  if (rhs->isFunctionType()) {
+    //    (*varList)[0]->setType(new Type(Type::Func));
+    //  } else if (rhs->nodeTypeID() == Node::TIntLiteral) {
+    //    (*varList)[0]->setType(new Type(Type::Int));
+    //  } else if (rhs->nodeTypeID() == Node::TFloatLiteral) {
+    //    (*varList)[0]->setType(new Type(Type::Float));
+    //  }
+    //}
     
     return new Assignment(varList, rhs);
   }
@@ -379,18 +399,45 @@ public:
     }
   }
   
-  // Type = 'Int' | 'Float' | 'func' | 'extern' | Identifier
+  // Type = ArrayType | PrimitiveType
+  // ArrayType = '[' PrimitiveType ']'
+  // PrimitiveType = 'Int' | 'Float' | 'func' | 'extern' | Identifier
   Type *parseType() {
     DEBUG_TRACE_PARSER;
     Type* T = 0;
+    
+    // Array? '[' subtype ']'
+    if (token_.type == Token::LeftSqBracket) {
+      nextToken(); // Eat '['
+      
+      // Parse subtype
+      T = parseType();
+      if (T == 0) return 0;
+      
+      // Expect ']'
+      if (token_.type != Token::RightSqBracket) {
+        error("Expected terminating ']' after array type");
+        delete T;
+        return 0;
+      }
+      nextToken(); // Eat ']'
+      
+      return new ArrayType(T);
+    }
+    
          if (token_.type == Token::IntSymbol)   T = new Type(Type::Int);
     else if (token_.type == Token::FloatSymbol) T = new Type(Type::Float);
     else if (token_.type == Token::Func)        T = new Type(Type::Func);
     else if (token_.type == Token::Bool)        T = new Type(Type::Bool);
+    else if (token_.type == Token::Byte)        T = new Type(Type::Byte);
+    else if (token_.type == Token::Char)        T = new Type(Type::Char);
     else if (token_.type == Token::Identifier)  T = new Type(token_.textValue);
     else error("Unexpected token while expecting type identifier");
     
     nextToken(); // eat token
+    
+    if (T) rlog("Parsed type: " << T->toString());
+    
     return T;
   }
   
@@ -461,7 +508,8 @@ public:
     }
     
     // Result =
-    if (tokenIsType(token_)) {
+    //if (tokenIsType()) {
+    if (!tokenIsCommonSeparator()) {
       // TypeList =
       returnTypes = parseTypeList();
       if (!returnTypes) {
@@ -728,20 +776,24 @@ public:
     if (token_.type == Token::BinaryOperator || token_.type == Token::BinaryComparisonOperator) {
       // LHS binop RHS
       return parseBinOpRHS(0, lhs);
+
     } else if (token_.type == Token::BinaryOperator || token_.type == Token::BinaryComparisonOperator) {
       // LHS binop RHS
       return parseBinOpRHS(0, lhs);
+
     } else if (token_.type == Token::Assignment) {
       // LHS = RHS
       //nextToken(); // eat '='
       Expression *assignment = parseAssignmentRHS(lhs);
       if (!assignment) delete lhs;
       return assignment;
+
     } else if (token_.type == Token::Unexpected) {
       error("Unexpected token when expecting a left-hand-side expression");
       nextToken(); // Skip token for error recovery.
       delete lhs;
       return 0;
+
     } else {
       return lhs;
     }

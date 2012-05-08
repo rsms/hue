@@ -16,6 +16,8 @@
 #include "../ast/Type.h"
 #include "../ast/Variable.h"
 #include "../ast/Conditional.h"
+#include "../ast/DataLiteral.h"
+#include "../ast/TextLiteral.h"
 
 #include "../Text.h"
 
@@ -56,8 +58,8 @@ class Visitor {
   // Represents a scope of named symbols.
   class BlockScope {
   public:
-    //typedef std::map<Text,Symbol> SymbolMap;
-    typedef std::tr1::unordered_map<Text,Symbol> SymbolMap;
+    typedef std::map<Text,Symbol> SymbolMap;
+    //typedef std::tr1::unordered_map<Text,Symbol> SymbolMap;
     
     BlockScope(Visitor& visitor, llvm::BasicBlock *block) : visitor_(visitor), block_(block) {
       visitor_.blockStack_.push_back(this);
@@ -158,20 +160,44 @@ protected:
     } else {
       assert(returnTypes->size() == 1); // TODO: Support multiple return values
       ast::Type *parsedT = (*returnTypes)[0];
-      return IRTypeForASTType(*parsedT);
+      return IRTypeForASTType(parsedT);
     }
   }
   
-  llvm::Type *IRTypeForASTType(const ast::Type& T) {
-    switch (T.typeID()) {
-      case ast::Type::Int: return builder_.getInt64Ty();
-      case ast::Type::Float: return builder_.getDoubleTy();
-      case ast::Type::Bool:  return builder_.getInt1Ty();
+  llvm::Type *IRTypeForASTType(const ast::Type* T) {
+    switch (T->typeID()) {
+      case ast::Type::Float:  return builder_.getDoubleTy();
+      case ast::Type::Int:    return builder_.getInt64Ty();
+      case ast::Type::Char:   return builder_.getInt32Ty();
+      case ast::Type::Byte:   return builder_.getInt8Ty();
+      case ast::Type::Bool:   return builder_.getInt1Ty();
+      case ast::Type::Array: {
+        llvm::Type* elementType = IRTypeForASTType((reinterpret_cast<const ast::ArrayType*>(T))->type());
+        //return llvm::PointerType::get(elementType, 0);
+        // Return a pointer to a struct of the array type: <{ i64, elementType* }>*
+        return llvm::PointerType::get(getArrayStructType(elementType), 0);
+      }
       //case ast::Type::Func: ...
       //case ast::Type::Named: ...
       default: return 0;
     }
   }
+  
+  llvm::ArrayType* getArrayTypeFromPointerType(llvm::Type* T) const {
+    return (    T->isPointerTy()
+             && T->getNumContainedTypes() == 1
+             && llvm::ArrayType::classof(T = T->getContainedType(0))
+              ? static_cast<llvm::ArrayType*>(T) : 0 );
+  }
+  
+  llvm::Value* wrapValueInGEP(llvm::Value* V) {
+    llvm::Value *zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm::getGlobalContext()), 0);
+    llvm::Value *Args[] = { zero, zero };
+    //return builder_.CreateInBoundsGEP(gV, Args, "ptrtmp");
+    return builder_.CreateGEP(V, Args, "ptrtmp");
+  }
+  
+  const char* typeName(const llvm::Type* T) const;
   
   // Returns false if an error occured
   bool IRTypesForASTVariables(std::vector<llvm::Type*>& argSpec, ast::VariableList *argVars);
@@ -185,13 +211,13 @@ protected:
   std::string uniqueMangledName(const Text& name) const;
   
   // Create an alloca of type T
-  llvm::AllocaInst *createAlloca(llvm::Type* T, const std::string& name) {
+  llvm::AllocaInst *createAlloca(llvm::Type* T, const Text& name) {
     llvm::IRBuilder<> TmpB(block(), block()->begin());
-    return TmpB.CreateAlloca(T, 0, name);
+    return TmpB.CreateAlloca(T, 0, name.UTF8String());
   }
   
   // Create an alloca of type V->getType and store V into that alloca
-  llvm::AllocaInst *createAllocaAndStoreValue(llvm::Value* V, const std::string& name, llvm::StoreInst** storeInst = 0) {
+  llvm::AllocaInst *createAllocaAndStoreValue(llvm::Value* V, const Text& name, llvm::StoreInst** storeInst = 0) {
     llvm::AllocaInst *allocaInst = createAlloca(V->getType(), name);
     if (allocaInst) {
       llvm::StoreInst* si = builder_.CreateStore(V, allocaInst);
@@ -203,6 +229,13 @@ protected:
   llvm::Type* highestFidelityType(llvm::Type* T1, llvm::Type* T2);
   llvm::Value* castValueToBool(llvm::Value* V);
   llvm::Value* castValueTo(llvm::Value* V, llvm::Type* destT);
+  
+  llvm::StructType* getArrayStructType(llvm::Type* elementType);
+  inline llvm::StructType* getI8ArrayStructType() { return getArrayStructType(builder_.getInt8Ty()); }
+  
+  llvm::GlobalVariable* createPrivateConstantGlobal(llvm::Constant* constantV, const llvm::Twine &name = "");
+  llvm::GlobalVariable* createStruct(llvm::Constant** constants, size_t count, const llvm::Twine &name = "");
+  llvm::GlobalVariable* createArray(llvm::Constant* constantArray, const llvm::Twine &name = "");
   
   // ------------------------------------------------
   
@@ -220,6 +253,8 @@ protected:
       HANDLE(IntLiteral);
       HANDLE(FloatLiteral);
       HANDLE(BoolLiteral);
+      HANDLE(DataLiteral);
+      HANDLE(TextLiteral);
       HANDLE(Assignment);
       HANDLE(Call);
       HANDLE(Conditional);
@@ -249,6 +284,8 @@ protected:
   llvm::Value *codegenIntLiteral(const ast::IntLiteral *literal, bool fixedSize = true);
   llvm::Value *codegenFloatLiteral(const ast::FloatLiteral *literal, bool fixedSize = true);
   llvm::Value *codegenBoolLiteral(const ast::BoolLiteral *literal);
+  llvm::Value *codegenDataLiteral(const ast::DataLiteral *literal);
+  llvm::Value *codegenTextLiteral(const ast::TextLiteral *literal);
   
   llvm::Value *codegenBinaryOp(const ast::BinaryOp *binExpr);
   
@@ -261,6 +298,7 @@ private:
   llvm::Module* module_;
   llvm::IRBuilder<> builder_;
   BlockStack blockStack_;
+  std::map<llvm::Type*, llvm::StructType*> arrayStructTypes_;
 };
 
 }} // namespace rsms::codegen

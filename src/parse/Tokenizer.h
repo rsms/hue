@@ -53,24 +53,18 @@ public:
   }
   
   const UChar& nextChar(size_t stride = 1) {
-    if (sourceOffset_+stride >= source_.size()-1) {
-      stride = source_.size() - sourceOffset_;
-      if (sourceOffset_ < source_.size()-1) {
-        column_ += stride;
-        sourceOffset_ += stride;
-      }
-      return NullChar;
-    } else {
-      column_ += stride;
-      sourceOffset_ += stride;
-      return source_[sourceOffset_];
+    column_ += stride;
+    sourceOffset_ += stride;
+    if (source_.size() < sourceOffset_) {
+      sourceOffset_ = source_.size();
     }
+    return source_[sourceOffset_];
   }
   
   inline const UChar& currentChar() const { return source_[sourceOffset_]; }
   inline const UChar& otherChar(size_t offset) const { return source_[sourceOffset_ + offset]; }
   inline size_t futureCharCount() const { return source_.size() - sourceOffset_; }
-  inline bool sourceHasMore() const { return futureCharCount() != 0; }
+  inline bool atEnd() const { return source_.size() == sourceOffset_; }
   
   
   const Token& current() const {
@@ -83,7 +77,7 @@ public:
     assert(maxLength < bufsize);
     char buf[bufsize];
     
-    while (sourceHasMore() && count != maxLength) {
+    while (!atEnd() && count != maxLength) {
       if (currentChar() == '_') {
         // ignore
       } else if (Text::isHexDigit(currentChar())) {
@@ -115,7 +109,7 @@ public:
     
     nextChar(); // Eat delimiterChar
     
-    while (sourceHasMore()) {
+    while (!atEnd()) {
       
       // Allocate space in chunks
       if (token_.textValue.capacity() < count + 32) {
@@ -223,7 +217,7 @@ public:
     uint32_t startColumn = column_-1;
     
     // End
-    if (!sourceHasMore()) {
+    if (atEnd()) {
       token_.line = line_;
       token_.column = column_;
       token_.type = Token::End;
@@ -235,7 +229,7 @@ public:
       token_.textValue.clear();
       token_.intValue = 16; // radix
       
-      while (sourceHasMore()) {
+      while (!atEnd()) {
         if (currentChar() == '_') {
           // ignore
         } else if (Text::isHexDigit(currentChar())) {
@@ -395,13 +389,13 @@ public:
           case '=': token_.type = Token::Assignment; break;
           case '(': token_.type = Token::LeftParen; break;
           case ')': token_.type = Token::RightParen; break;
+          case '[': token_.type = Token::LeftSqBracket; break;
+          case ']': token_.type = Token::RightSqBracket; break;
           case ',': token_.type = Token::Comma; break;
           case '.': token_.type = Token::Stop; break;
 
           case '{':
-          case '}':
-          case ']':
-          case '[': token_.type = Token::Structure; break;
+          case '}': token_.type = Token::Structure; break;
         
           default: {
             shouldParseIdentifier = true;
@@ -432,6 +426,8 @@ public:
             else if i32CMP_then_CONSUME_SYMBOL(Bool,         4, 'B','o','o','l');
             else if i32CMP_then_CONSUME_SYMBOL(IntSymbol,    3, 'I','n','t');
             else if i32CMP_then_CONSUME_SYMBOL(FloatSymbol,  5, 'F','l','o','a','t');
+            else if i32CMP_then_CONSUME_SYMBOL(Byte,         4, 'B','y','t','e');
+            else if i32CMP_then_CONSUME_SYMBOL(Char,         4, 'C','h','a','r');
             else if i32CMP_then_CONSUME_SYMBOL(Mutable,      7, 'M','U','T','A','B','L','E');
     
             else if (_i32CMP(4, 't','r','u','e')) {

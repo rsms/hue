@@ -1,10 +1,21 @@
 #include "Text.h"
-#include "utf8/checked.h"
 
 #include <fstream>
-//#include <iostream>
 
 namespace rsms {
+
+
+// Text(const UChar* text, size_t size, bool copy) : std::basic_string<UChar>() {
+//   reserve(size);
+//   UChar* data = const_cast<const UChar*>(data());
+//   
+// }
+
+
+Text& Text::appendUTF8String(const std::string& utf8string) throw(utf8::invalid_code_point) {
+  utf8::utf8to32(utf8string.begin(), utf8string.end(), std::back_inserter(*this));
+  return *this;
+}
 
 
 bool Text::setFromUTF8String(const std::string& utf8string) {
@@ -70,6 +81,33 @@ std::string Text::UTF8String() const {
     utf8string.clear();
   }
   return utf8string;
+}
+
+
+ByteList Text::rawByteList() const {
+  Text::const_iterator it = begin();
+  ByteList bytes;
+  
+  for (; it != end(); ++ it) {
+    UChar c = *it;
+    if (c < 0x100) {
+      bytes.push_back(static_cast<uint8_t>(c));
+    } else if (c < 0x10000) {
+      bytes.push_back(static_cast<uint8_t>(c >> 8));
+      bytes.push_back(static_cast<uint8_t>(c & 0xff));
+    } else if (c < 0x1000000) {
+      bytes.push_back(static_cast<uint8_t>(c >> 16));
+      bytes.push_back(static_cast<uint8_t>(c >> 8 & 0xff));
+      bytes.push_back(static_cast<uint8_t>(c & 0xff));
+    } else if (c < 0x1000000) {
+      bytes.push_back(static_cast<uint8_t>(c >> 24));
+      bytes.push_back(static_cast<uint8_t>(c >> 16 & 0xff));
+      bytes.push_back(static_cast<uint8_t>(c >> 8 & 0xff));
+      bytes.push_back(static_cast<uint8_t>(c & 0xff));
+    }
+  }
+  
+  return bytes;
 }
 
 

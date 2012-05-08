@@ -76,7 +76,7 @@ bool Visitor::IRTypesForASTVariables(std::vector<Type*>& argSpec, ast::VariableL
       }
       
       // Lookup IR type for AST type
-      Type* T = IRTypeForASTType(*var->type());
+      Type* T = IRTypeForASTType(var->type());
       if (T == 0)
         return !!error(R_FMT("No conversion for AST type " << var->toString() << " to IR type"));
       
@@ -86,6 +86,96 @@ bool Visitor::IRTypesForASTVariables(std::vector<Type*>& argSpec, ast::VariableL
   }
   
   return true;
+}
+
+
+const char* Visitor::typeName(const Type* T) const {
+  if (T == 0) return "<null>";
+  // Type::TypeID from Type.h:
+  switch(T->getTypeID()) {
+    case Type::VoidTyID: return "void";    ///<  0: type with no size
+    case Type::FloatTyID: return "float";       ///<  1: 32-bit floating point type
+    case Type::DoubleTyID: return "double";      ///<  2: 64-bit floating point type
+    case Type::X86_FP80TyID: return "fp80";    ///<  3: 80-bit floating point type (X87)
+    case Type::FP128TyID: return "fp128-m112";       ///<  4: 128-bit floating point type (112-bit mantissa)
+    case Type::PPC_FP128TyID: return "fp64x2";   ///<  5: 128-bit floating point type (two 64-bits, PowerPC)
+    case Type::LabelTyID: return "label";       ///<  6: Labels
+    case Type::MetadataTyID: return "metadata";    ///<  7: Metadata
+    case Type::X86_MMXTyID: return "mmxvec";     ///<  8: MMX vectors (64 bits, X86 specific)
+
+    // Derived types... see DerivedTypes.h file.
+    case Type::IntegerTyID: return "integer";     ///<  9: Arbitrary bit width integers
+    case Type::FunctionTyID: return "function";    ///< 10: Functions
+    case Type::StructTyID: return "struct";      ///< 11: Structures
+    case Type::ArrayTyID: return "array";       ///< 12: Arrays
+    case Type::PointerTyID: return "pointer";     ///< 13: Pointers
+    case Type::VectorTyID: return "vector";      ///< 14: SIMD 'packed' format, or other vector type
+    default: return "?";
+  }
+}
+
+
+StructType* Visitor::getArrayStructType(Type* elementType) {
+  // { length i64, data elementType* }
+  StructType *T = arrayStructTypes_[elementType];
+  if (T == 0) {
+    Type *tv[2];
+    tv[0] = Type::getInt64Ty(getGlobalContext()); // i64
+    //tv[1] = PointerType::get(Type::getInt8Ty(getGlobalContext()), 0); // i8*
+    tv[1] = PointerType::get(elementType, 0); // i8*
+    ArrayRef<Type*> elementTypes = makeArrayRef(tv, 2);
+    T = StructType::get(getGlobalContext(), elementTypes, /*isPacked = */true);
+    arrayStructTypes_[elementType] = T;
+  }
+  return T;
+}
+
+
+GlobalVariable* Visitor::createPrivateConstantGlobal(Constant* constantV, const Twine &name) {
+  GlobalVariable *gV = new GlobalVariable(
+    *module_, // Module M
+    constantV->getType(), // Type* Ty
+    true, // bool isConstant
+    GlobalValue::PrivateLinkage, // LinkageTypes Linkage
+    constantV, // Constant *Initializer
+    name // const Twine &Name
+    // GlobalVariable *InsertBefore = 0
+    // bool ThreadLocal = false
+    // unsigned AddressSpace = 0
+    );
+
+  gV->setName(name);
+  gV->setUnnamedAddr(true);
+  gV->setAlignment(1);
+
+  return gV;
+}
+
+
+GlobalVariable* Visitor::createStruct(Constant** constants, size_t count, const Twine &name) {
+  // Get or create an anonymous struct for constants
+  Constant* arrayStV = ConstantStruct::getAnon(makeArrayRef(constants, count), true);
+  //rlog("arrayStV: "); arrayStV->dump();
+  
+  // Put the struct into global variable so we can pass it around
+  GlobalVariable* gArrayStV = createPrivateConstantGlobal(arrayStV, name);
+  //rlog("gArrayStV: "); gArrayStV->dump();
+
+  return gArrayStV;
+}
+
+
+GlobalVariable* Visitor::createArray(Constant* constantArray, const Twine &name) {
+  assert(ConstantAggregateZero::classof(constantArray) || ConstantArray::classof(constantArray));
+  
+  // Create our struct: <{ i64 N, [i8 x N] }>
+  Constant* stV[2];
+  uint64_t length = static_cast<ArrayType*>(constantArray->getType())->getNumElements();
+  stV[0] = ConstantInt::get(getGlobalContext(), APInt(64, length, false));
+  stV[1] = constantArray;
+  //stV[1] = createPrivateConstantGlobal(constantArray, "gv");
+  
+  return createStruct(stV, 2, name);
 }
 
 
@@ -120,7 +210,7 @@ Value *Visitor::codegenExternalFunction(const ast::ExternalFunction* node) {
   Type* returnType = returnTypeForFunctionType(node->functionType());
   if (returnType == 0) return error("Unable to transcode return type from AST to IR");
   
-  return codegenFunctionType(node->functionType(), node->name(), returnType);
+  return codegenFunctionType(node->functionType(), node->name().UTF8String(), returnType);
 }
 
 // Block
@@ -151,7 +241,7 @@ Value *Visitor::codegenIntLiteral(const ast::IntLiteral *literal, bool fixedSize
   DEBUG_TRACE_LLVM_VISITOR;
   // TODO: Infer the minimal size needed if fixedSize is false
   const unsigned numBits = 64;
-  return ConstantInt::get(getGlobalContext(), APInt(numBits, literal->text(), literal->radix()));
+  return ConstantInt::get(getGlobalContext(), APInt(numBits, literal->text().UTF8String(), literal->radix()));
 }
 
 // Float
@@ -159,7 +249,7 @@ Value *Visitor::codegenFloatLiteral(const ast::FloatLiteral *literal, bool fixed
   DEBUG_TRACE_LLVM_VISITOR;
   // TODO: Infer the minimal size needed if fixedSize is false
   const fltSemantics& size = APFloat::IEEEdouble;
-  return ConstantFP::get(getGlobalContext(), APFloat(size, literal->text()));
+  return ConstantFP::get(getGlobalContext(), APFloat(size, literal->text().UTF8String()));
 }
 
 Value *Visitor::codegenBoolLiteral(const ast::BoolLiteral *literal) {

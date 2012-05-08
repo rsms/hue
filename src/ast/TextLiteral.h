@@ -8,6 +8,7 @@ namespace rsms { namespace ast {
 class TextLiteral : public Expression {
 public:
   TextLiteral(const Text& text) : Expression(TTextLiteral), text_(text) {}
+  const Text& text() const { return text_; }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;

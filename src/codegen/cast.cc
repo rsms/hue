@@ -56,9 +56,109 @@ Value* Visitor::castValueTo(Value* inputV, Type* destT) {
       // warning("Implicit conversion of floating point value to integer storage");
       // V = builder_.CreateFPToSI(V, destT, "casttmp");
       return error("Illegal conversion from floating point number to integer");
+
+    } else if (ArrayType::classof(destT) && ArrayType::classof(inputT)) {
+      // Both sides are Array types. Let's check what elements they contain.
+      Type* destElementT = static_cast<ArrayType*>(destT)->getElementType();
+      Type* inputElementT = static_cast<ArrayType*>(inputT)->getElementType();
+      if (destElementT != inputElementT) {
+        return error("Different types of arrays");
+      } else {
+        // They are arrays of same kind, but different size. Since we do not have
+        // the notion of explicit array size in type declarations, we can safely assume
+        // that the destionation type is variable size, thus return a pointer.
+        //return builder_.CreateGEP(Value *Ptr, ArrayRef<Value *> IdxList, "aptrtmp");
+        //return builder_.CreateLoad(inputV, "aptrtmp");
+        //Value *gv = CreateGlobalString(Str, Name);
+        rlog("GEP 1");
+        Value *zero = ConstantInt::get(Type::getInt32Ty(getGlobalContext()), 0);
+        rlog("GEP 2");
+        Value *Args[] = { zero, zero };
+        
+        //Value* v = builder_.CreateInBoundsGEP(inputV, Args, "aptrtmp");
+        Value* v = builder_.CreateGEP(inputV, Args, "aptrtmp");
+        rlog("GEP -> " << v);
+        return v;
+        //return inputV;
+      }
+
+    } else if (inputT->isPointerTy()) {
+      
+      // Special case for constant arrays (essentially sequence literals, like data and text)
+      ArrayType* arrayT = getArrayTypeFromPointerType(inputT);
+      
+      if (arrayT) {
+        if (destT->isPointerTy() && destT->getNumContainedTypes() == 1) {
+          //if (arrayT->isValidElementType(destT->getContainedType(0))) {
+          if (arrayT->getElementType() == destT->getContainedType(0)) {
+            rlog("inputT is a constant array of the same kind as expected by the destination");
+            // Wrap in a GEP, so destination gets a pointer to the same type
+            return wrapValueInGEP(inputV);
+          } else {
+            return error("Source array has different element type than destination array");
+          }
+        } else {
+          return error("Source is an array but destination expects something else");
+        }
+      }
+      
+      // TODO...
+      //rlog("inputT is a pointer. contained count: " << inputT->getNumContainedTypes()
+      //  << ", containedType[0] = "); inputT->getContainedType(0)->dump();
+      if (destT->isPointerTy()) {
+        //rlog("destT is a pointer. contained count: " << destT->getNumContainedTypes()
+        //     << ", containedType[0] = "); destT->getContainedType(0)->dump();
+        if (inputT->getNumContainedTypes() == 1 && destT->getNumContainedTypes() == 1) {
+          Type* inputCT = inputT->getContainedType(0);
+          Type* destCT = destT->getContainedType(0);
+          
+          if (inputCT == destCT) {
+            //rlog("pointers' contained types are the same");
+            return inputV;
+          } else if (static_cast<PointerType*>(destT)->isValidElementType(inputT)) {
+            //rlog("inputCT: "); inputCT->dump();
+            //rlog("destCT: "); destCT->dump();
+            
+            if (inputCT->isStructTy() && destCT->isStructTy()) {
+              
+              StructType* inputST = static_cast<StructType*>(inputCT);
+              StructType* destST = static_cast<StructType*>(destCT);
+              
+              if (inputST->getNumElements() == destST->getNumElements()) {
+                unsigned N = inputST->getNumElements();
+                while (N--) {
+                  Type* inputCT1 = inputST->getElementType(N);
+                  Type* destCT1 = destST->getElementType(N);
+                  if (inputCT1 != destCT1) {
+                    if (!ArrayType::classof(inputCT1)) {
+                      return error("Incompatible struct");
+                    }
+                    if (   destCT1->isPointerTy() && destCT1->getNumContainedTypes() == 1
+                        && static_cast<llvm::ArrayType*>(inputCT1)->getElementType() == destCT1->getContainedType(0)) {
+                      continue;
+                    } else {
+                      return error("Incompatible element types in array inside struct");
+                    }
+                  }
+                }
+                rlog("input pointers' contained type is compatible with destionation pointers' type");
+                return builder_.CreatePointerCast(inputV, destT);
+              }
+            }
+            
+            // structs have different types
+          }
+        }
+      } else {
+        rlog("destT is NOT a pointer");
+      }
     }
     
-    return 0;
+    else if (inputT->isStructTy()) {
+      rlog("TODO: input is data struct");
+    }
+    
+    return error(std::string("Unable to cast ") + typeName(inputT) + " to " + typeName(destT));
   
   // Int->Int: iX to iY
   } else if (destT->isIntegerTy() && destT->getPrimitiveSizeInBits() != inputT->getPrimitiveSizeInBits()) {

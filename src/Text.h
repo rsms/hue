@@ -1,7 +1,11 @@
 #ifndef RSMS_COVE_TEXT_H
 #define RSMS_COVE_TEXT_H
+
+#include "utf8/checked.h"
+
 #include <string>
 #include <istream>
+#include <vector>
 #include <stdint.h>
 
 namespace rsms {
@@ -10,11 +14,16 @@ namespace rsms {
 typedef uint32_t UChar;
 
 // Represents a sequence of bytes.
+typedef std::vector<uint8_t> ByteList;
 typedef std::basic_string<uint8_t> ByteString;
 
 // Represents Unicode text.
 class Text : public std::basic_string<UChar> {
 public:
+  Text() : std::basic_string<UChar>() {}
+  Text(const char* utf8data) : std::basic_string<UChar>() { setFromUTF8String(utf8data); }
+  //Text(const UChar* text, size_t size, bool copy = true);
+  
   // Replace the contents of the receiver by reading the istream, which is expected to
   // produce UTF-8 data.
   // Returns false if the stream could not be read or the contents is not UTF-8 text.
@@ -27,8 +36,11 @@ public:
   
   // Replace the contents of the receiver by decoding UTF-8 data.
   bool setFromUTF8String(const std::string& data);
-  inline bool setFromUTF8String(const char* cstr) { return setFromUTF8String(std::string(cstr)); }
+  inline bool setFromUTF8String(const char* utf8data) { return setFromUTF8String(std::string(utf8data)); }
   bool setFromUTF8Data(const uint8_t* data, const size_t length);
+  
+  // Append UTF-8 data to the end of the receiver. Returns *this.
+  Text& appendUTF8String(const std::string& utf8string) throw(utf8::invalid_code_point);
   
   // Create a UTF-8 representation of the text. Returns an empty string if encoding failed.
   std::string UTF8String() const;
@@ -36,6 +48,7 @@ public:
   
   // Create a sequence of bytes by interpreting each character in the text as 1-4 bytes.
   // E.g. A 3 octet wide unicode character U+1F44D is represented as the bytes 0x1, 0xF4 and 0x4D.
+  ByteList rawByteList() const;
   ByteString rawByteString() const;
   
   // Assignment operators
@@ -48,6 +61,10 @@ public:
   inline Text& operator= (const UChar& rhs) {
     assign(1, rhs); return *this;
   }
+  
+  // Combination operators
+  inline Text& operator+ (const char* rhs) const { return Text(*this).appendUTF8String(rhs); }
+  //inline Text& operator+= (const char* rhs) { return appendUTF8String(rhs); }
   
   // Convert Unicode character c to its UTF8 equivalent.
   // Returns an empty string on failure.

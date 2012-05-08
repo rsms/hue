@@ -6,18 +6,22 @@ Value* Visitor::createNewLocalSymbol(ast::Variable *variable, Value *rhsValue) {
   Type* rhsOriginalType = rhsValue->getType();
   Value* V = rhsValue;
   const bool storageTypeIsKnown = variable->hasUnknownType() == false;
+  Type *varT = 0;
+  
+  // Map Variable's type
+  if (storageTypeIsKnown) {
+    varT = IRTypeForASTType(variable->type());
+    if (varT == 0) return error("No encoding for variable's AST type");
+  }
+  
   //bool requireAlloca = false;
   
   // If storage type is explicit/known --and-- RHS is a primitive: cast if needed
   if (storageTypeIsKnown && rhsOriginalType->isPrimitiveType()) {
-    // Map AST type to LLVM type
-    Type *storageType = IRTypeForASTType(*variable->type());
-    if (storageType == 0) return error("No encoding for AST type");
-  
     // If storage type is different than value, attempt to convert the value
-    if (storageType->getTypeID() != V->getType()->getTypeID()) {
+    if (varT->getTypeID() != V->getType()->getTypeID()) {
       //requireAlloca = true; // Require an alloca since we are replacing V with a cast instr
-      V = castValueTo(V, storageType);
+      V = castValueTo(V, varT);
       if (V == 0) return error("Symbol/variable type is different than value type");
     }
   }
@@ -40,10 +44,31 @@ Value* Visitor::createNewLocalSymbol(ast::Variable *variable, Value *rhsValue) {
     // Which, after an alloca optimization pass, will simply reference the constant i64 6
     //
   } else {
-    // Type* T = V->getType();
-    rlog("REF variable \"" << variable->name() << "\"");
-    // T->dump();
-    // V->dump();
+    Type* valueT = V->getType();
+    
+    if (storageTypeIsKnown) {
+      warning(std::string("Unneccessary type declaration of constant variable '")
+              + variable->name().UTF8String() + "'");
+    
+      // Check types
+      if (varT != valueT) {
+        if (ArrayType::classof(varT) && ArrayType::classof(valueT)) {
+          Type* varElementT = static_cast<ArrayType*>(varT)->getElementType();
+          Type* valueElementT = static_cast<ArrayType*>(valueT)->getElementType();
+          if (varElementT != valueElementT) {
+            return error("Different types of arrays");
+          }
+          // else:
+          // Both are same kind of arrays, but of different size. Since we don't support type
+          // definitions with fixes array size, this one is easy: valueT wins. We do nothing.
+        } else {
+          // Yikes. Type mis-match. This could be corrected by the programmer by having
+          // the type being inferred instead of explicitly defined, since the var is constant.
+          return error("Type mismatch between variable and value");
+        }
+      }
+    }
+    
     // if (T->isPointerTy() && T->getNumContainedTypes() == 1 && T->getContainedType(0)->isFunctionTy()) {
     //   rlog("is a pointer to a func");
     // }
@@ -81,6 +106,7 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
 
   } else if (node->rhs()->nodeTypeID() == ast::Node::TExternalFunction) {
     rhsValue = codegenExternalFunction(static_cast<const ast::ExternalFunction*>(node->rhs()));
+
   } else {
     rhsValue = codegen(node->rhs());
   }

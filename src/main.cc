@@ -32,37 +32,6 @@ int main(int argc, char **argv) {
   // A TokenBuffer reads tokens from a Tokenizer and maintains limited history
   TokenBuffer tokens(tokenizer);
   
-  
-  while (1) {
-    const Token &token = tokens.next();
-    
-    if (token.type == Token::Unexpected) {
-      std::cout << "Error: Unexpected token '" << token.textValue
-                << "' at " << token.line << ':' << token.column << std::endl;
-      break;
-    }
-    
-    std::cout << "\e[34;1m>> " << token.toString() << "\e[0m";
-    
-    // list all available historical tokens
-    // size_t n = 1;
-    // while (n < tokens.count()) {
-    //   std::cout << "\n  " << tokens[n++].toString() << ")";
-    // }
-    std::cout << std::endl;
-    
-    // An End token indicates the end of the token stream and we must
-    // stop reading the stream.
-    if (token.type == Token::End || token.type == Token::Error) break;
-  }
-  
-  return 0;
-  
-  
-  
-  
-  
-  
   // A parser reads the token buffer and produce an AST
   Parser parser(tokens);
   
@@ -74,7 +43,7 @@ int main(int argc, char **argv) {
     return 1;
   }
   std::cerr << "Parsed module: " << moduleFunc->body()->toString() << std::endl;
-  return 0; // xxx only parser
+  //return 0; // xxx only parser
   
   // Generate code
   codegen::Visitor codegenVisitor;

@@ -30,6 +30,8 @@ public:
     LeftArrow, // '<-'
     LeftParen, // '('
     RightParen, // ')'
+    LeftSqBracket, // '['
+    RightSqBracket, // ']'
     Comma, // ','
     Stop, // '.'
     Assignment, // '='
@@ -48,12 +50,15 @@ public:
     // TODO: BinaryLiteral
     
     // Symbols
-    None,         // 'none'
     IntSymbol,    // 'Int'
     FloatSymbol,  // 'Float'
     Bool,         // 'Bool'
+    Byte,         // 'Byte'
+    Char,         // 'Char'
+    
     If,           // 'if'
     Else,         // 'else'
+    None,         // 'none'
     
     // Special meaning
     Error,        // textValue = message, intValue = code
@@ -141,6 +146,8 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"LeftArrow",           0,0,0},
   {"LeftParen",           0,0,0},
   {"RightParen",          0,0,0},
+  {"LeftSqBracket",       0,0,0},
+  {"RightSqBracket",      0,0,0},
   {"Comma",               0,0,0},
   {"Stop",                0,0,0},
   {"Assignment",          0,0,0},
@@ -156,12 +163,15 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"TextLiteral",         .hasTextValue = 1,0,0},
   {"DataLiteral",         .hasTextValue = 1,0,0},
   
-  {"Nil",                 0,0,0},
-  {"IntSymbol",           0,0,0},
-  {"FloatSymbol",         0,0,0},
-  {"Bool",                0,0,0},
+  {"IntSymbol",           0,0,0}, // i64
+  {"FloatSymbol",         0,0,0}, // double
+  {"Bool",                0,0,0}, // i1
+  {"Byte",                0,0,0}, // i8
+  {"Char",                0,0,0}, // i32
+  
   {"If",                  0,0,0},
   {"Else",                0,0,0},
+  {"None",                0,0,0},
   
   {"Error",               .hasTextValue = 1,0, .hasIntValue = 1},
   {"End",                 0,0,0},

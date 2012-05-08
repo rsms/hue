@@ -10,6 +10,8 @@ class DataLiteral : public Expression {
 public:
   DataLiteral(const ByteString& data) : Expression(TDataLiteral), data_(data) {}
 
+  inline const ByteString& data() const { return data_; };
+
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);

@@ -1,14 +1,19 @@
 # Source files
-cxx_sources := src/main.cc src/Logger.cc src/Text.cc \
-               src/codegen/Visitor.cc \
-               src/codegen/assignment.cc \
-               src/codegen/binop.cc \
-               src/codegen/call.cc \
-               src/codegen/function.cc \
-               src/codegen/function_type.cc \
-               src/codegen/cast.cc \
-               src/codegen/conditional.cc
-               
+cxx_sources :=  	src/main.cc src/Logger.cc src/Text.cc \
+                	src/codegen/Visitor.cc \
+                	src/codegen/assignment.cc \
+                	src/codegen/binop.cc \
+                	src/codegen/call.cc \
+                	src/codegen/function.cc \
+                	src/codegen/function_type.cc \
+                	src/codegen/cast.cc \
+                	src/codegen/conditional.cc \
+                	src/codegen/data_literal.cc \
+                	src/codegen/text_literal.cc
+
+cxx_rt_sources := src/runtime/runtime.cc src/Text.cc
+#cxx_rt_sources :=
+c_rt_sources :=
 
 # Tools
 CC = clang
@@ -18,7 +23,8 @@ CXXC = clang++
 # Compiler and Linker flags for all targets
 CFLAGS   += -Wall
 CXXFLAGS += -std=c++11
-LDFLAGS  += -lc++ -lstdc++
+LDFLAGS  +=
+XXLDFLAGS += -lc++ -lstdc++
 
 # Compiler and Linker flags for release targets
 CFLAGS_RELEASE  := -O3 -DNDEBUG
@@ -29,11 +35,18 @@ LDFLAGS_DEBUG   :=
 
 # Source files to Object files
 object_dir := .objs
-
 cxx_objects := ${cxx_sources:.cc=.o}
 _objects := $(cxx_objects)
 objects = $(patsubst %,$(object_dir)/%,$(_objects))
-object_dirs := $(foreach fn,$(objects),$(shell dirname "$(fn)"))
+
+rt_object_dir := .rt_objs
+cxx_rt_objects := ${cxx_rt_sources:.cc=.o}
+c_rt_objects := ${c_rt_sources:.c=.o}
+_rt_objects := $(cxx_rt_objects) $(c_rt_objects)
+rt_objects = $(patsubst %,$(rt_object_dir)/%,$(_rt_objects))
+
+compiler_object_dirs := $(foreach fn,$(objects),$(shell dirname "$(fn)"))
+rt_object_dirs := $(foreach fn,$(rt_objects),$(shell dirname "$(fn)"))
 
 # --- libllvm ---------------------------------------------------------------------
 libllvm_components := all
@@ -70,26 +83,47 @@ internaldebug: debug
 
 debug: CFLAGS += $(CFLAGS_DEBUG)
 debug: LDFLAGS += $(LDFLAGS_DEBUG)
-debug: covec
+debug: covec libcovert
 
 release: CFLAGS += $(CFLAGS_RELEASE)
 release: LDFLAGS += $(LDFLAGS_RELEASE)
-release: covec
+release: covec libcovert
 
 clean:
 	rm -f covec
-	rm -rf $(object_dir)
+	rm -rf $(object_dir) $(rt_object_dir)
 
 echo_state:
 	@echo objects: $(objects)
-	@echo object_dirs: $(object_dirs)
+	@echo compiler_object_dirs: $(compiler_object_dirs)
+	@echo rt_objects: $(rt_objects)
+	@echo rt_object_dirs: $(compiler_object_dirs)
 
-# C++ source -> objects
+test_10: libcovert covec
+	./covec examples/program10-data-literals.txt
+	./deps/llvm/bin/bin/llvm-as -o=- out.ll | ./deps/llvm/bin/bin/llvm-ld -native -L. -lcovert -o=out.a -
+	./out.a
+
+# compiler C++ source -> objects
 $(object_dir)/%.o: %.cc
-	@mkdir -p $(object_dirs)
+	@mkdir -p $(compiler_object_dirs)
 	$(CXXC) $(CFLAGS) $(CXXFLAGS) $(libllvm_cxx_flags) -c -o $@ $<
 
+# runtime C source -> objects
+$(rt_object_dir)/%.o: %.c
+	@mkdir -p $(rt_object_dirs)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# runtime C++ source -> objects
+$(rt_object_dir)/%.o: %.cc
+	@mkdir -p $(rt_object_dirs)
+	$(CXXC) $(CFLAGS) $(CXXFLAGS) -c -o $@ $<
+
 covec: $(objects)
-	$(LD) $(LDFLAGS) $(libllvm_ld_flags) -o covec $^
+	$(LD) $(LDFLAGS) $(XXLDFLAGS) $(libllvm_ld_flags) -o covec $^
+
+libcovert: $(rt_objects)
+	$(LD) $(LDFLAGS) $(XXLDFLAGS) -shared -o libcovert.so $^
+	$(shell ln -sf libcovert.so libcovert.dylib)
 
 .PHONY: 

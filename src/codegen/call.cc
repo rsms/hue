@@ -62,8 +62,12 @@ Value *Visitor::codegenCall(const ast::Call* node) {
   }
   
   // Create call instruction
-  //rlog("targetV ->"); targetV->dump();
-  return builder_.CreateCall(targetV, argValues, node->calleeName()+"_res");
+  if (FT->getReturnType()->isVoidTy()) {
+    builder_.CreateCall(targetV, argValues);
+    return ConstantInt::getFalse(getGlobalContext());
+  } else {
+    return builder_.CreateCall(targetV, argValues, node->calleeName().UTF8String() + "_res");
+  }
 }
 
 #include "_VisitorImplFooter.h"
