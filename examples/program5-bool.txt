@@ -1,5 +1,5 @@
 # Boolean values and type
 a = true
 b Bool = false
-boolsAreEq = func (a, b Bool) Bool -> a == b
+boolsAreEq = ^(a, b Bool) Bool: a == b
 e = boolsAreEq a b

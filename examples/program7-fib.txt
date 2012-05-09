@@ -1,6 +1,5 @@
-x = if (N) 10; if N > 4 20; else N
-
-fib = func (N Int) Int: if N < 2 N; else (fib n-1) + fib n-2
+# -- WIP -- (symbol reachability of "fib")
+fib = ^(N Int) Int: if N < 2: N; else: (fib n-1) + fib n-2
 
 #x = ? (N < 10):
 #      a = 5
@@ -13,7 +12,7 @@ fib = func (N Int) Int: if N < 2 N; else (fib n-1) + fib n-2
 
 # x = if (N < 10): 5 * 5; if (N < 20): 2; if (N < 30): 3; else: N
 # 
-# x = func (N Int) Int:
+# x = ^(N Int) Int:
 #   if (N < 10): 5 * 5
 #     if (N < 20): 2
 #     else: 4
@@ -40,7 +39,7 @@ fib = func (N Int) Int: if N < 2 N; else (fib n-1) + fib n-2
 
 #x = ? (N < 10): 1; N
 #
-#bestN = func (N Int) Int:
+#bestN = ^(N Int) Int:
 #  if (N < 10):
 #    x = 56
 #    fooBar x N
@@ -53,7 +52,7 @@ fib = func (N Int) Int: if N < 2 N; else (fib n-1) + fib n-2
 #  (N < 40): 2
 #  : N
 #
-#bestN = func (N Int) Int:
+#bestN = ^(N Int) Int:
 #  ? (N < 10):
 #    f = fooBar x N
 #    ? (f == 5): f * 76
@@ -63,22 +62,22 @@ fib = func (N Int) Int: if N < 2 N; else (fib n-1) + fib n-2
 #  ?: N
 #
 #
-#fib = func (N Int) Int:
+#fib = ^(N Int) Int:
 #  x = ? (N < 2) N
 #    (fib n-1) + fib n-2
 #  x * 7
 #
-#bestN = func (N Int) Int ->
+#bestN = ^(N Int) Int ->
 #  ? (N < 10) fooBar x N
 #    (N < 20) 2
 #    N
 #
-#bestN = func (N Int) Int -> ? (N < 10) fooBar x N; (N < 20) 2; N
+#bestN = ^(N Int) Int -> ? (N < 10) fooBar x N; (N < 20) 2; N
 #
-#x = func (x Float) -> x = 65
+#x = ^(x Float) -> x = 65
 #
 #x = ? (N < 10) 1 : 3
 
 # Recursive fibonacci
-#fib = func (N Int) Int -> ?(N < 2) N : (fib n-1) + fib n-2
+#fib = ^(N Int) Int -> ?(N < 2) N : (fib n-1) + fib n-2
 

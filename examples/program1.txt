@@ -1,21 +1,21 @@
 # A function declaration
 A = extern atan2 (a Float, b Float) Float
 B Float = A 1.1 2.2
-C = func (x Float, y Float) Float -> A 3.3 4.4
+C = ^(x Float, y Float) Float: A 3.3 4.4
 D Float = C 5.5 6.6
 
-E MUTABLE = func (x Float, y Float) Float -> C 7.7 8.8
+E MUTABLE = ^(x Float, y Float) Float: C 7.7 8.8
 F Float = E 9.0 10.0
 X MUTABLE = F * A 4.5 2.3
 
-E = func (x Float, y Float) Float -> C 77.0 88.0
+E = ^(x Float, y Float) Float: C 77.0 88.0
 F2 Float = E 9.1 X
 
 # Next up: Allow more than one expression in a function body
-G = func (x Int) Int ->
-	y = x * 9 \    # ... Do not stop at the next NewLine
-	+ 5            # expr: y = x * 9 + 5
-	y / 4 - 92     # return: expr: y / 4 - 92
+G = ^(x Int) Int:
+      y = x * 9 \    # ... Do not stop at the next NewLine
+      + 5            # expr: y = x * 9 + 5
+      y / 4 - 92     # return: expr: y / 4 - 92
 
 H = G 45
 

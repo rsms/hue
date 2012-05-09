@@ -19,7 +19,7 @@ public:
   enum Type {
     Unexpected = 0,
     Comment, // #.+
-    Func, // "func" ...
+    Func, // '^' ...
     External, // "extern"
     Mutable, // "MUTABLE"
     Identifier,

@@ -1,12 +1,11 @@
 # Next up: Allow more than one expression in a function body
-#A = func (x Int) Int -> 12
-G = func (x Int) Int ->
-  y = x * 9 \    # ... Do not stop at the next NewLine
-  + 5            # expr: y = x * 9 + 5
-  y / 4 - (92 > 91)     # return: expr: y / 4 - 92
+#A = ^(x Int) Int -> 12
+G = ^(x Int) Int:
+      y = x * 9 \    # ... Do not stop at the next NewLine
+      + 5            # expr: y = x * 9 + 5
+      y / 4 - (92 > 91)     # return: expr: y / 4 - 92
 
 H = G 1 * (F 2 3 4) 5  # C equiv: H = G(1 * F(2,3,4), 5)
 
-# Todo: Control flow: if
 # Todo: Control flow: for
 # Todo: Control flow: while

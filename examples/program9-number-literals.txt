@@ -9,5 +9,5 @@ i = 123
 x1 = 0x01fa3
 x2 = 0x5_3_9
 
-foo = extern foo(a,b,c,d,e,f Float, g,h,i,j Int) Int
+foo = extern foo (a,b,c,d,e,f Float, g,h,i,j Int) Int
 y = foo f1 f2 f3 f4 åland f5 i ﾈ x1 x2

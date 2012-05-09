@@ -352,6 +352,7 @@ public:
         token_.textValue += '='; //otherChar(1);
         token_.line = line_;
         token_.column = column_;
+        token_.length = 2;
         token_.type = Token::BinaryComparisonOperator;
         //rlog("BinaryComparisonOperator: " << token_.toString());
         nextChar(); // consume
@@ -360,11 +361,15 @@ public:
       // Single-byte tokens
       else {
         bool shouldParseIdentifier = false;
+        token_.line = line_;
+        token_.column = column_-1;
+        token_.length = 1;
         
         switch (currentChar()) {
           case '<': { // '<-'?
             if (futureCharCount() > 0 && otherChar(1) == '-') {
               token_.type = Token::LeftArrow;
+              token_.length = 2;
               nextChar(); // consume '-'
               break;
             }
@@ -372,6 +377,7 @@ public:
           case '-': { // '->'?
             if (futureCharCount() > 0 && otherChar(1) == '>') {
               token_.type = Token::RightArrow;
+              token_.length = 2;
               nextChar(); // consume '>'
               break;
             }
@@ -393,6 +399,7 @@ public:
           case ']': token_.type = Token::RightSqBracket; break;
           case ',': token_.type = Token::Comma; break;
           case '.': token_.type = Token::Stop; break;
+          case '^': token_.type = Token::Func; break;
 
           case '{':
           case '}': token_.type = Token::Structure; break;
@@ -420,7 +427,7 @@ public:
 
                  if i32CMP_then_CONSUME_SYMBOL(If,           2, 'i','f');
             else if i32CMP_then_CONSUME_SYMBOL(Else,         4, 'e','l','s','e');
-            else if i32CMP_then_CONSUME_SYMBOL(Func,         4, 'f','u','n','c');
+            //else if i32CMP_then_CONSUME_SYMBOL(Func,         4, 'f','u','n','c');
             else if i32CMP_then_CONSUME_SYMBOL(External,     6, 'e','x','t','e','r','n');
             else if i32CMP_then_CONSUME_SYMBOL(None,         4, 'n','o','n','e');
             else if i32CMP_then_CONSUME_SYMBOL(Bool,         4, 'B','o','o','l');
@@ -481,9 +488,8 @@ public:
           if (Token::TypeInfo[token_.type].hasTextValue) {
             token_.textValue = currentChar();
           }
-          
-          token_.line = line_;
-          token_.column = column_;
+          //token_.line = line_;
+          //token_.column = column_;
         }
       }
         

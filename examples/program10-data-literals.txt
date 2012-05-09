@@ -1,18 +1,11 @@
 #printf = extern printf (format [Byte], len0 Int, arg0 [Byte]) Int
 #len = extern len (subject [Byte]) Int
 WriteData = extern _Z17cove_stdout_writeP12COByteArray_ (data [Byte])
+WriteData = extern _Z17cove_stdout_writeP12COByteArray_ (data [Byte])
 WriteText = extern _Z17cove_stdout_writeP7COText_ (text [Char])
 #WriteData = extern cove_stdout_write (data [Byte])
 #WriteText = extern cove_stdout_write_text (text [Char])
 data1 = 'Hello World\n' # T = [Byte]
-text1 = "Hello World\n" # T = [Char]
+text1 MUTABLE = "Hello World\n" # T = [Char]
 WriteData data1
 WriteText text1
-
-#data2 = 'foo\
-# bar\
-# baz'
-#data3 = 'Hello John "Monkey" \\ Smith. \n  A: €\n  B: \x0A ﾈ b ob'
-#text1 = "Hello John \"Monkey\" \\ Smith. \n  A: €\n  B: \u1F44D"
-#foo = extern foo (data [Byte]) Int
-#foo data1

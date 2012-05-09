@@ -899,7 +899,7 @@ public:
         goto entry;
       }
       
-      case Token::Error: { rloge("<- NULL"); return error(token_.textValue.UTF8String()); }
+      case Token::Error: return error(token_.textValue.UTF8String());
       case Token::End:   return error("Premature end");
       default:           return error("Unexpected token");
     }

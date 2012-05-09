@@ -22,14 +22,14 @@
 #      400
 # PASS
 
-foobarbaz = func (x, y Int) Int: z = x * y * 9
-                                 z / 4
+foobarbaz = ^(x, y Int) Int: z = x * y * 9
+                             z / 4
 
 foobarbaz2 = if 5 < 1:
-              func (x, y Int) Int:
+              ^(x, y Int) Int:
                 foobarbaz x * y * 2 5
              else:
-              func (x, y Int) Int:
+              ^(x, y Int) Int:
                 x * y * 3
 
 #a = foo if x < 1: 100; else: 300

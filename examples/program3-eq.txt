@@ -1,5 +1,5 @@
 # Next up: Allow more than one expression in a function body
 a = 5
-F = func (a Int) Int -> a / 3
+F = ^(a Int) Int: a / 3
 x = 4 == 5  # x should be folded to 0 Int
 y = F x  # Here, x is a i1 and will be expanded to an i64
