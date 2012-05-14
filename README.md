@@ -7,6 +7,7 @@ I'm just having some fun. This is by no means the futurez of programming, brogra
 - Everything is an expression
 - Values are immutable (can't be modified) by default
 - Compiles down to super-tight machine code (thanks to LLVM) that's so fast it makes your mama faint
+- Fully Unicode (Text type is UTF-32, source files are interpreted as UTF-8 and language symbols can be almost any Unicode character).
 - Built on top of LLVM and thus generates LLVM IR
 - Neat codebase with clearly separated components
   - Tokenizer: Reads UTF-8 encoded text and streams Hue language tokens
