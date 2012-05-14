@@ -1,11 +1,11 @@
-#ifndef RSMS_AST_PROTOTYPE_H
-#define RSMS_AST_PROTOTYPE_H
+#ifndef HUE__AST_PROTOTYPE_H
+#define HUE__AST_PROTOTYPE_H
 #include "Node.h"
 #include "Expression.h"
 #include "Type.h"
 #include "Block.h"
 
-namespace rsms { namespace ast {
+namespace hue { namespace ast {
 
 class Argument {
 public:
@@ -119,5 +119,5 @@ public:
   }
 };
 
-}} // namespace rsms.ast
-#endif // RSMS_AST_PROTOTYPE_H
+}} // namespace hue.ast
+#endif // HUE__AST_PROTOTYPE_H

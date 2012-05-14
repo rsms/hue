@@ -1,11 +1,11 @@
 // A StreamInput (: ByteInput) that reads from a file
-#ifndef RSMS_FILE_INPUT_H
-#define RSMS_FILE_INPUT_H
+#ifndef HUE__FILE_INPUT_H
+#define HUE__FILE_INPUT_H
 
 #include "StreamInput.h"
 #include <fstream>
 
-namespace rsms {
+namespace hue {
 
 template <size_t BufferSize = 4096>
 class FileInput : public StreamInput<BufferSize> {
@@ -22,6 +22,6 @@ public:
   }
 };
 
-} // namespace rsms
+} // namespace hue
 
-#endif // RSMS_FILE_INPUT_H
+#endif // HUE__FILE_INPUT_H

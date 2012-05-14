@@ -7,7 +7,8 @@ Value *Visitor::codegenTextLiteral(const ast::TextLiteral *textLit) {
   // Array type
   const Text& text = textLit->text();
   ast::Type CoveCharType(ast::Type::Char);
-  ArrayType* arrayT = ArrayType::get(IRTypeForASTType(&CoveCharType), text.size());
+  Type* elementT = IRTypeForASTType(&CoveCharType);
+  ArrayType* arrayT = ArrayType::get(elementT, text.size());
   
   // Make Constant values
   std::vector<Constant*> v;
@@ -22,7 +23,10 @@ Value *Visitor::codegenTextLiteral(const ast::TextLiteral *textLit) {
   Constant* arrayV = ConstantArray::get(arrayT, makeArrayRef(v));
   if (arrayV == 0) return error("Failed to create text constant array");
   
-  return createArray(arrayV, "text");
+  GlobalVariable* arrayGV = createArray(arrayV, "text");
+  
+  Type* T = PointerType::get(getArrayStructType(elementT), 0);
+  return builder_.CreatePointerCast(arrayGV, T);
 }
 
 #include "_VisitorImplFooter.h"

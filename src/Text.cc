@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-namespace rsms {
+namespace hue {
 
 
 // Text(const UChar* text, size_t size, bool copy) : std::basic_string<UChar>() {
@@ -152,4 +152,4 @@ std::string Text::UCharToUTF8String(const UChar c) {
 
 const UChar NullChar = 0;
 
-} // namespace rsms
+} // namespace hue

@@ -1,7 +1,7 @@
-#ifndef RSMS_LOGGER_H
-#define RSMS_LOGGER_H
+#ifndef HUE__LOGGER_H
+#define HUE__LOGGER_H
 
-// Use these macros in your code (Don't use rsms::Logger::begin etc).
+// Use these macros in your code (Don't use hue::Logger::begin etc).
 //
 // Example:
 //
@@ -12,7 +12,7 @@
 //   rlogw("Failed to chmod(\"" << filename << "\", " << mode << ")");
 //
 //   // With explicit level
-//   rlogl(rsms::Logger::Warning, "Failed to chmod(\"" << filename << "\", "
+//   rlogl(hue::Logger::Warning, "Failed to chmod(\"" << filename << "\", "
 //          << mode << ")");
 //
 #if NDEBUG
@@ -20,14 +20,14 @@
   #define rtrace() do{}while(0)
   #define rlog(...) do{}while(0)
 #else
-  #define rtrace() rlogl(rsms::Logger::Trace, "")
-  #define rlog(args) rlogl(rsms::Logger::Debug, args)
+  #define rtrace() rlogl(hue::Logger::Trace, "")
+  #define rlog(args) rlogl(hue::Logger::Debug, args)
 #endif
-#define rlogw(args) rlogl(rsms::Logger::Warning, args)
-#define rloge(args) rlogl(rsms::Logger::Error, args)
+#define rlogw(args) rlogl(hue::Logger::Warning, args)
+#define rloge(args) rlogl(hue::Logger::Error, args)
 
-#define rlogl(level, A) do { if (level >= rsms::Logger::currentLevel) { \
-  rsms::Logger::end(rsms::Logger::begin(level) << A, __FILE__, __LINE__); } } while(0)
+#define rlogl(level, A) do { if (level >= hue::Logger::currentLevel) { \
+  hue::Logger::end(hue::Logger::begin(level) << A, __FILE__, __LINE__); } } while(0)
 
 // ----------------------------------------------------------------------------
 
@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <iostream>
 
-namespace rsms {
+namespace hue {
 
 class Logger {
 public:
@@ -71,5 +71,5 @@ private:
   explicit Logger() {}
 };
 
-} // namespace rsms
-#endif // RSMS_LOGGER_H
+} // namespace hue
+#endif // HUE__LOGGER_H

@@ -1,6 +1,6 @@
 // A tokenizer produce tokens parsed from a ByteInput
-#ifndef RSMS_TOKENIZER_H
-#define RSMS_TOKENIZER_H
+#ifndef HUE__TOKENIZER_H
+#define HUE__TOKENIZER_H
 
 #include "../fastcmp.h"
 #include "../Logger.h"
@@ -16,7 +16,7 @@
 
 #include <assert.h>
 
-namespace rsms {
+namespace hue {
 
 
 static inline uint32_t _strtouint32(const char *pch, int radix) {
@@ -422,7 +422,7 @@ public:
               token_.length = LEN; \
               token_.type = Token::TYPE; \
               nextChar(LEN); } while(0)
-            #define _i32CMP(LEN, ...) (futureCharCount() >= LEN && rsms_i32cmp##LEN(datav, __VA_ARGS__))
+            #define _i32CMP(LEN, ...) (futureCharCount() >= LEN && hue_i32cmp##LEN(datav, __VA_ARGS__))
             #define i32CMP_then_CONSUME_SYMBOL(TYPE, LEN, ...) (_i32CMP(LEN, __VA_ARGS__)) CONSUME_SYMBOL(TYPE, LEN)
 
                  if i32CMP_then_CONSUME_SYMBOL(If,           2, 'i','f');
@@ -504,6 +504,6 @@ public:
 };
 
 
-} // namespace rsms
+} // namespace hue
 
-#endif // RSMS_TOKENIZER_H
+#endif // HUE__TOKENIZER_H

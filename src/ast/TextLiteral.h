@@ -1,9 +1,9 @@
-#ifndef RSMS_AST_TEXT_LITERAL_H
-#define RSMS_AST_TEXT_LITERAL_H
+#ifndef HUE__AST_TEXT_LITERAL_H
+#define HUE__AST_TEXT_LITERAL_H
 #include "Expression.h"
 #include "../utf8/checked.h"
 
-namespace rsms { namespace ast {
+namespace hue { namespace ast {
 
 class TextLiteral : public Expression {
 public:
@@ -45,5 +45,5 @@ private:
   Text text_;
 };
 
-}} // namespace rsms.ast
-#endif // RSMS_AST_TEXT_LITERAL_H
+}} // namespace hue.ast
+#endif // HUE__AST_TEXT_LITERAL_H

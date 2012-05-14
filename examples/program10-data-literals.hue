@@ -1,0 +1,8 @@
+WriteData = extern _ZN3hue12stdout_writeEPNS_10ByteArray_E (data [Byte])
+WriteText = extern _ZN3hue12stdout_writeEPNS_5Text_E (text [Char])
+#WriteData = extern hue_stdout_write (data [Byte])
+#WriteText = extern hue_stdout_write_text (text [Char])
+data1 = 'Hello World\n' # T = [Byte]
+text1 = "Hello World\n" # T = [Char]
+WriteData data1
+WriteText text1

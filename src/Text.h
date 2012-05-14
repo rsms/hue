@@ -1,14 +1,14 @@
-#ifndef RSMS_COVE_TEXT_H
-#define RSMS_COVE_TEXT_H
+#ifndef _HUE_TEXT_INCLUDED
+#define _HUE_TEXT_INCLUDED
 
-#include "utf8/checked.h"
+#include <hue/utf8/checked.h>
 
 #include <string>
 #include <istream>
 #include <vector>
 #include <stdint.h>
 
-namespace rsms {
+namespace hue {
 
 // Represents a Unicode character (or "codepoint" if you will)
 typedef uint32_t UChar;
@@ -128,10 +128,10 @@ public:
 
 extern const UChar NullChar;
 
-} // namespace rsms
+} // namespace hue
 
 // std::ostream operator so we can write Text objects to an ostream (as UTF-8)
-inline static std::ostream& operator<< (std::ostream& os, const rsms::Text& text) {
+inline static std::ostream& operator<< (std::ostream& os, const hue::Text& text) {
   return os << text.toString();
 }
 
@@ -141,4 +141,4 @@ inline static std::ostream& operator<< (std::ostream& os, const rsms::Text& text
 //   return lhs;
 // }
 
-#endif // RSMS_COVE_TEXT_H
+#endif // _HUE_TEXT_INCLUDED

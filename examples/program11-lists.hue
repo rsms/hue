@@ -1,0 +1,174 @@
+#listOfBools [Bool] = []
+listOfInts = [123 456 789]
+
+list2 = (cat listOfInts [100 200 300])
+#listOfText = ["Foo" "Bar"] # T = [[Char]]
+
+struct ListLink {
+  T value
+  struct ListLink* next
+}
+a = [100] => ListLink@1 { 100, 0 }
+b = [200] => ListLink@2 { 200, 0 }
+c = cat a b => ListLink@3 { 100, &b }
+d = [300, 400] => ListLink@5 { 300, ListLink@4 { 400, 0 } }
+c = cat c d => ListLink@6 { 100, &b }
+# ----------
+List {
+  List* prev
+  T value
+  List* next
+}
+a = [1 2 3] =>
+  a2 = List{ &a1, 3, nil }
+  a1 = List{ &a0, 2, &a2 }
+  a  = List{ nil, 1, &a1 } # T = Int
+  
+b = [4 5]   => List{ 2, 4, 5 }    # T = Int
+c = cat a b => List{ 2, &a, &b }  # T = List*
+d = [6 7]   => List{ 2, 6, 7 }    # T = Int
+e = cat c d => List{ 2, &c, &d }  # T = List*
+
+f = for item in e:
+  item + 100
+
+for_func = ^(L): if ((L type) == List) ..
+# ----------
+List {
+  i32 count
+  T value, ...
+}
+
+a = [1 2 3] => List{ 3, 1, 2, 3 }
+b = [4 5]   => List{ 2, 4, 5 }
+c = cat a b => List{ 5, 1, 2, 3, 4, 5 } # copy :(
+d = [6 7]   => List{ 2, 6, 7 }
+e = cat c d => List{ 2, &c, &d }
+# ------------
+# Lists are always constant (but values themselves may be mutable) and has values or a diffptr.
+# See: http://www.linuxjournal.com/article/6828 "A Memory-Efficient Doubly Linked List"
+# Empty list = [] = ( length==0 && ptrdiff==nil )
+# Length = list:length + ()
+List {
+  List* ptrdiff
+  i64   length
+  T     value, ...
+}
+c = [] => { nil, 0 }
+a = [1 2 3] => { nil, 3, 1, 2, 3 }
+b = [4 5]   => { nil, 2, 4, 5 }
+c = a & b => { a XOR b, 0 }
+d = [6 7]   => { nil, 2, 6, 7 }
+e = c & d => { c XOR d, 0 }
+f = [8 9] & e => { nil XOR e, 2, 8, 9 }  # constant folding
+g = [1 2 3] & [4 5 6] => { nil, 6, 1, 2, 3, 4, 5, 6 }  # constant folding
+h = f & [10 11] => { f XOR nil, 2, 10, 11 }
+# Becomes quite expensive to iterate h, since we would need to first perform an ascent
+# to the root (a), keep state of that ascent, then iterate forward. Maybe it's acceptable.
+# ------------
+# Second take on the above. Adds 64 bit per link, but makes forward iteration constant
+# complexity. Slightly more expensive on insert.
+List {
+  List* header
+  List* ptrdiff
+  i64   length
+  T     value, ...
+}
+_ = [] => { self, nil, 0 }
+a = [1 2 3] => { self, nil, 3, 1, 2, 3 }
+b = [4 5]   => { self, nil, 2, 4, 5 }
+c = a & b => { a:head, a XOR b, 0 }
+d = [6 7]   => { self, nil, 2, 6, 7 }
+e = c & d => { c:head, c XOR d, 0 }
+f = [8 9] & e => { self, nil XOR e, 2, 8, 9 }
+g = [1 2 3] & [4 5 6] => { self, nil, 6, 1, 2, 3, 4, 5, 6 }
+h = f & [10 11] => { f:head, f XOR nil, 2, 10, 11 }
+# - To start iterate L, simply start at L:head||L and traverse.
+# - To start iterating backwards on L, start at end of L (item L:length-1)
+#   and traverse ptrdiff (prev XOR).
+
+#
+# ------------
+# Map? LUA style?
+Map {
+}
+a = [1 2 3] = {0:1 1:2 2:3}
+b = {one:1 two:2 three:3}
+a[0] = b[one] = 1
+
+# ------------
+# Doubly-linked list
+List {
+  T     value
+  List* prev
+  List* next
+}
+a = [1 2 3] =>
+  a3 = { 3, nil, nil }
+  a2 = { 2, &a3, nil }
+  a1 = { 1, &a2, nil }
+  a3:prev = &a2
+  a2:prev = &a1
+  a1
+
+b = [4 5] =>
+  b2 = { 2, nil, nil }
+  b1 = { 1, b2 XOR nil }
+  b2:ptrdiff = nil XOR b1
+  b1
+
+c = cat (tail a) b =>
+  a_end = tail a => ... # find last item in list a
+  a2 = copy a_end
+  b2 = copy b
+  a_tail:ptrdiff = 
+  
+
+c = cat a b => List{ 0, a XOR b }
+d = [6 7]   => List{ 2, 6, 7 }
+e = cat c d => List{ 0, c XOR d }
+
+# ------------
+# Lists are always constant (but values themselves may be mutable) and has a diffptr.
+# See: http://www.linuxjournal.com/article/6828 "A Memory-Efficient Doubly Linked List"
+
+List {
+  T     value
+  List* ptrdiff
+}
+a = [1 2 3] =>
+  a3 = { 3, nil }
+  a2 = { 2, nil }
+  a1 = { 1, a2 XOR nil }
+  a2:ptrdiff = a3 XOR a1
+  a3:ptrdiff = nil XOR a2
+  a1
+
+b = [4 5] =>
+  b2 = { 2, nil }
+  b1 = { 1, b2 XOR nil }
+  b2:ptrdiff = nil XOR b1
+  b1
+
+c = cat (tail a) b =>
+  a_end = tail a => ... # find last item in list a
+  a2 = copy a_end
+  b2 = copy b
+  a_tail:ptrdiff = 
+  
+
+c = cat a b => List{ 0, a XOR b }
+d = [6 7]   => List{ 2, 6, 7 }
+e = cat c d => List{ 0, c XOR d }
+# e..
+#   c..
+#     a [1 2 3]
+#     b [4 5]
+#   d [6 7]
+#
+
+
+
+
+
+

@@ -1,9 +1,11 @@
 // Base class for all expression nodes.
-#ifndef RSMS_AST_NODE_H
-#define RSMS_AST_NODE_H
-#include <sstream>
+#ifndef HUE__AST_NODE_H
+#define HUE__AST_NODE_H
 
-namespace rsms { namespace ast {
+#include <sstream>
+#include <vector>
+
+namespace hue { namespace ast {
 
 inline static void NodeToStringHeader(int level, std::ostream& ss) {
   if (level > 0) {
@@ -11,6 +13,9 @@ inline static void NodeToStringHeader(int level, std::ostream& ss) {
     for (int i=level; --i; ) ss << "  ";
   }
 }
+
+class Node;
+typedef std::vector<Node*> NodeList;
 
 class Node {
 public:
@@ -28,6 +33,7 @@ public:
     TBoolLiteral,
     TDataLiteral,
     TTextLiteral,
+    TListLiteral,
     
     TSymbol,
     TAssignment,
@@ -53,5 +59,5 @@ private:
   const NodeTypeID type_;
 };
 
-}} // namespace rsms.ast
-#endif // RSMS_AST_NODE_H
+}} // namespace hue.ast
+#endif // HUE__AST_NODE_H

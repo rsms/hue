@@ -15,7 +15,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <fcntl.h>
 
-using namespace rsms;
+using namespace hue;
 
 int main(int argc, char **argv) {
   
@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
   
   // Write human-readable IR to file "out.ll"
   std::string errInfo;
-  llvm::raw_fd_ostream os("out.ll", errInfo);
+  llvm::raw_fd_ostream os(argc > 2 ? argv[2] : "out.hue.ll", errInfo);
   if (os.has_error()) {
     std::cerr << "Failed to open 'out.ll' file for output. " << errInfo << std::endl;
     return 1;

@@ -1,1 +1,1 @@
-}} // namespace rsms::codegen
+}} // namespace hue::codegen

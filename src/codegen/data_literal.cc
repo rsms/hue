@@ -25,7 +25,10 @@ Value *Visitor::codegenDataLiteral(const ast::DataLiteral *dataLit) {
       StringRef(reinterpret_cast<const char*>(dataLit->data().data()), dataLit->data().size()),
       addNull);
   
-  return createArray(arrayV, "data");
+  GlobalVariable* arrayGV = createArray(arrayV, "data");
+  
+  Type* T = PointerType::get(getArrayStructType(builder_.getInt8Ty()), 0);
+  return builder_.CreatePointerCast(arrayGV, T);
   
   // wrapConstantArrayValueInGEP:
   // Value *zero = ConstantInt::get(Type::getInt32Ty(getGlobalContext()), 0);

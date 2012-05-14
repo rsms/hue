@@ -14,7 +14,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/ADT/ArrayRef.h>
 
-namespace rsms { namespace codegen {
+namespace hue { namespace codegen {
 using namespace llvm;
 
 

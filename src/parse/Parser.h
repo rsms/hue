@@ -1,6 +1,6 @@
 // Reads from a TokenBuffer and builds an AST, possibly producing warnings and errors
-#ifndef RSMS_PARSER_H
-#define RSMS_PARSER_H
+#ifndef HUE__PARSER_H
+#define HUE__PARSER_H
 
 #include "TokenBuffer.h"
 #include "../Logger.h"
@@ -11,6 +11,7 @@
 #include "../ast/Conditional.h"
 #include "../ast/DataLiteral.h"
 #include "../ast/TextLiteral.h"
+#include "../ast/ListLiteral.h"
 
 #include <vector>
 
@@ -23,7 +24,7 @@
 #endif
 
 
-namespace rsms {
+namespace hue {
 using namespace ast;
 
 
@@ -799,6 +800,7 @@ public:
     }
   }
   
+  // ParenExpression = '(' Expression ')'
   Expression *parseParen() {
     DEBUG_TRACE_PARSER;
     nextToken(); // eat '('
@@ -816,6 +818,35 @@ public:
     
     return expression;
   }
+  
+  
+  // ListLiteral = '[' ListItem? (SP+ ListItem)* ']'
+  // ListItem = Expression
+  // -- All ListItems need to be of the same type
+  Expression *parseListLiteral() {
+    DEBUG_TRACE_PARSER;
+    nextToken(); // eat '['
+    
+    ListLiteral* listLit = new ListLiteral();
+    
+    ScopeFlag<bool> sf0(&isParsingCallArguments_, false);
+    
+    while (token_.type != Token::RightSqBracket) {
+      Expression* expression = parseExpression();
+      rlog("Parsed expression " << expression->toString());
+      if (expression == 0) return 0;
+      listLit->addNode(expression);
+    }
+    
+    // Expect terminating ']'
+    if (token_.type != Token::RightSqBracket) {
+      return error("Unexpected token when expecting ']'");
+    }
+    nextToken(); // eat ']'
+    
+    return listLit;
+  }
+  
   
   // IntLiteral = '0' | [1-9][0-9]*
   Expression *parseIntLiteral() {
@@ -887,10 +918,10 @@ public:
 
       case Token::External:
         return parseExternalFunction();
-
       case Token::LeftParen:
         return parseParen();
-      
+      case Token::LeftSqBracket:
+        return parseListLiteral();
       case Token::If:
         return parseIfExpr();
 
@@ -1001,6 +1032,6 @@ public:
   }
 };
 
-} // namespace rsms
+} // namespace hue
 
-#endif // RSMS_PARSER_H
+#endif // HUE__PARSER_H

@@ -1,10 +1,10 @@
-#ifndef RSMS_AST_VARIABLE_DEFINITION_H
-#define RSMS_AST_VARIABLE_DEFINITION_H
+#ifndef HUE__AST_VARIABLE_DEFINITION_H
+#define HUE__AST_VARIABLE_DEFINITION_H
 #include "Node.h"
 #include "Type.h"
 #include <vector>
 #include <string>
-namespace rsms { namespace ast {
+namespace hue { namespace ast {
 
 class Variable : public Node {
 public:
@@ -36,5 +36,5 @@ private:
 
 typedef std::vector<Variable*> VariableList;
 
-}} // namespace rsms::ast
-#endif  // RSMS_AST_VARIABLE_DEFINITION_H
+}} // namespace hue::ast
+#endif  // HUE__AST_VARIABLE_DEFINITION_H

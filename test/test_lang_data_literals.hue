@@ -1,0 +1,7 @@
+WriteData = extern _ZN3hue12stdout_writeEPNS_6DataS_E (data [Byte])
+WriteText = extern _ZN3hue12stdout_writeEPNS_6TextS_E (text [Char])
+
+data1 = 'Hello World\n' # is Data
+text1 = "Hello World\n" # is Text
+WriteData data1
+WriteText text1

@@ -1,10 +1,10 @@
-#ifndef RSMS_AST_CONDITIONALS_H
-#define RSMS_AST_CONDITIONALS_H
+#ifndef HUE__AST_CONDITIONALS_H
+#define HUE__AST_CONDITIONALS_H
 #include "Expression.h"
 #include "Block.h"
 #include <vector>
 
-namespace rsms { namespace ast {
+namespace hue { namespace ast {
 
 class Conditional : public Expression {
 public:
@@ -49,5 +49,5 @@ private:
   Block* defaultBlock_;
 };
 
-}} // namespace rsms.ast
-#endif // RSMS_AST_CONDITIONALS_H
+}} // namespace hue.ast
+#endif // HUE__AST_CONDITIONALS_H

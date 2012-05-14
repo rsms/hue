@@ -1,0 +1,9 @@
+# Boolean values and type
+WriteBool = extern _ZN3hue12stdout_writeEb (v Bool)
+
+a = true
+b Bool = false
+boolsAreEq = ^(a, b Bool) Bool: a == b
+e = boolsAreEq a b
+
+WriteBool e # Should write "false" to stdout

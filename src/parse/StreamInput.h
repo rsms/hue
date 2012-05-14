@@ -1,11 +1,11 @@
 // A ByteInput implementation that reads from a standard input stream
-#ifndef RSMS_STREAM_INPUT_H
-#define RSMS_STREAM_INPUT_H
+#ifndef HUE__STREAM_INPUT_H
+#define HUE__STREAM_INPUT_H
 
 #include "ByteInput.h"
 #include <iostream>
 
-namespace rsms {
+namespace hue {
 
 template <size_t BufferSize = 4096>
 class StreamInput : public ByteInput {
@@ -137,6 +137,6 @@ public:
   }
 };
 
-} // namespace rsms
+} // namespace hue
 
-#endif // RSMS_STREAM_INPUT_H
+#endif // HUE__STREAM_INPUT_H

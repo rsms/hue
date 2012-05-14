@@ -1,10 +1,10 @@
-#ifndef RSMS_AST_TYPE_DECLARATION_H
-#define RSMS_AST_TYPE_DECLARATION_H
+#ifndef HUE__AST_TYPE_DECLARATION_H
+#define HUE__AST_TYPE_DECLARATION_H
 #include "../Text.h"
 #include <string>
 #include <vector>
 
-namespace rsms { namespace ast {
+namespace hue { namespace ast {
 
 class ArrayType;
 
@@ -66,5 +66,5 @@ private:
 
 typedef std::vector<Type*> TypeList;
 
-}} // namespace rsms::ast
-#endif  // RSMS_AST_TYPE_DECLARATION_H
+}} // namespace hue::ast
+#endif  // HUE__AST_TYPE_DECLARATION_H

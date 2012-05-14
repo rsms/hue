@@ -1,11 +1,11 @@
-#ifndef RSMS_DEBUG_TRACE_H
-#define RSMS_DEBUG_TRACE_H
+#ifndef HUE__DEBUG_TRACE_H
+#define HUE__DEBUG_TRACE_H
 
 #include <stdio.h>
 
 static volatile int g_DebugTrace_depth = 0;
 
-namespace rsms {
+namespace hue {
 
 class DebugTrace {
   const char *primary_;
@@ -27,8 +27,8 @@ public:
 
 
 #ifndef DEBUG_TRACE
-#define DEBUG_TRACE rsms::DebugTrace _DebugTrace_##__LINE__(__FUNCTION__, __FILE__, __LINE__)
+#define DEBUG_TRACE hue::DebugTrace _DebugTrace_##__LINE__(__FUNCTION__, __FILE__, __LINE__)
 #endif
 
-} // namespace rsms
-#endif // RSMS_DEBUG_TRACE_H
+} // namespace hue
+#endif // HUE__DEBUG_TRACE_H

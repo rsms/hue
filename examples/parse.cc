@@ -1,5 +1,8 @@
 // Parses a program into an Abstract Syntax Tree (AST).
-// clang++ -std=c++11 -o parse examples/parse.cc src/Text.cc src/Logger.cc && ./parse
+//
+// clang++ -std=c++11 -o build/example-parse examples/parse.cc \
+//   -Ibuild/include -Lbuild/lib -lhuert && build/example-parse
+//
 #include "../src/parse/FileInput.h"
 #include "../src/parse/Tokenizer.h"
 #include "../src/parse/TokenBuffer.h"
@@ -7,12 +10,12 @@
 
 #include <iostream>
 
-using namespace rsms;
+using namespace hue;
 
 int main(int argc, char **argv) {
   // Read input file
   Text textSource;
-  const char* filename = argc > 1 ? argv[1] : "examples/program1.txt";
+  const char* filename = argc > 1 ? argv[1] : "examples/program1.hue";
   if (!textSource.setFromUTF8FileContents(filename)) {
     std::cerr << "Failed to read file '" << filename << "'" << std::endl;
     return 1;

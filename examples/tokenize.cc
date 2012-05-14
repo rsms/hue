@@ -1,17 +1,20 @@
 // Tokenizes a program -- essentially reading lexical components.
-// clang++ -std=c++11 -o tokenize examples/tokenize.cc src/Text.cc src/Logger.cc && ./tokenize
+//
+// clang++ -std=c++11 -o build/example-tokenize examples/tokenize.cc \
+//   -Ibuild/include -Lbuild/lib -lhuert && build/example-tokenize
+//
 #include "../src/parse/Tokenizer.h"
 #include "../src/parse/TokenBuffer.h"
 #include "../src/parse/FileInput.h"
 
 #include <iostream>
 
-using namespace rsms;
+using namespace hue;
 
 int main(int argc, char **argv) {
   // Read input file
   Text textSource;
-  const char* filename = argc > 1 ? argv[1] : "examples/program1.txt";
+  const char* filename = argc > 1 ? argv[1] : "examples/program1.hue";
   if (!textSource.setFromUTF8FileContents(filename)) {
     std::cerr << "Failed to read file '" << filename << "'" << std::endl;
     return 1;

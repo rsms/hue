@@ -217,8 +217,8 @@ Value *Visitor::codegenExternalFunction(const ast::ExternalFunction* node) {
 Value *Visitor::codegenBlock(const ast::Block *block) {
   DEBUG_TRACE_LLVM_VISITOR;
   
-  const ast::Block::NodeList& nodes = block->nodes();
-  ast::Block::NodeList::const_iterator it1 = nodes.begin();
+  const ast::NodeList& nodes = block->nodes();
+  ast::NodeList::const_iterator it1 = nodes.begin();
   Value *lastValue = 0;
   for (; it1 < nodes.end(); it1++) {
     lastValue = codegen(*it1);

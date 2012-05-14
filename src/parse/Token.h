@@ -1,11 +1,11 @@
 // Represents the simplest parts of the language: lexical tokens
-#ifndef RSMS_TOKEN_H
-#define RSMS_TOKEN_H
+#ifndef HUE__TOKEN_H
+#define HUE__TOKEN_H
 
 #include "../Text.h"
 #include <string>
 
-namespace rsms {
+namespace hue {
 
 typedef struct {
   const char *name;
@@ -177,6 +177,6 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"End",                 0,0,0},
 };
 
-} // namespace rsms
+} // namespace hue
 
-#endif // RSMS_TOKEN_H
+#endif // HUE__TOKEN_H

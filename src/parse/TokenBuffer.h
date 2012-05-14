@@ -1,12 +1,12 @@
 // A buffer that reads tokens from a Tokenizer and keeps N historical
 // tokens around.
-#ifndef RSMS_TOKEN_BUFFER_H
-#define RSMS_TOKEN_BUFFER_H
+#ifndef HUE__TOKEN_BUFFER_H
+#define HUE__TOKEN_BUFFER_H
 
 #include "Token.h"
 #include "Tokenizer.h"
 
-namespace rsms {
+namespace hue {
 
 #define TokenBufferSize 16
 
@@ -60,6 +60,6 @@ public:
 };
 
 
-} // namespace rsms
+} // namespace hue
 
-#endif // RSMS_TOKEN_BUFFER_H
+#endif // HUE__TOKEN_BUFFER_H

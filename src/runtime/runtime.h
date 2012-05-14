@@ -1,22 +1,31 @@
-#ifndef RSMS_RUNTIME_H
-#define RSMS_RUNTIME_H
+#ifndef _HUE_RUNTIME_INCLUDED
+#define _HUE_RUNTIME_INCLUDED
+
+#include <hue/Text.h>
 
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 
+namespace hue {
+
 // Types
-typedef double   COFloat;
-typedef int64_t  COInt;
-typedef uint32_t COChar;
-typedef uint8_t  COByte;
-typedef struct COByteArray_ { COInt length; COByte data[0]; }* COByteArray;
-typedef struct COText_ { COInt length; COChar data[0]; }* COText;
+typedef double   Float;
+typedef int64_t  Int;
+// UChar is defined by Text.h
+typedef uint8_t  Byte;
+typedef bool     Bool;
+typedef struct DataS_ { Int length; Byte data[0]; }* DataS;
+typedef struct TextS_ { Int length; UChar data[0]; }* TextS;
 
-// Write raw data to stdout. Cove interface: cove_stdout_write(data [Byte])
-void cove_stdout_write(const COByteArray data);
+// Write a value to stdout. Mostly for testing and debugging.
+void stdout_write(const Bool v);     // _ZN3hue12stdout_writeEb
+void stdout_write(const Float v);    // _ZN3hue12stdout_writeEd
+void stdout_write(const Int v);      // _ZN3hue12stdout_writeEx
+void stdout_write(const UChar v);    // _ZN3hue12stdout_writeEj
+void stdout_write(const Byte v);     // _ZN3hue12stdout_writeEh
+void stdout_write(const DataS data); // _ZN3hue12stdout_writeEPNS_6DataS_E
+void stdout_write(const TextS data); // _ZN3hue12stdout_writeEPNS_6TextS_E
 
-// Write Unicode text to stdout. Cove interface: cove_stdout_write(data [Char])
-void cove_stdout_write(const COText data);
-
-#endif // RSMS_RUNTIME_H
+} // namespace hue
+#endif // _HUE_RUNTIME_INCLUDED

@@ -1,11 +1,11 @@
 // Baseclass for byte inputs, providing limited random access to a sequence of bytes
-#ifndef RSMS_BYTE_INPUT_H
-#define RSMS_BYTE_INPUT_H
+#ifndef HUE__BYTE_INPUT_H
+#define HUE__BYTE_INPUT_H
 
 #include <stdint.h>
 #include <stdlib.h>
 
-namespace rsms {
+namespace hue {
 
 class ByteInput {
 public:
@@ -23,6 +23,6 @@ public:
 
 static const uint8_t InputEnd = 0;
 
-} // namespace rsms
+} // namespace hue
 
-#endif // RSMS_BYTE_INPUT_H
+#endif // HUE__BYTE_INPUT_H

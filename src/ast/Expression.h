@@ -1,6 +1,6 @@
 // Expressions
-#ifndef RSMS_AST_EXPRESSION_H
-#define RSMS_AST_EXPRESSION_H
+#ifndef HUE__AST_EXPRESSION_H
+#define HUE__AST_EXPRESSION_H
 
 #include "Node.h"
 #include "Type.h"
@@ -10,7 +10,7 @@
 
 #include <vector>
 
-namespace rsms { namespace ast {
+namespace hue { namespace ast {
 
 // Base class for all expression nodes.
 class Expression : public Node {
@@ -186,5 +186,5 @@ private:
 };
 
 
-}} // namespace rsms::ast
-#endif // RSMS_AST_EXPRESSION_H
+}} // namespace hue::ast
+#endif // HUE__AST_EXPRESSION_H

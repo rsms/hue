@@ -1,5 +1,5 @@
-#ifndef RSMS_CODEGEN_LLVM_VISITOR_H
-#define RSMS_CODEGEN_LLVM_VISITOR_H
+#ifndef HUE__CODEGEN_LLVM_VISITOR_H
+#define HUE__CODEGEN_LLVM_VISITOR_H
 
 #define DEBUG_LLVM_VISITOR 1
 #if DEBUG_LLVM_VISITOR
@@ -34,7 +34,7 @@
 #include <llvm/Module.h>
 #include <llvm/Support/IRBuilder.h>
 
-namespace rsms { namespace codegen {
+namespace hue { namespace codegen {
 
 class Visitor {
   class BlockScope;
@@ -301,5 +301,5 @@ private:
   std::map<llvm::Type*, llvm::StructType*> arrayStructTypes_;
 };
 
-}} // namespace rsms::codegen
-#endif  // RSMS_CODEGEN_LLVM_VISITOR_H
+}} // namespace hue::codegen
+#endif  // HUE__CODEGEN_LLVM_VISITOR_H

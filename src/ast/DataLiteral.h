@@ -1,10 +1,10 @@
-#ifndef RSMS_AST_DATA_LITERAL_H
-#define RSMS_AST_DATA_LITERAL_H
+#ifndef HUE__AST_DATA_LITERAL_H
+#define HUE__AST_DATA_LITERAL_H
 #include "Expression.h"
 #include <string>
 #include <ctype.h>
 
-namespace rsms { namespace ast {
+namespace hue { namespace ast {
 
 class DataLiteral : public Expression {
 public:
@@ -41,5 +41,5 @@ private:
   ByteString data_;
 };
 
-}} // namespace rsms.ast
-#endif // RSMS_AST_DATA_LITERAL_H
+}} // namespace hue.ast
+#endif // HUE__AST_DATA_LITERAL_H
