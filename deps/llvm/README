@@ -1,0 +1,15 @@
+1. Grab LLVM sources:
+
+  svn checkout http://llvm.org/svn/llvm-project/llvm/tags/RELEASE_30/final src
+
+3. Run the magical configure.sh
+
+  ./configure.sh
+
+4. Build:
+
+  cd build
+  make -j
+
+5. LLVM should have been built into the "build" subdirectory and
+   installed in the "bin" subdirectory.

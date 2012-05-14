@@ -1,8 +1,13 @@
-build
-test/build
 *.a.s
 *.a
 *.o
 *.hue.ll
 *.hue.img
 *.
+
+build
+test/build
+
+deps/llvm/src
+deps/llvm/build
+deps/llvm/bin
