@@ -1,3 +1,6 @@
+// Copyright (c) 2012, Rasmus Andersson. All rights reserved. Use of this source
+// code is governed by a MIT-style license that can be found in the LICENSE file.
+
 // A buffer that reads tokens from a Tokenizer and keeps N historical
 // tokens around.
 #ifndef HUE__TOKEN_BUFFER_H

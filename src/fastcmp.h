@@ -1,5 +1,10 @@
+// Copyright (c) 2012, Rasmus Andersson. All rights reserved.
+// Use of this source code is governed by a MIT-style license that can be
+// found in the LICENSE file.
+//
 // Fast byte comparison. Inspired by Igor Sysoev's Nginx.
 // Works with LE systems that can handle 32-bit integers in one register.
+//
 #ifndef HUE__FASTCMP_H
 #define HUE__FASTCMP_H
 

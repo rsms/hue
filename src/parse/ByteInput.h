@@ -1,3 +1,6 @@
+// Copyright (c) 2012, Rasmus Andersson. All rights reserved. Use of this source
+// code is governed by a MIT-style license that can be found in the LICENSE file.
+
 // Baseclass for byte inputs, providing limited random access to a sequence of bytes
 #ifndef HUE__BYTE_INPUT_H
 #define HUE__BYTE_INPUT_H

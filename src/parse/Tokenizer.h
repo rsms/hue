@@ -1,3 +1,6 @@
+// Copyright (c) 2012, Rasmus Andersson. All rights reserved. Use of this source
+// code is governed by a MIT-style license that can be found in the LICENSE file.
+
 // A tokenizer produce tokens parsed from a ByteInput
 #ifndef HUE__TOKENIZER_H
 #define HUE__TOKENIZER_H

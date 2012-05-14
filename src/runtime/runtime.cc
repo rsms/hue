@@ -1,3 +1,6 @@
+// Copyright (c) 2012, Rasmus Andersson. All rights reserved. Use of this source
+// code is governed by a MIT-style license that can be found in the LICENSE file.
+
 //#define RT_TRACE printf("RT_TRACE: %s (%s:%d)\n", __PRETTY_FUNCTION__, __FILE__, __LINE__);
 #define RT_TRACE
 

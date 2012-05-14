@@ -1,3 +1,6 @@
+// Copyright (c) 2012, Rasmus Andersson. All rights reserved. Use of this source
+// code is governed by a MIT-style license that can be found in the LICENSE file.
+
 // Reads from a TokenBuffer and builds an AST, possibly producing warnings and errors
 #ifndef HUE__PARSER_H
 #define HUE__PARSER_H

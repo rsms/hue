@@ -1,3 +1,5 @@
+// Copyright (c) 2012, Rasmus Andersson. All rights reserved. Use of this source
+// code is governed by a MIT-style license that can be found in the LICENSE file.
 //
 // An immutable and persistent vector implementation inspired by Clojure's
 // Persistent Vector by Rich Hickey and the Scala equivalent by Daniel Spiewak.

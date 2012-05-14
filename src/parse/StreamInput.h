@@ -1,3 +1,6 @@
+// Copyright (c) 2012, Rasmus Andersson. All rights reserved. Use of this source
+// code is governed by a MIT-style license that can be found in the LICENSE file.
+
 // A ByteInput implementation that reads from a standard input stream
 #ifndef HUE__STREAM_INPUT_H
 #define HUE__STREAM_INPUT_H
