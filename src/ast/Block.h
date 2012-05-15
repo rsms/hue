@@ -33,6 +33,11 @@ public:
     ss << ")>";
     return ss.str();
   }
+
+  // TODO:
+  // virtual std::string toHueSource() const {
+  //   
+  // }
   
 private:
   NodeList nodes_;

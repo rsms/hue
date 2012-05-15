@@ -37,7 +37,7 @@ LD = clang
 CXXC = clang++
 
 # Compiler and Linker flags for all targets
-CFLAGS   += -Wall
+CFLAGS   += -Wall -g
 CXXFLAGS += -std=c++11 -fno-rtti
 LDFLAGS  +=
 XXLDFLAGS += -lc++ -lstdc++
@@ -46,7 +46,7 @@ XXLDFLAGS += -lc++ -lstdc++
 CFLAGS_RELEASE  := -O3 -DNDEBUG
 LDFLAGS_RELEASE :=
 # Compiler and Linker flags for debug targets
-CFLAGS_DEBUG    := -g -O0 #-gdwarf2
+CFLAGS_DEBUG    := -O0 #-gdwarf2
 LDFLAGS_DEBUG   :=
 
 # Build dir
@@ -141,20 +141,23 @@ test: test_object
 test: test_vector test_vector_perf
 test: test_lang
 
-make_test_build_dir:
+test_deps:
 	@mkdir -p $(test_build_dir)
 
-test_mangle: libhuert make_test_build_dir $(test_build_dir)/test_mangle
+test_lib_deps: libhuert test_deps
+
+test_mangle: test_lib_deps $(test_build_dir)/test_mangle
 	$(test_build_dir)/test_mangle
 
-test_object: libhuert make_test_build_dir $(test_build_dir)/test_object
+test_object: test_lib_deps $(test_build_dir)/test_object
 	$(test_build_dir)/test_object
 
-test_vector: libhuert make_test_build_dir $(test_build_dir)/test_vector
+test_vector: test_lib_deps $(test_build_dir)/test_vector
 	$(test_build_dir)/test_vector
 
+test_vector_perf: test_lib_deps
 test_vector_perf: CFLAGS += $(CFLAGS_RELEASE)
-test_vector_perf: libhuert make_test_build_dir $(test_build_dir)/test_vector_perf
+test_vector_perf: $(test_build_dir)/test_vector_perf
 	$(test_build_dir)/test_vector_perf 100
 	$(test_build_dir)/test_vector_perf 100000
 	$(test_build_dir)/test_vector_perf 1000000
@@ -167,11 +170,9 @@ test_vector_perf: libhuert make_test_build_dir $(test_build_dir)/test_vector_per
 #	./out.a
 
 # Hue language tests
-test_lang: libhuert make_test_build_dir \
-	         test_lang_data_literals \
-				   test_lang_bools
+test_lang_deps: test_lib_deps
 
-test_lang_deps: libhuert make_test_build_dir
+test_lang: test_lang_data_literals test_lang_bools test_lang_funcs
 
 test_lang_data_literals: test_lang_deps $(test_build_dir)/test_lang_data_literals.hue.img
 	bash -c '$(test_build_dir)/test_lang_data_literals.hue.img | grep "Hello World" >/dev/null || exit 1'
@@ -247,4 +248,4 @@ $(rt_object_dir)/%.o: %.cc
 
 
 
-.PHONY: all hue libhuert copy_rt_headers test test_lang test_lang_deps
+.PHONY: all hue libhuert copy_rt_headers test test_lang test_lang_deps test_lib_deps

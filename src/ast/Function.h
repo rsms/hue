@@ -70,6 +70,38 @@ public:
     return ss.str();
   }
   
+  
+  virtual std::string toHueSource() const {
+    std::ostringstream ss;
+    ss << "^";
+    
+    if (args_ && !args_->empty()) {
+      ss << '(';
+      VariableList::const_iterator it1;
+      it1 = args_->begin();
+      for (; it1 != args_->end();) {
+        ss << (*it1)->type()->toHueSource();
+        ++it1;
+        if (it1 != args_->end()) ss << ", ";
+      }
+      ss << ')';
+    }
+    
+    if (returnTypes_ && !returnTypes_->empty()) {
+      ss << ' ';
+      TypeList::const_iterator it2;
+      it2 = returnTypes_->begin();
+      for (; it2 != returnTypes_->end();) {
+        ss << (*it2)->toHueSource();
+        ++it2;
+        if (it2 != returnTypes_->end()) ss << ", ";
+      }
+    }
+    
+    return ss.str();
+  }
+  
+  
 private:
   VariableList *args_;
   TypeList *returnTypes_;

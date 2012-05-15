@@ -18,7 +18,7 @@
 
 #include <vector>
 
-#define DEBUG_PARSER 1
+#define DEBUG_PARSER 0
 #if DEBUG_PARSER
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_PARSER DEBUG_TRACE
@@ -439,8 +439,6 @@ public:
     else error("Unexpected token while expecting type identifier");
     
     nextToken(); // eat token
-    
-    if (T) rlog("Parsed type: " << T->toString());
     
     return T;
   }

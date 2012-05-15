@@ -9,6 +9,9 @@
 #include <string>
 namespace hue { namespace ast {
 
+class Variable;
+typedef std::vector<Variable*> VariableList;
+
 class Variable : public Node {
 public:
   Variable(bool isMutable, const Text& name, Type *type)
@@ -34,13 +37,25 @@ public:
        << '>';
     return ss.str();
   }
+  
+  // Helper function to create a type list from a var list
+  static void typeListFromVariableList(TypeList& types, const VariableList& vars) {
+    types.reserve(vars.size());
+    ast::VariableList::const_iterator it = vars.begin();
+    for (; it != vars.end(); ++it) {
+      Type* T = (*it)->type();
+      types.push_back(T ? T : new Type(Type::Unknown));
+    }
+  }
+  
 private:
   bool isMutable_;
   Text name_;
   Type *type_;
 };
 
-typedef std::vector<Variable*> VariableList;
+
+
 
 }} // namespace hue::ast
 #endif  // HUE__AST_VARIABLE_DEFINITION_H

@@ -4,68 +4,209 @@
 #include "_VisitorImplHeader.h"
 
 // Returns true if V can be used as the target in a call instruction
-static FunctionType* functionTypeForValue(Value* V) {
-  if (V == 0) return 0;
-  
-  Type* T = V->getType();
-  
-  if (T->isFunctionTy()) {
-    return static_cast<FunctionType*>(T);
-  } else if (   T->isPointerTy()
-             && T->getNumContainedTypes() == 1
-             && T->getContainedType(0)->isFunctionTy() ) {
-    return static_cast<FunctionType*>(T->getContainedType(0));
-  } else {
-    return 0;
-  }
-}
-
-// Returns true if V can be used as the target in a call instruction
 inline static bool valueIsCallable(Value* V) {
-  return !!functionTypeForValue(V);
+  return !!Visitor::functionTypeForValue(V);
+}
+
+std::string Visitor::formatFunctionCandidateErrorMessage(const ast::Call* node,
+                                                         const FunctionSymbolList& candidateFuncs,
+                                                         CandidateError error) const
+{
+  std::string utf8calleeName = node->calleeName().UTF8String();
+  std::ostringstream ss;
+  
+  if (error == CandidateErrorArgCount) {
+    ss << "No function matching call to ";
+  } else if (error == CandidateErrorArgTypes) {
+    ss << "No function with arguments matching call to ";
+  } else if (error == CandidateErrorReturnTypes) {
+    ss << "No function with result matching call to ";
+  } else if (error == CandidateErrorAmbiguous) {
+    ss << "Ambiguous function call to ";
+  } else {
+    ss << "No viable function for call to ";
+  }
+  
+  // TODO: Proper toHueSource() repr here:
+  ss << utf8calleeName << "/" << node->arguments().size() << ". ";
+  
+  if (error == CandidateErrorArgCount) {
+    ss << "Did you mean to call any of these functions?";
+  } else if (error == CandidateErrorReturnTypes) {
+    ss << "Express what type of result you expect. Available functions:";
+  } else {
+    ss << "Candidates are:";
+  }
+  
+  ss << std::endl;
+  FunctionSymbolList::const_iterator it2 = candidateFuncs.begin();
+  for (; it2 != candidateFuncs.end(); ++it2) {
+    ss << "  " << utf8calleeName << ' ' << (*it2).hueType->toHueSource() << std::endl;
+  }
+  
+  return ss.str();
 }
 
 
-Value *Visitor::codegenCall(const ast::Call* node) {
+Value *Visitor::codegenCall(const ast::Call* node, ast::TypeList* expectedReturnTypes/* = 0*/) {
   DEBUG_TRACE_LLVM_VISITOR;
   
-  // Find value that the symbol references.
-  Value* targetV = resolveSymbol(node->calleeName());
-  if (targetV == 0) return 0;
+  // Look up a list of matching function symbols
+  FunctionSymbolList candidateFuncs = lookupFunctionSymbols(node->calleeName());
   
-  // Check type (must be a function) and get FunctionType in one call.
-  FunctionType* FT = functionTypeForValue(targetV);
-  if (!FT) return error("Trying to call something that is not a function");
-
-  // Local ref to input arguments, for our convenience.
-  const ast::Call::ArgumentList& inputArgs = node->arguments();
-  
-  // Check arguments.
-  if (static_cast<size_t>(FT->getNumParams()) != inputArgs.size()) {
-    return error("Incorrect number of arguments passed to function call");
+  // No symbol?
+  if (candidateFuncs.empty()) {
+    // TODO: We could take all known symbols, order them by edit distance and suggest
+    //       the top N (N is perhaps controlled by a quality threshold) symbol names.
+    return error(std::string("Unknown symbol \"") + node->calleeName().UTF8String() + "\"");
   }
+  
+  // Local ref to input arguments, for our convenience.
+  const ast::Call::ArgumentList& arguments = node->arguments();
+  
+  // Filter out functions that take a different number of arguments
+  FunctionSymbolList::const_iterator it = candidateFuncs.begin();
+  FunctionSymbolList candidateFuncsMatchingArgCount;
+  for (; it != candidateFuncs.end(); ++it) {
+    if (static_cast<size_t>((*it).type->getNumParams()) == arguments.size())
+      candidateFuncsMatchingArgCount.push_back(*it);
+  }
+  
+  // No candidates with the same number of arguments?
+  if (candidateFuncsMatchingArgCount.empty()) {
+    return error(formatFunctionCandidateErrorMessage(node, candidateFuncs, CandidateErrorArgCount));
+  }
+  // TODO: If candidateFuncs.size() == 1 here, we can take some shortcuts, perhaps.
+  
+  // Now, we pause the function candidate selection for a little while and
+  // visit the arguments. We need to do this in order to know the types of
+  // the arguments. The types need to be resolved in order for us to be able
+  // to find a matching function candidate.
 
   // Build argument list by codegen'ing all input variables
   std::vector<Value*> argValues;
-  ast::Call::ArgumentList::const_iterator inIt = inputArgs.begin();
-  FunctionType::param_iterator ftIt = FT->param_begin();
-  unsigned i = 0;
-  for (; inIt < inputArgs.end(); ++inIt, ++ftIt, ++i) {
-    // First, codegen the input value
+  ast::Call::ArgumentList::const_iterator inIt = arguments.begin();
+  for (; inIt != arguments.end(); ++inIt) {
+    // Codegen the input value and store it
     Value* inputV = codegen(*inIt);
     if (inputV == 0) return 0;
-    
-    // Cast input value to argument type if needed
-    Type* expectedT = *ftIt;
-    inputV = castValueTo(inputV, expectedT);
-    if (inputV == 0)
-      return error(R_FMT("Invalid type for argument " << i << " in call to " << node->calleeName()));
-    
     argValues.push_back(inputV);
   }
   
+  // Find a function that matches the arguments (TODO: and result type(s))
+  FunctionSymbolList::const_iterator it2 = candidateFuncsMatchingArgCount.begin();
+  FunctionSymbolList candidateFuncsMatchingTypes;
+  for (; it2 != candidateFuncsMatchingArgCount.end(); ++it2) {
+    FunctionType* candidateFT = (*it2).type;
+    size_t i = 0;
+    FunctionType::param_iterator ftPT = candidateFT->param_begin();
+    bool allTypesMatch = true;
+    assert(argValues.size() == candidateFT->getNumParams());
+    
+    // Check each argument type
+    for (; ftPT != candidateFT->param_end(); ++ftPT, ++i) {
+      Type* argT = argValues[i]->getType();
+      Type* expectT = *ftPT;
+      
+      // Unless the types are equal, remove the candidate function from the list and
+      // stop checking types.
+      if (argT != expectT) { // a better cmp, e.g. "isCompatible"
+        allTypesMatch = false;
+        break;
+      }
+    }
+    
+    // If all argument types matched, this is a viable candidate
+    if (allTypesMatch)
+      candidateFuncsMatchingTypes.push_back(*it2);
+  }
+  
+  // No candidates?
+  if (candidateFuncsMatchingTypes.empty()) {
+    return error(formatFunctionCandidateErrorMessage(node, candidateFuncsMatchingArgCount,
+        CandidateErrorArgTypes));
+  }
+  
+  
+  // We will later store the selected candidate here
+  Value* targetV = 0;
+  FunctionType* targetFT = 0;
+
+  
+  // If we have some expected return types, try to use that information to narrow down our
+  // list of candidates.
+  if (expectedReturnTypes != 0) {
+
+    // We currently don't support more than one return value
+    if (expectedReturnTypes->size() > 1) {
+      return error("NOT IMPLEMENTED: Support for multiple return values");
+    }
+    
+    // Reduce our list of candidates according to expected return types
+    FunctionSymbolList candidateFuncsMatchingReturns;
+    FunctionSymbolList::const_iterator it3 = candidateFuncsMatchingTypes.begin();
+    for (; it3 != candidateFuncsMatchingTypes.end(); ++it3) {
+
+      // Get the list types that the candidate returns
+      ast::TypeList* candidateReturnTypes = (*it3).hueType->returnTypes();
+      
+      // Number of results must match, or we ignore this candidate
+      if (   (candidateReturnTypes == 0 && expectedReturnTypes->size() != 0)
+          || (candidateReturnTypes->size() != expectedReturnTypes->size()) ) {
+        continue; // ignore candidate
+      }
+      
+      if (expectedReturnTypes->empty()) {
+        // Expects no result and candidate does not return anything
+        if (candidateReturnTypes == 0 || candidateReturnTypes->empty()) {
+          candidateFuncsMatchingReturns.push_back(*it3);
+        }
+      } else if (candidateReturnTypes != 0) {
+        // Compare the return types
+        ast::Type* expectedHueT = (*expectedReturnTypes)[0];
+        ast::Type* candidateHueT = (*candidateReturnTypes)[0];
+        
+        if (expectedHueT->typeID() == ast::Type::Unknown && candidateFuncsMatchingTypes.size() == 1) {
+          // Expected type should be inferred and we have only a single candidate.
+          // This means that we chose this candidate and whatever whats its type inferred will
+          // do so based on whatever this candidate returns.
+          candidateFuncsMatchingReturns.push_back(*it3);
+
+        } else if (candidateHueT->isEqual(*expectedHueT)) {
+          // The return types are equal.
+          candidateFuncsMatchingReturns.push_back(*it3);
+        }
+      }
+      
+    }
+    
+    // Did we find a single candidate?
+    if (candidateFuncsMatchingReturns.size() == 1) {
+      targetV = candidateFuncsMatchingReturns[0].value;
+      targetFT = candidateFuncsMatchingReturns[0].type;
+    } else if (candidateFuncsMatchingReturns.size() == 0) {
+      return error(formatFunctionCandidateErrorMessage(node, candidateFuncsMatchingTypes,
+          CandidateErrorReturnTypes));
+    } else {
+      return error(formatFunctionCandidateErrorMessage(node, candidateFuncsMatchingTypes,
+          CandidateErrorAmbiguous));
+    }
+    
+  } else {
+    // We don't have any hints about expected return values to go on.
+    // If the have a single candidate, let's use that. Otherwise it's an error.
+    if (candidateFuncsMatchingTypes.size() == 1) {
+      targetV = candidateFuncsMatchingTypes[0].value;
+      targetFT = candidateFuncsMatchingTypes[0].type;
+    } else {
+      return error(formatFunctionCandidateErrorMessage(node, candidateFuncsMatchingTypes,
+          CandidateErrorAmbiguous));
+    }
+  }
+
+  
   // Create call instruction
-  if (FT->getReturnType()->isVoidTy()) {
+  if (targetFT->getReturnType()->isVoidTy()) {
     builder_.CreateCall(targetV, argValues);
     return ConstantInt::getFalse(getGlobalContext());
   } else {

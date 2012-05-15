@@ -42,16 +42,23 @@ void Visitor::dumpBlockSymbols() {
 
 
 // Returns a module-global uniqe mangled name rooted in *name*
-std::string Visitor::uniqueMangledName(const Text& name) const {
+/*std::string Visitor::uniqueMangledName(const std::string& name) const {
+  std::string mname = name;
+  while (module_->getNamedValue(mname) != 0 || module_->getNamedGlobal(mname) != 0) {
+    char buf[12]; snprintf(buf, 12, "__%d", i);
+    mname = 
+    
+  }
+  
   std::string mname;
   int i = 0;
   while (1) {
     // Take the LHS var name and use it for the function name
     if (i > 0) {
       char buf[12]; snprintf(buf, 12, "$$%d", i);
-      mname = mangledName(name + buf);
+      mname = mangledName(utf8name + buf);
     } else {
-      mname = mangledName(name);
+      mname = mangledName(utf8name);
     }
     if (module_->getNamedValue(mname) == 0 && module_->getNamedGlobal(mname) == 0) {
       // We got a unique name
@@ -60,7 +67,7 @@ std::string Visitor::uniqueMangledName(const Text& name) const {
     ++i;
   }
   return mname;
-}
+}*/
 
 
 bool Visitor::IRTypesForASTVariables(std::vector<Type*>& argSpec, ast::VariableList *argVars) {
@@ -178,6 +185,75 @@ GlobalVariable* Visitor::createArray(Constant* constantArray, const Twine &name)
   //stV[1] = createPrivateConstantGlobal(constantArray, "gv");
   
   return createStruct(stV, 2, name);
+}
+
+
+// Returns true if V can be used as the target in a call instruction
+// static
+FunctionType* Visitor::functionTypeForValue(Value* V) {
+  if (V == 0) return 0;
+  
+  Type* T = V->getType();
+  
+  if (T->isFunctionTy()) {
+    return static_cast<FunctionType*>(T);
+  } else if (   T->isPointerTy()
+             && T->getNumContainedTypes() == 1
+             && T->getContainedType(0)->isFunctionTy() ) {
+    return static_cast<FunctionType*>(T->getContainedType(0));
+  } else {
+    return 0;
+  }
+}
+
+
+bool Visitor::BlockScope::setFunctionSymbol(const Text& name, ast::FunctionType* hueT,
+                                            FunctionType* FT, Value *V) {
+  rlog("setFunctionSymbol: name: " << name);
+  
+  FunctionSymbolList& funcs = functions_[name];
+  
+  if (funcs.size() != 0) {
+    // Check existing function types, making sure there's no implementation for FT
+    FunctionSymbolList::const_iterator it = funcs.begin();
+    for (; it != funcs.end(); ++it) {
+      const FunctionSymbol& exstingFS = (*it);
+      // Compare function types
+      if (exstingFS.type == FT) {
+        rlog("Duplicate functions");
+        return false;
+      }
+    }
+    
+  }
+  
+  FunctionSymbol symbol;
+  symbol.hueType = hueT;
+  symbol.type = FT;
+  symbol.value = V;
+  symbol.owningScope = this;
+  funcs.push_back(symbol);
+  
+  return true;
+}
+
+
+Visitor::FunctionSymbolList Visitor::lookupFunctionSymbols(const Text& name) const {
+  FunctionSymbolList found;
+  
+  // Scan symbol maps starting at top of stack moving down
+  BlockStack::const_reverse_iterator bsit = blockStack_.rbegin();
+  for (; bsit != blockStack_.rend(); ++bsit) {
+    BlockScope* bs = *bsit;
+    
+    const FunctionSymbolList* funcSymbols = bs->lookupFunctionSymbols(name);
+    if (funcSymbols != 0) {
+      // insert ( iterator position, InputIterator first, InputIterator last
+      found.insert(found.end(), funcSymbols->begin(), funcSymbols->end());
+    }
+  }
+  
+  return found;
 }
 
 

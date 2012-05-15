@@ -52,6 +52,11 @@ public:
     }
   }
   
+  bool isEqual(const Type& other) const {
+    if (other.typeID() != typeID_) return false;
+    return (typeID_ != Named || other.name() == name());
+  }
+  
   static Type createFromMangleID(const std::string& mangleID) {
     if (mangleID.length() == 1) {
       switch (mangleID[0]) {
@@ -80,6 +85,9 @@ public:
       default: return "?";
     }
   }
+  
+  virtual std::string toHueSource() const { return toString(); }
+  
 private:
   TypeID typeID_;
   Text name_;
