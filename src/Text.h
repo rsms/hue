@@ -23,7 +23,15 @@ typedef std::basic_string<uint8_t> ByteString;
 class Text : public std::basic_string<UChar> {
 public:
   Text() : std::basic_string<UChar>() {}
-  Text(const char* utf8data) : std::basic_string<UChar>() { setFromUTF8String(utf8data); }
+  Text(const char* utf8data) : std::basic_string<UChar>() {
+    setFromUTF8String(utf8data);
+  }
+  Text(const std::string& utf8string) : std::basic_string<UChar>() {
+    setFromUTF8String(utf8string);
+  }
+  // Text(const Text& other) : std::basic_string<UChar>(other) {
+  //   setFromUTF8String(utf8string);
+  // }
   //Text(const UChar* text, size_t size, bool copy = true);
   
   // Replace the contents of the receiver by reading the istream, which is expected to

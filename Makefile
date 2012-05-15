@@ -20,8 +20,10 @@ cxx_rt_sources := src/Text.cc \
 
 c_rt_sources :=
 
+# TODO: Add ast and parse headers
 rt_headers_pub := src/Text.h \
 									src/Logger.h \
+									src/Mangle.h \
                   src/utf8/core.h \
                   src/utf8/checked.h \
                   src/utf8/unchecked.h \
@@ -142,6 +144,9 @@ test: test_lang
 make_test_build_dir:
 	@mkdir -p $(test_build_dir)
 
+test_mangle: libhuert make_test_build_dir $(test_build_dir)/test_mangle
+	$(test_build_dir)/test_mangle
+
 test_object: libhuert make_test_build_dir $(test_build_dir)/test_object
 	$(test_build_dir)/test_object
 
@@ -173,6 +178,9 @@ test_lang_data_literals: test_lang_deps $(test_build_dir)/test_lang_data_literal
 
 test_lang_bools: test_lang_deps $(test_build_dir)/test_lang_bools.hue.img
 	bash -c '$(test_build_dir)/test_lang_bools.hue.img | grep "false" >/dev/null || exit 1'
+
+test_lang_funcs: test_lang_deps $(test_build_dir)/test_lang_funcs.hue.img
+	$(test_build_dir)/test_lang_funcs.hue.img
 
 # test/build/X <- test/X.cc
 $(test_build_dir)/%: test/%.cc

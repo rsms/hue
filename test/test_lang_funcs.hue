@@ -1,0 +1,7 @@
+foo = ^(a Int) Int: a
+foo = ^(a, b Int) Int: a * b
+foo = ^(a, b Float) Float: a * b
+foo 1
+foo 2 3
+foo 4.0 5.0
+# hello:foo$1I$1I

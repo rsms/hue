@@ -14,6 +14,9 @@ public:
   Variable(bool isMutable, const Text& name, Type *type)
     : isMutable_(isMutable), name_(name), type_(type) {}
   
+  // Primarily used for tests:
+  Variable(Type *type) : isMutable_(false), name_(), type_(type) {}
+  
   const bool& isMutable() const { return isMutable_; }
   const Text& name() const { return name_; }
   
