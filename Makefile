@@ -20,7 +20,6 @@ cxx_rt_sources := src/Text.cc \
 
 c_rt_sources :=
 
-# TODO: Add ast and parse headers
 rt_headers_pub := src/Text.h \
 									src/Logger.h \
 									src/Mangle.h \
@@ -37,7 +36,7 @@ LD = clang
 CXXC = clang++
 
 # Compiler and Linker flags for all targets
-CFLAGS   += -Wall -g
+CFLAGS   += -Wall -g -MMD
 CXXFLAGS += -std=c++11 -fno-rtti
 LDFLAGS  +=
 XXLDFLAGS += -lc++ -lstdc++
@@ -61,17 +60,23 @@ object_dir := $(build_dir)/.objs
 cxx_objects := ${cxx_sources:.cc=.o}
 _objects := $(cxx_objects)
 objects = $(patsubst %,$(object_dir)/%,$(_objects))
+main_deps := ${objects:.o=.d}
 
 rt_object_dir := $(build_dir)/.rt_objs
 cxx_rt_objects := ${cxx_rt_sources:.cc=.o}
 c_rt_objects := ${c_rt_sources:.c=.o}
 _rt_objects := $(cxx_rt_objects) $(c_rt_objects)
 rt_objects = $(patsubst %,$(rt_object_dir)/%,$(_rt_objects))
+rt_deps := ${rt_objects:.o=.d}
 
 #compiler_object_dirs := $(foreach fn,$(objects),$(shell dirname "$(fn)"))
 #rt_object_dirs := $(foreach fn,$(rt_objects),$(shell dirname "$(fn)"))
 compiler_object_dirs := $(foreach fn,$(objects),$(dir $(fn)))
 rt_object_dirs := $(foreach fn,$(rt_objects),$(dir $(fn)))
+
+# Include header dependency files (leading "-" means "ignore if not exists")
+-include $(main_deps)
+-include $(rt_deps)
 
 # --- libllvm ---------------------------------------------------------------------
 libllvm_components := all
