@@ -4,6 +4,9 @@
 #include "Text.h"
 
 #include <fstream>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/system_error.h>
+#include <llvm/ADT/OwningPtr.h>
 
 namespace hue {
 
@@ -62,17 +65,32 @@ bool Text::setFromUTF8InputStream(std::istream& is, size_t length) {
 }
 
 
-bool Text::setFromUTF8FileContents(const char* filename) {
-  std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
-  if (!ifs.good()) return false;
-  
-  ifs.seekg(0, std::ios::end);
-  size_t length = ifs.tellg();
-  ifs.seekg(0, std::ios::beg);
+//bool Text::setFromUTF8FileContents(const char* filename) {
+//  std::ifstream ifs(filename, std::ifstream::in | std::ifstream::binary);
+//  if (!ifs.good()) return false;
+//  
+//  ifs.seekg(0, std::ios::end);
+//  size_t length = ifs.tellg();
+//  ifs.seekg(0, std::ios::beg);
+//
+//  bool ok = setFromUTF8InputStream(ifs, length);
+//  ifs.close();
+//  return ok;
+//}
 
-  bool ok = setFromUTF8InputStream(ifs, length);
-  ifs.close();
-  return ok;
+
+bool Text::setFromUTF8FileOrSTDIN(const char* filename, std::string& error) {
+  using namespace llvm;
+  OwningPtr<MemoryBuffer> File;
+  if (error_code ec = MemoryBuffer::getFileOrSTDIN(filename, File)) {
+    error.assign(ec.message());
+    return false;
+  }
+  if (!setFromUTF8Data((const uint8_t*)File->getBufferStart(), File->getBufferSize())) {
+    error.assign("Input is not valid UTF-8 text");
+    return false;
+  }
+  return true;
 }
 
 

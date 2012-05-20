@@ -35,7 +35,6 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/IRReader.h>
 #include <llvm/Support/ManagedStatic.h>
-#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/PluginLoader.h>
 #include <llvm/Support/PrettyStackTrace.h>
 #include <llvm/Support/raw_ostream.h>
@@ -184,11 +183,12 @@ int main(int argc, char **argv, char * const *envp) {
   if (DisableCoreFiles)
     sys::Process::PreventCoreFiles();
   
+  std::string ErrorMsg;
+
   // Read input file
   Text textSource;
-  //if (!textSource.setFromUTF8FileContents(argc > 1 ? argv[1] : "examples/program1.txt")) {
-  if (!textSource.setFromUTF8FileContents(InputFile.c_str())) {
-    std::cerr << "Failed to read input file" << std::endl;
+  if (!textSource.setFromUTF8FileOrSTDIN(InputFile.c_str(), ErrorMsg)) {
+    std::cerr << "Failed to open input file: " << ErrorMsg << std::endl;
     return 1;
   }
   
@@ -220,7 +220,6 @@ int main(int argc, char **argv, char * const *envp) {
     return 1;
   }
 
-  std::string ErrorMsg;
   
   // Output IR
   if (OutputIR != " ") {

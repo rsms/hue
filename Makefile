@@ -225,7 +225,7 @@ libhuert: copy_rt_headers make_build_lib_dir build_libhuert
 
 build_libhuert: $(rt_objects)
 	@mkdir -p $(build_lib_dir)
-	$(LD) $(LDFLAGS) $(XXLDFLAGS) -shared -fPIC -o $(build_lib_dir)/libhuert.dylib $^
+	$(LD) $(LDFLAGS) $(XXLDFLAGS) $(libllvm_ld_flags) -shared -fPIC -o $(build_lib_dir)/libhuert.dylib $^
 	$(shell ln -sf "libhuert.dylib" "$(build_lib_dir)/libhuert.so")
 
 make_build_lib_dir:
@@ -243,12 +243,12 @@ $(rt_headers_build_dir)/%.h: src/%.h
 # runtime C source -> objects
 $(rt_object_dir)/%.o: %.c
 	@mkdir -p $(rt_object_dirs)
-	$(CC) $(CFLAGS) -fPIC -I$(build_include_dir) -c -o $@ $<
+	$(CC) $(CFLAGS) $(libllvm_c_flags) -fPIC -I$(build_include_dir) -c -o $@ $<
 
 # runtime C++ source -> objects
 $(rt_object_dir)/%.o: %.cc
 	@mkdir -p $(rt_object_dirs)
-	$(CXXC) $(CFLAGS) $(CXXFLAGS) -fPIC -I$(build_include_dir) -c -o $@ $<
+	$(CXXC) $(CFLAGS) $(CXXFLAGS) $(libllvm_cxx_flags) -fPIC -I$(build_include_dir) -c -o $@ $<
 
 
 

@@ -41,8 +41,9 @@ public:
   
   // Replace the contents of the receiver with the contents of the file pointed to by
   // *filename*. The contents of the file is expected to be encoded as UTF-8.
+  // If *filename* is "-", then data is read from STDIN.
   // Returns false if the file could not be read or the contents is not UTF-8 text.
-  bool setFromUTF8FileContents(const char* filename);
+  bool setFromUTF8FileOrSTDIN(const char* filename, std::string& error);
   
   // Replace the contents of the receiver by decoding UTF-8 data.
   bool setFromUTF8String(const std::string& data);
@@ -57,7 +58,7 @@ public:
   inline std::string toString() const { return UTF8String(); } // alias
   
   // Create a sequence of bytes by interpreting each character in the text as 1-4 bytes.
-  // E.g. A 3 octet wide unicode character U+1F44D is represented as the bytes 0x1, 0xF4 and 0x4D.
+  // E.g. A 3-octet-wide unicode character U+1F44D is represented as the bytes 0x1, 0xF4 and 0x4D.
   ByteList rawByteList() const;
   ByteString rawByteString() const;
   
