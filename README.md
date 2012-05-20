@@ -27,6 +27,16 @@ Objectives and plans:
 
 Seriously, this is just for fun. Don't expect anything from this project.
 
+## Building
+
+First, you need to grab and build llvm. See `deps/llvm/README` for details.
+
+Then, it's all just regular make:
+
+    $ make
+
+Should give you some stuff in the `build` subdirectory.
+
 ## bin/hue
 
 The `hue` program is a all-in-one tool which is essentially a JIT dynamic compiler.
@@ -40,6 +50,18 @@ The `hue` program is a all-in-one tool which is essentially a JIT dynamic compil
     # IR code here...
     $ build/bin/hue -parse-only test/test_lang_data_literals.hue
     # AST repr here...
+
+You could chain hue with llvm tools to compile a machine image:
+
+    $ build/bin/hue -output-ir=- -compile-only test/test_lang_data_literals.hue \
+      | llvm-as -o=- | llvm-ld -native -Lbuild/lib -lhuert -o=program -
+    $ ./program
+    Hello World
+    Hello World
+
+If you don't have a local llvm installation, you might need to add the llvm bin directory from deps to your PATH environment variable before running the above.
+
+    PATH=$PATH:$(pwd)/deps/llvm/bin/bin
 
 ## License
 
