@@ -50,8 +50,8 @@ std::string mangle(const ast::FunctionType& funcType) {
   ast::VariableList* args = funcType.args();
   if (args) mname += mangle(*args);
   mname += '$';
-  ast::TypeList* returnTypes = funcType.returnTypes();
-  if (returnTypes) mname += mangle(*returnTypes);
+  ast::Type* returnType = funcType.returnType();
+  if (returnType) mname += mangle(*returnType);
   return mname;
 }
 

@@ -38,16 +38,6 @@ public:
     return ss.str();
   }
   
-  // Helper function to create a type list from a var list
-  static void typeListFromVariableList(TypeList& types, const VariableList& vars) {
-    types.reserve(vars.size());
-    ast::VariableList::const_iterator it = vars.begin();
-    for (; it != vars.end(); ++it) {
-      Type* T = (*it)->type();
-      types.push_back(T ? T : new Type(Type::Unknown));
-    }
-  }
-  
 private:
   bool isMutable_;
   Text name_;

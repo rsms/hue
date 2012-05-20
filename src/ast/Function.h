@@ -30,18 +30,16 @@ public:
 class FunctionType : public Node {
 public:
   FunctionType(VariableList *args = 0,
-               TypeList *returnTypes = 0,
+               Type *returnType = 0,
                bool isPublic = false)
-    : Node(TFunctionType), args_(args), returnTypes_(returnTypes), isPublic_(isPublic) {}
+    : Node(TFunctionType), args_(args), returnType_(returnType), isPublic_(isPublic) {}
 
   VariableList *args() const { return args_; }
-  TypeList *returnTypes() const { return returnTypes_; }
-  size_t returnCount() const { return returnTypes_ != 0 ? returnTypes_->size() : 0; }
+  Type *returnType() const { return returnType_; }
   
   bool isPublic() const { return isPublic_; }
   void setIsPublic(bool isPublic) { isPublic_ = isPublic; }
   
-
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
@@ -56,16 +54,7 @@ public:
     }
     
     ss << ")";
-    
-    if (returnTypes_) {
-      ss << ' ';
-      ss << "[" << returnTypes_->size() << "] ";
-      TypeList::const_iterator it2;
-      it2 = returnTypes_->begin();
-      if (it2 < returnTypes_->end()) { ss << (*it2)->toString(); it2++; }
-      for (; it2 < returnTypes_->end(); it2++) { ss << ", " << (*it2)->toString(); }
-    }
-    
+    if (returnType_) ss << ' ' << returnType_->toString();
     ss << '>';
     return ss.str();
   }
@@ -87,16 +76,8 @@ public:
       ss << ')';
     }
     
-    if (returnTypes_ && !returnTypes_->empty()) {
-      ss << ' ';
-      TypeList::const_iterator it2;
-      it2 = returnTypes_->begin();
-      for (; it2 != returnTypes_->end();) {
-        ss << (*it2)->toHueSource();
-        ++it2;
-        if (it2 != returnTypes_->end()) ss << ", ";
-      }
-    }
+    if (returnType_)
+      ss << ' ' << returnType_->toHueSource();
     
     return ss.str();
   }
@@ -104,7 +85,7 @@ public:
   
 private:
   VariableList *args_;
-  TypeList *returnTypes_;
+  Type *returnType_;
   bool isPublic_;
 };
 

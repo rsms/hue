@@ -88,35 +88,23 @@ public:
 class Assignment : public Expression {
 public:
   
-  Assignment(VariableList *varList, Expression *rhs)
-    : Expression(TAssignment), varList_(varList), rhs_(rhs) {}
+  Assignment(Variable *var, Expression *rhs)
+    : Expression(TAssignment), var_(var), rhs_(rhs) {}
 
-  const VariableList *variables() const { return varList_; };
-  const Expression *rhs() const { return rhs_; }
-
-  //VariableList *varList() { return varList_; }
-  // 
-  // void setRHS(Expression *rhs) {
-  //   Expression *rhs2 = rhs_;
-  //   rhs_ = rhs;
-  //   if (rhs2) delete rhs2;
-  // }
+  const Variable* variable() const { return var_; };
+  const Expression* rhs() const { return rhs_; }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
     ss << "<Assignment ";
-    
-    VariableList::const_iterator it;
-    if ((it = varList_->begin()) < varList_->end()) { ss << (*it)->toString(level+1); it++; }
-    for (; it < varList_->end(); it++) {          ss << ", " << (*it)->toString(level+1); }
-    
+    var_->toString(level+1);
     ss << " = " << rhs_->toString(level+1) << '>';
     return ss.str();
   }
 private:
-  VariableList *varList_;
-  Expression *rhs_;
+  Variable* var_;
+  Expression* rhs_;
 };
 
 // Binary operators.

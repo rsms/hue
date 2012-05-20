@@ -6,7 +6,7 @@
 #include "../Mangle.h"
 #include "_VisitorImplHeader.h"
 
-Value* Visitor::createNewLocalSymbol(ast::Variable *variable, Value *rhsValue,
+Value* Visitor::createNewLocalSymbol(const ast::Variable *variable, Value *rhsValue,
                                      bool warnRedundantTypeDecl)
 {
   Type* rhsOriginalType = rhsValue->getType();
@@ -98,11 +98,11 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
   // TODO: Make assignments that occur in the module block
   // global. That way we can also set their linkage to external
   // in order to have them exported, if marked for export. Use GlobalValue
-  // for constant symbols and GlobalVariable for variables.
+  // for constant symbols and GlobalVariable for variable.
   
-  // Get the list of variables
-  const ast::VariableList *variables = node->variables();
-  assert(variables->size() == 1); // TODO: support >1 LHS variable
+  // Get the variable
+  const ast::Variable *variable = node->variable();
+  assert(variable != 0);
 
   // Codegen the RHS.
   Value *rhsValue;
@@ -113,9 +113,9 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
     hueFuncType = funcNode->functionType();
     
     // Generate a globally unique mangled name
-    //std::string mangledName = uniqueMangledName((*variables)[0]->name());
+    //std::string mangledName = uniqueMangledName(variable->name());
     std::string mangledName = module_->getModuleIdentifier() + ":";
-    mangledName += (*variables)[0]->name().UTF8String();
+    mangledName += variable->name().UTF8String();
     mangledName += mangle(*funcNode->functionType());
     
     // Has this function already been declared? (that is, same namespace, name, arg types and result types)
@@ -132,12 +132,9 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
     rhsValue = codegenExternalFunction(externalFuncNode);
 
   } else if (node->rhs()->nodeTypeID() == ast::Node::TCall) {
-    // Create type list from LHS variables, which the call codegen can use in the case
+    // Create type list from LHS variable, which the call codegen can use in the case
     // where there are multiple function candidates that only differ on return type.
-    ast::TypeList types;
-    ast::Variable::typeListFromVariableList(types, *variables);
-    
-    rhsValue = codegenCall(static_cast<const ast::Call*>(node->rhs()), &types);
+    rhsValue = codegenCall(static_cast<const ast::Call*>(node->rhs()), variable->type());
     
   } else {
     rhsValue = codegen(node->rhs());
@@ -145,55 +142,49 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
   if (rhsValue == 0) return 0;
   
   
-  // For each variable
-  ast::VariableList::const_iterator it = variables->begin();
-  for (; it != variables->end(); ++it) {
-    ast::Variable *variable = (*it);
+  
+  // Functions are treated differently
+  FunctionType* FT = functionTypeForValue(rhsValue);
+  if (FT) {
+    assert(hueFuncType != 0);
+    if (blockScope()->setFunctionSymbol(variable->name(), hueFuncType, FT, rhsValue) == false) {
+      return error("Implementation has already been defined for the symbol");
+    }
+
+  } else {
+    // We are dealing with something not a function
+
+    // Look up the name in this direct scope.
+    const Symbol& symbol = blockScope()->lookupSymbol(variable->name());
+    Value *existingValue = symbol.value;
     
-    // Functions are treated differently
-    FunctionType* FT = functionTypeForValue(rhsValue);
-    if (FT) {
-      assert(hueFuncType != 0);
-      if (blockScope()->setFunctionSymbol(variable->name(), hueFuncType, FT, rhsValue) == false) {
-        return error("Implementation has already been defined for the symbol");
+    // Check if there's a function symbol with the same name
+    if (existingValue == 0) {
+      if (blockScope()->lookupFunctionSymbols(variable->name()) != 0) {
+        return error("Symbol has already been defined");
       }
+    }
+  
+    if (existingValue == 0) {
+      // New symbol
+      bool warnRedundantTypeDecl = (node->rhs()->nodeTypeID() != ast::Node::TCall);
+      rhsValue = createNewLocalSymbol(variable, rhsValue, warnRedundantTypeDecl);
+      if (rhsValue == 0) return 0;
 
     } else {
-      // We are dealing with something not a function
-  
-      // Look up the name in this direct scope.
-      const Symbol& symbol = blockScope()->lookupSymbol(variable->name());
-      Value *existingValue = symbol.value;
-      
-      // Check if there's a function symbol with the same name
-      if (existingValue == 0) {
-        if (blockScope()->lookupFunctionSymbols(variable->name()) != 0) {
-          return error("Symbol has already been defined");
-        }
-      }
-    
-      if (existingValue == 0) {
-        // New symbol
-        bool warnRedundantTypeDecl = (node->rhs()->nodeTypeID() != ast::Node::TCall);
-        rhsValue = createNewLocalSymbol(variable, rhsValue, warnRedundantTypeDecl);
-        if (rhsValue == 0) return 0;
-
-      } else {
-        // Existing symbol
-        if (symbol.isMutable) {
-          if (!AllocaInst::classof(existingValue)) {
-            return error("not implemented: promote mutatable ref to alloca");
-          } else {
-            // STORE the value
-            llvm::StoreInst* si = builder_.CreateStore(rhsValue, static_cast<AllocaInst*>(existingValue));
-            rhsValue = si;
-          }
+      // Existing symbol
+      if (symbol.isMutable) {
+        if (!AllocaInst::classof(existingValue)) {
+          return error("not implemented: promote mutatable ref to alloca");
         } else {
-          rlog(variable->name() << " is not mutable");
-          return error("Symbol has already been defined");
+          // STORE the value
+          llvm::StoreInst* si = builder_.CreateStore(rhsValue, static_cast<AllocaInst*>(existingValue));
+          rhsValue = si;
         }
+      } else {
+        rlog(variable->name() << " is not mutable");
+        return error("Symbol has already been defined");
       }
-    
     }
   
   }

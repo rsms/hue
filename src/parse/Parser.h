@@ -326,11 +326,12 @@ public:
   }
   
   
-  // Assignment = VariableList '=' Expression
+  // Assignment = Variable '=' Expression
   Assignment *parseAssignment(Text firstVarIdentifierName) {
     DEBUG_TRACE_PARSER;
-    VariableList *varList = parseVariableList(firstVarIdentifierName);
-    if (!varList) return 0;
+
+    Variable *variable = parseVariable(firstVarIdentifierName);
+    if (!variable) return 0;
     
     if (token_.type != Token::Assignment) {
       error("Expected assignment operator");
@@ -345,22 +346,7 @@ public:
       return 0; // TODO: cleanup
     }
     
-    // LHS type inference (note: this is done in codegen nowadays)
-    //if (   varList->size() == 1
-    //    && (    !(*varList)[0]->type()
-    //         || (*varList)[0]->type()->typeID() == Type::Unknown ) 
-    //   )
-    //{
-    //  if (rhs->isFunctionType()) {
-    //    (*varList)[0]->setType(new Type(Type::Func));
-    //  } else if (rhs->nodeTypeID() == Node::TIntLiteral) {
-    //    (*varList)[0]->setType(new Type(Type::Int));
-    //  } else if (rhs->nodeTypeID() == Node::TFloatLiteral) {
-    //    (*varList)[0]->setType(new Type(Type::Float));
-    //  }
-    //}
-    
-    return new Assignment(varList, rhs);
+    return new Assignment(variable, rhs);
   }
   
   
@@ -469,61 +455,6 @@ public:
     return typeList;
   }
   
-  // Entry points:
-  //   FunctionExpr   = "func" FunctionType
-  //   ExternalExpr   = "external" Identifier FunctionType
-  //
-  // FunctionType     = Parameters? Result?
-  //   Result         = TypeList
-  //   Parameters     = "(" VariableList? ")"
-  //
-  // Examples:
-  //   func
-  //   func (x Int)
-  //   func (x, y Int) Float
-  //   func Float
-  //   func (x, y Int, z Float) Int, Float
-  //   extern atan2 (x, y Float) Float
-  //
-  FunctionType *parseFunctionType() {
-    DEBUG_TRACE_PARSER;
-    
-    VariableList *variableList = NULL;
-    TypeList *returnTypes = NULL;
-  
-    // Parameters =
-    if (token_.type == Token::LeftParen) {
-      // '('
-      nextToken(); // eat '('
-      // VariableList =
-      variableList = parseVariableList();
-      if (variableList == 0) return 0;
-    
-      // ')'
-      if (token_.type != Token::RightParen) {
-        return (FunctionType*)error("Expected ')' after function parameters");
-      }
-      nextToken();  // eat ')'.
-      
-      variableList = verifyAndUpdateVariableList(variableList);
-      if (variableList == 0) return 0;
-    }
-    
-    // Result =
-    //if (tokenIsType()) {
-    if (!tokenIsCommonSeparator()) {
-      // TypeList =
-      returnTypes = parseTypeList();
-      if (!returnTypes) {
-        if (variableList) delete variableList;
-        return 0;
-      }
-    }
-  
-    // Create function interface
-    return new FunctionType(variableList, returnTypes);
-  }
-  
   
   // BlockExpression = Expression+
   // 
@@ -622,24 +553,72 @@ public:
     return block;
   }
   
+
+  // Entry points:
+  //   FunctionExpr   = "func" FunctionType
+  //   ExternalExpr   = "external" Identifier FunctionType
+  //
+  // FunctionType     = Parameters? Result?
+  //   Result         = Type
+  //   Parameters     = "(" VariableList? ")"
+  //
+  // Examples:
+  //   func
+  //   func (x Int)
+  //   func (x, y Int) Float
+  //   func Float
+  //   func (x, y Int, z Float) Int, Float
+  //   extern atan2 (x, y Float) Float
+  //
+  FunctionType *parseFunctionType(bool expectResultType) {
+    DEBUG_TRACE_PARSER;
+    
+    VariableList *variableList = NULL;
+    Type* returnType = 0;
+  
+    // Parameters =
+    if (token_.type == Token::LeftParen) {
+      // '('
+      nextToken(); // eat '('
+      // VariableList =
+      variableList = parseVariableList();
+      if (variableList == 0) return 0;
+    
+      // ')'
+      if (token_.type != Token::RightParen) {
+        return (FunctionType*)error("Expected ')' after function parameters");
+      }
+      nextToken();  // eat ')'.
+      
+      variableList = verifyAndUpdateVariableList(variableList);
+      if (variableList == 0) return 0;
+    }
+    
+    // Result =
+    if (!expectResultType) {
+      returnType = new Type(Type::Unknown);
+    } else if (!tokenIsCommonSeparator()) {
+      returnType = parseType();
+      if (returnType == 0) {
+        if (variableList) delete variableList;
+        return 0;
+      }
+    }
+  
+    // Create function interface
+    return new FunctionType(variableList, returnType);
+  }
+  
   
   // Function = 'func' FunctionType ':' BlockExpression
   Function *parseFunction() {
     DEBUG_TRACE_PARSER;
-    LineLevel funcLineLevel = token_.column;
+    LineLevel funcLineLevel = currentLineLevel_;//token_.column;
     nextToken();  // eat 'func'
     
-    
     // Parse function interface
-    FunctionType *interface = parseFunctionType();
+    FunctionType *interface = parseFunctionType(false);
     if (interface == 0) return 0;
-    
-    // Require ':'
-    if (token_.type != Token::Colon) {
-      delete interface;
-      return (Function*)error("Expected ':' after function interface");
-    }
-    nextToken();  // eat ':'
     
     // Parse body
     Block* body = parseBlock(funcLineLevel);
@@ -663,7 +642,7 @@ public:
     Text funcName = token_.textValue;
     nextToken(); // eat id
     
-    FunctionType *funcInterface = parseFunctionType();
+    FunctionType *funcInterface = parseFunctionType(true);
     if (!funcInterface) return 0;
     
     // External functions are always public

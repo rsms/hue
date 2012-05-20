@@ -17,9 +17,10 @@ Value *Visitor::codegenFunction(const ast::Function *node,
   
   // Figure out return type (unless it's been overridden by returnType) if
   // the interface declares the return type.
-  if (returnType == 0 && node->functionType()->returnCount() != 0) {
-    returnType = returnTypeForFunctionType(node->functionType());
-    if (returnType == 0) return error("Unable to transcode return type from AST to IR");
+  if (returnType == 0 && node->functionType()->returnType() != 0) {
+    returnType = IRTypeForASTType(node->functionType()->returnType());
+    if (returnType == 0)
+      return error("Unable to transcode return type from AST to IR");
   }
   
   // Function *F = Function::Create(FunctionType::get(builder_.getVoidTy(), false),

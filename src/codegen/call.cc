@@ -19,7 +19,7 @@ std::string Visitor::formatFunctionCandidateErrorMessage(const ast::Call* node,
     ss << "No function matching call to ";
   } else if (error == CandidateErrorArgTypes) {
     ss << "No function with arguments matching call to ";
-  } else if (error == CandidateErrorReturnTypes) {
+  } else if (error == CandidateErrorReturnType) {
     ss << "No function with result matching call to ";
   } else if (error == CandidateErrorAmbiguous) {
     ss << "Ambiguous function call to ";
@@ -32,7 +32,7 @@ std::string Visitor::formatFunctionCandidateErrorMessage(const ast::Call* node,
   
   if (error == CandidateErrorArgCount) {
     ss << "Did you mean to call any of these functions?";
-  } else if (error == CandidateErrorReturnTypes) {
+  } else if (error == CandidateErrorReturnType) {
     ss << "Express what type of result you expect. Available functions:";
   } else {
     ss << "Candidates are:";
@@ -48,7 +48,7 @@ std::string Visitor::formatFunctionCandidateErrorMessage(const ast::Call* node,
 }
 
 
-Value *Visitor::codegenCall(const ast::Call* node, ast::TypeList* expectedReturnTypes/* = 0*/) {
+Value *Visitor::codegenCall(const ast::Call* node, ast::Type* expectedReturnType/* = 0*/) {
   DEBUG_TRACE_LLVM_VISITOR;
   
   // Look up a list of matching function symbols
@@ -135,12 +135,7 @@ Value *Visitor::codegenCall(const ast::Call* node, ast::TypeList* expectedReturn
   
   // If we have some expected return types, try to use that information to narrow down our
   // list of candidates.
-  if (expectedReturnTypes != 0) {
-
-    // We currently don't support more than one return value
-    if (expectedReturnTypes->size() > 1) {
-      return error("NOT IMPLEMENTED: Support for multiple return values");
-    }
+  if (expectedReturnType != 0) {
     
     // Reduce our list of candidates according to expected return types
     FunctionSymbolList candidateFuncsMatchingReturns;
@@ -148,34 +143,28 @@ Value *Visitor::codegenCall(const ast::Call* node, ast::TypeList* expectedReturn
     for (; it3 != candidateFuncsMatchingTypes.end(); ++it3) {
 
       // Get the list types that the candidate returns
-      ast::TypeList* candidateReturnTypes = (*it3).hueType->returnTypes();
+      ast::Type* candidateReturnType = (*it3).hueType->returnType();
       
       // Number of results must match, or we ignore this candidate
-      if (   (candidateReturnTypes == 0 && expectedReturnTypes->size() != 0)
-          || (candidateReturnTypes->size() != expectedReturnTypes->size()) ) {
+      if (candidateReturnType != expectedReturnType) {
         continue; // ignore candidate
       }
       
-      if (expectedReturnTypes->empty()) {
+      if (expectedReturnType == 0) {
         // Expects no result and candidate does not return anything
-        if (candidateReturnTypes == 0 || candidateReturnTypes->empty()) {
+        if (candidateReturnType == 0) {
           candidateFuncsMatchingReturns.push_back(*it3);
         }
-      } else if (candidateReturnTypes != 0) {
-        // Compare the return types
-        ast::Type* expectedHueT = (*expectedReturnTypes)[0];
-        ast::Type* candidateHueT = (*candidateReturnTypes)[0];
-        
-        if (expectedHueT->typeID() == ast::Type::Unknown && candidateFuncsMatchingTypes.size() == 1) {
-          // Expected type should be inferred and we have only a single candidate.
-          // This means that we chose this candidate and whatever whats its type inferred will
-          // do so based on whatever this candidate returns.
-          candidateFuncsMatchingReturns.push_back(*it3);
+      } else if (   expectedReturnType->typeID() == ast::Type::Unknown
+                 && candidateFuncsMatchingTypes.size() == 1) {
+        // Expected type should be inferred and we have only a single candidate.
+        // This means that we chose this candidate and whatever whats its type inferred will
+        // do so based on whatever this candidate returns.
+        candidateFuncsMatchingReturns.push_back(*it3);
 
-        } else if (candidateHueT->isEqual(*expectedHueT)) {
-          // The return types are equal.
-          candidateFuncsMatchingReturns.push_back(*it3);
-        }
+      } else if (candidateReturnType->isEqual(*expectedReturnType)) {
+        // The return types are equal.
+        candidateFuncsMatchingReturns.push_back(*it3);
       }
       
     }
@@ -186,7 +175,7 @@ Value *Visitor::codegenCall(const ast::Call* node, ast::TypeList* expectedReturn
       targetFT = candidateFuncsMatchingReturns[0].type;
     } else if (candidateFuncsMatchingReturns.size() == 0) {
       return error(formatFunctionCandidateErrorMessage(node, candidateFuncsMatchingTypes,
-          CandidateErrorReturnTypes));
+          CandidateErrorReturnType));
     } else {
       return error(formatFunctionCandidateErrorMessage(node, candidateFuncsMatchingTypes,
           CandidateErrorAmbiguous));

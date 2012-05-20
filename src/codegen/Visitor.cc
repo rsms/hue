@@ -286,7 +286,7 @@ Value *Visitor::codegenExternalFunction(const ast::ExternalFunction* node) {
   
   // Figure out return type (unless it's been overridden by returnType) if
   // the interface declares the return type.
-  Type* returnType = returnTypeForFunctionType(node->functionType());
+  Type* returnType = IRTypeForASTType(node->functionType()->returnType());
   if (returnType == 0) return error("Unable to transcode return type from AST to IR");
   
   return codegenFunctionType(node->functionType(), node->name().UTF8String(), returnType);

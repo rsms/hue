@@ -183,7 +183,7 @@ protected:
   typedef enum {
     CandidateErrorArgCount = 0,
     CandidateErrorArgTypes,
-    CandidateErrorReturnTypes,
+    CandidateErrorReturnType,
     CandidateErrorAmbiguous,
   } CandidateError;
 
@@ -199,19 +199,14 @@ protected:
   void dumpBlockSymbols();
   
   
-  llvm::Type* returnTypeForFunctionType(const ast::FunctionType *node) {
-    // Find out the return type of the function
-    ast::TypeList *returnTypes = node->returnTypes();
-    if (returnTypes == 0 || returnTypes->size() == 0 /*TODO: || size==1 && type==TNull */) {
-      return builder_.getVoidTy();
-    } else {
-      assert(returnTypes->size() == 1); // TODO: Support multiple return values
-      ast::Type *parsedT = (*returnTypes)[0];
-      return IRTypeForASTType(parsedT);
-    }
-  }
+  //llvm::Type* returnTypeForFunctionType(const ast::FunctionType *node) {
+  //  // Find out the return type of the function
+  //  ast::Type *returnType = node->returnType();
+  //  return (returnType == 0) ? builder_.getVoidTy() : IRTypeForASTType(returnType);
+  //}
   
   llvm::Type *IRTypeForASTType(const ast::Type* T) {
+    if (T == 0) return builder_.getVoidTy();
     switch (T->typeID()) {
       case ast::Type::Float:  return builder_.getDoubleTy();
       case ast::Type::Int:    return builder_.getInt64Ty();
@@ -249,7 +244,7 @@ protected:
   // Returns false if an error occured
   bool IRTypesForASTVariables(std::vector<llvm::Type*>& argSpec, ast::VariableList *argVars);
   
-  llvm::Value* createNewLocalSymbol(ast::Variable *variable, llvm::Value *rhsV,
+  llvm::Value* createNewLocalSymbol(const ast::Variable *variable, llvm::Value *rhsV,
                                     bool warnRedundantTypeDecl = true);
   
   inline std::string mangledName(const std::string& localName) const {
@@ -327,7 +322,7 @@ protected:
   
   llvm::Value *codegenAssignment(const ast::Assignment* node);
   
-  llvm::Value *codegenCall(const ast::Call* node, ast::TypeList* expectedReturnTypes = 0);
+  llvm::Value *codegenCall(const ast::Call* node, ast::Type* expectedReturnType = 0);
   llvm::Value *codegenConditional(const ast::Conditional* node);
   
   llvm::Value *codegenIntLiteral(const ast::IntLiteral *literal, bool fixedSize = true);
