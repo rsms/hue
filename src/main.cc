@@ -291,6 +291,9 @@ int main(int argc, char **argv, char * const *envp) {
     
     // Eliminate Common SubExpressions.
     passManager->add(createGVNPass());
+
+    // uses a heuristic to inline direct function calls to small functions.
+    passManager->add(createFunctionInliningPass());
     
     // Simplify the control flow graph (deleting unreachable blocks, etc).
     passManager->add(createCFGSimplificationPass());
@@ -308,6 +311,12 @@ int main(int argc, char **argv, char * const *envp) {
     // This pass eliminates call instructions to the current
     // function which occur immediately before return instructions.
     passManager->add(createTailCallEliminationPass());
+
+    // discovers functions that do not access memory, or only read memory, and gives
+    // them the readnone/readonly attribute. It also discovers function arguments
+    // that are not captured by the function and marks them with the nocapture
+    // attribute.
+    passManager->add(createFunctionAttrsPass());
   }
 
   // Apply optimizations
