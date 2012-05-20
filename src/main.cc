@@ -18,6 +18,11 @@
 
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/PassManager.h>
+#include <llvm/Analysis/Passes.h>
+#include <llvm/Target/TargetData.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/IPO.h>
 #include <fcntl.h>
 
 // from lli.cpp
@@ -157,23 +162,12 @@ namespace {
 }
 
 
-static ExecutionEngine *EE = 0;
-
-static void do_shutdown() {
-  // Cygwin-1.5 invokes DLL's dtors before atexit handler.
-#ifndef DO_NOTHING_ATEXIT
-  delete EE;
-  llvm_shutdown();
-#endif
-}
-
-
 int main(int argc, char **argv, char * const *envp) {
   sys::PrintStackTraceOnErrorSignal();
   PrettyStackTraceProgram X(argc, argv);
   
   LLVMContext &Context = getGlobalContext();
-  atexit(do_shutdown);  // Call llvm_shutdown() on exit.
+  atexit(llvm_shutdown);  // Call llvm_shutdown() on exit.
 
   // If we have a native target, initialize it to ensure it is linked in and
   // usable by the JIT.
@@ -226,36 +220,8 @@ int main(int argc, char **argv, char * const *envp) {
     std::cerr << codegenVisitor.errors().size() << " error(s) during code generation." << std::endl;
     return 1;
   }
-  
-  // Output IR
-  if (OutputIR != " ") {
-    if (OutputIR.empty() || OutputIR == "-") {
-      Mod->print(outs(), 0);
-    } else {
-      llvm::raw_fd_ostream os(OutputIR.c_str(), ErrorMsg);
-      if (os.has_error()) {
-        std::cerr << "Failed to open file for output: " << ErrorMsg << std::endl;
-        return 1;
-      }
-      Mod->print(os, 0);
-    }
-  }
 
-  // Only compile? Then we are done.
-  if (OnlyCompile)
-    return 0;
-
-  // Okay. Let's run this code.
-
-  // If not jitting lazily, load the whole bitcode file eagerly too.
-  if (NoLazyCompilation) {
-    if (Mod->MaterializeAllPermanently(&ErrorMsg)) {
-      errs() << argv[0] << ": bitcode didn't read correctly.\n";
-      errs() << "Reason: " << ErrorMsg << "\n";
-      exit(1);
-    }
-  }
-
+  // Create ExecutionEngine
   EngineBuilder builder(Mod);
   builder.setMArch(MArch);
   builder.setMCPU(MCPU);
@@ -288,13 +254,96 @@ int main(int argc, char **argv, char * const *envp) {
   }
   builder.setOptLevel(OLvl);
 
-  EE = builder.create();
+  ExecutionEngine *EE = builder.create();
   if (!EE) {
     if (!ErrorMsg.empty())
       errs() << argv[0] << ": error creating EE: " << ErrorMsg << "\n";
     else
       errs() << argv[0] << ": unknown error creating EE!\n";
     exit(1);
+  }
+
+  // Setup optimization pass manager
+  PassManager* passManager = 0;
+  if (OLvl != CodeGenOpt::None) {
+    passManager = new PassManager();
+    // Set up the optimizer pipeline.
+    // Start with registering info about how the target lays out data structures.
+    passManager->add(new TargetData(*EE->getTargetData()));
+
+    // Provide basic AliasAnalysis support for GVN.
+    passManager->add(createBasicAliasAnalysisPass());
+
+    // merge duplicate global constants together into a single constant that is shared.
+    // This is useful because some passes (ie TraceValues) insert a lot of string
+    // constants into the program, regardless of whether or not they duplicate an
+    // existing string.
+    passManager->add(createConstantMergePass());
+    
+    // Do simple "peephole" optimizations and bit-twiddling optzns.
+    passManager->add(createInstructionCombiningPass());
+
+    // Remove redundant instructions.
+    passManager->add(createInstructionSimplifierPass());
+    
+    // Reassociate expressions.
+    passManager->add(createReassociatePass());
+    
+    // Eliminate Common SubExpressions.
+    passManager->add(createGVNPass());
+    
+    // Simplify the control flow graph (deleting unreachable blocks, etc).
+    passManager->add(createCFGSimplificationPass());
+
+    // This pass reorders basic blocks in order to increase the
+    // number of fall-through conditional branches.
+    passManager->add(createBlockPlacementPass());
+
+    // This pass is more powerful than DeadInstElimination,
+    // because it is worklist driven that can potentially revisit instructions when
+    // their other instructions become dead, to eliminate chains of dead
+    // computations.
+    passManager->add(createDeadCodeEliminationPass());
+
+    // This pass eliminates call instructions to the current
+    // function which occur immediately before return instructions.
+    passManager->add(createTailCallEliminationPass());
+  }
+
+  // Apply optimizations
+  if (passManager) {
+    // Execute all of the passes scheduled for execution. Keep track of
+    // whether any of the passes modifies the module, and if so, return true.
+    passManager->run(*Mod);
+  }
+  
+  // Output IR
+  if (OutputIR != " ") {
+    if (OutputIR.empty() || OutputIR == "-") {
+      Mod->print(outs(), 0);
+    } else {
+      llvm::raw_fd_ostream os(OutputIR.c_str(), ErrorMsg);
+      if (os.has_error()) {
+        std::cerr << "Failed to open file for output: " << ErrorMsg << std::endl;
+        return 1;
+      }
+      Mod->print(os, 0);
+    }
+  }
+
+  // Only compile? Then we are done.
+  if (OnlyCompile)
+    return 0;
+
+  // Okay. Let's run this code.
+
+  // If not jitting lazily, load the whole bitcode file eagerly too.
+  if (NoLazyCompilation) {
+    if (Mod->MaterializeAllPermanently(&ErrorMsg)) {
+      errs() << argv[0] << ": bitcode didn't read correctly.\n";
+      errs() << "Reason: " << ErrorMsg << "\n";
+      exit(1);
+    }
   }
 
   EE->RegisterJITEventListener(createOProfileJITEventListener());

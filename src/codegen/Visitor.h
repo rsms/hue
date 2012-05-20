@@ -126,7 +126,10 @@ class Visitor {
   };
   
 public:
-  Visitor() : module_(NULL), builder_(llvm::getGlobalContext()) {}
+  Visitor()
+    : module_(NULL)
+    , builder_(llvm::getGlobalContext())
+    {}
   
   // Register an error
   llvm::Value *error(const std::string& str) {

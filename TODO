@@ -1,5 +1,11 @@
 # TODO
 
+• Macros
+
+    unless = macro test a b -> if %test %b else %a
+    foo1 = unless (4 < 5) 100 200
+    foo2 = if (4 < 5) 200 else 100
+
 • List literals (underlying impl is the persistent vector)
 
 • Records
@@ -81,12 +87,6 @@
     # userList => [User{id = 1, name = "Bart"}, User{id = 2, name = "Lisa"}]
 
   Does this mean we need something similar to C++ templates, so that `Ref [User]` can be possible? And what about `deref`? It needs to know the type of the ref. One way to do this it not to do it, by implementing this stuff in the compiler as a special case. In that case, should Ref have a special name, perhaps "$" or "~"?
-
-• Macros
-
-    unless = macro test a b -> if %test %b else %a
-    foo1 = unless (4 < 5) 100 200
-    foo2 = if (4 < 5) 200 else 100
 
 • Exporting of things from modules
 
