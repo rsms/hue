@@ -8,7 +8,8 @@ I'm just having some fun. This is by no means the futurez of programming, brogra
 - Values are immutable (can't be modified) by default
 - Compiles down to super-tight machine code (thanks to LLVM) that's so fast it makes your mama faint
 - Fully Unicode (Text type is UTF-32, source files are interpreted as UTF-8 and language symbols can be almost any Unicode character).
-- Built on top of LLVM and thus generates LLVM IR
+- Built on top of LLVM and thus can generate LLVM IR
+- Fast JIT compiler
 - Neat codebase with clearly separated components
   - Tokenizer: Reads UTF-8 encoded text and streams Hue language tokens
   - Parser: Reads Hue language tokens and streams Hue language structures
@@ -25,5 +26,21 @@ Objectives and plans:
 5. Listen to Black Sabbath and take over the worlds
 
 Seriously, this is just for fun. Don't expect anything from this project.
+
+## bin/hue
+
+The `hue` program is a all-in-one tool which is essentially a JIT dynamic compiler.
+
+    $ make hue
+    $ build/bin/hue --help
+    $ build/bin/hue test/test_lang_data_literals.hue
+    Hello World
+    Hello World
+    $ build/bin/hue -output-ir=- -compile-only test/test_lang_data_literals.hue
+    # IR code here...
+    $ build/bin/hue -parse-only test/test_lang_data_literals.hue
+    # AST repr here...
+
+## License
 
 See LICENSE for the standard MIT license.
