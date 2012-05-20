@@ -1,16 +1,37 @@
-foo = ^(a Float) Float: a
-foo = ^(a Int) Int: a
-foo = ^(a, b Int) Int: a * b
-foo = ^(a, b Int) Float: 1.0 * a * b
-foo = ^(a, b Float) Float: a * b
+#foo = ^(a) a
+#foo = ^(a b) a * b
 
-#foo = ^(a Int) Int: a # error "Implementation has already been defined for the symbol"
+foo = func (a Float) Float: a
+foo = func (a Int) Int: a
+foo = func (a, b Int) Int: a * b
+foo = func (a, b Int) Float: 1.0 * a * b
+foo = func (a, b Float) Float: a * b
+
+#foo = func (a Int -> Int a # error "Implementation has already been defined for the symbol"
 #foo = 4            # error "Symbol has already been defined"
 #x = foo 2 3 4      # error "No function matching call to foo"
 #x = foo 2 3        # error "No function with result matching call to foo"
 
-x1 = foo 2.0        # foo -> ^(a Float) Float
-x2 = foo 1          # foo -> ^(a Int) Int
-x3 = foo 4.0 5.0    # foo -> ^(a, b Float) Float
-x4 Int = foo 2 3    # foo -> ^(a, b Int) Int
-x5 Float = foo 2 3  # foo -> ^(a, b Int) Float
+x1 = foo 2.0        # foo -> ^(a Float Float
+x2 = foo 1          # foo -> ^(a Int Int
+x3 = foo 4.0 5.0    # foo -> ^(a, b Float Float
+x4 Int = foo 2 3    # foo -> ^(a, b Int Int
+x5 Float = foo 2 3  # foo -> ^(a, b Int Float
+
+print = extern _ZN3hue12stdout_writeEPNS_6DataS_E (v [Byte])
+print = extern _ZN3hue12stdout_writeEPNS_6TextS_E (v [Char])
+print = extern _ZN3hue12stdout_writeEb (v Bool)
+print = extern _ZN3hue12stdout_writeEd (v Float)
+print = extern _ZN3hue12stdout_writeEh (v Byte)
+print = extern _ZN3hue12stdout_writeEj (v Char)
+print = extern _ZN3hue12stdout_writeEx (v Int)
+
+data1 = 'Hello World\n' # T = [Byte]
+text1 = "Hello World\n" # T = [Char]
+print data1
+print text1
+
+(print "x1 => ") (print x1) print "\n"
+(print "x2 => ") (print x2) print "\n"
+(print "x1 == x2 => ") (print x1 == x2) print "\n"
+

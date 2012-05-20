@@ -207,6 +207,10 @@ hue: libhuert hue_bin
 
 hue_bin: $(objects)
 	@mkdir -p $(build_bin_dir)
+	$(LD) $(LDFLAGS) $(XXLDFLAGS) $(libllvm_ld_flags) $(libhuert_ld_flags) -o $(build_bin_dir)/hue $^
+
+hue_bin2: src/main2.cc
+	@mkdir -p $(build_bin_dir)
 	$(LD) $(LDFLAGS) $(XXLDFLAGS) $(libllvm_ld_flags) -o $(build_bin_dir)/hue $^
 
 # compiler C++ source -> objects

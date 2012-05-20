@@ -250,7 +250,7 @@ protected:
                                     bool warnRedundantTypeDecl = true);
   
   inline std::string mangledName(const std::string& localName) const {
-    return module_->getModuleIdentifier() + "$" + localName;
+    return module_->getModuleIdentifier() + ":" + localName;
   }
   
   // Returns a module-global uniqe mangled name rooted in *name*

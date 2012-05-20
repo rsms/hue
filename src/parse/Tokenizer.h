@@ -402,7 +402,7 @@ public:
           case ']': token_.type = Token::RightSqBracket; break;
           case ',': token_.type = Token::Comma; break;
           case '.': token_.type = Token::Stop; break;
-          case '^': token_.type = Token::Func; break;
+          //case '^': token_.type = Token::Func; break;
 
           case '{':
           case '}': token_.type = Token::Structure; break;
@@ -430,7 +430,7 @@ public:
 
                  if i32CMP_then_CONSUME_SYMBOL(If,           2, 'i','f');
             else if i32CMP_then_CONSUME_SYMBOL(Else,         4, 'e','l','s','e');
-            //else if i32CMP_then_CONSUME_SYMBOL(Func,         4, 'f','u','n','c');
+            else if i32CMP_then_CONSUME_SYMBOL(Func,         4, 'f','u','n','c');
             else if i32CMP_then_CONSUME_SYMBOL(External,     6, 'e','x','t','e','r','n');
             else if i32CMP_then_CONSUME_SYMBOL(None,         4, 'n','o','n','e');
             else if i32CMP_then_CONSUME_SYMBOL(Bool,         4, 'B','o','o','l');

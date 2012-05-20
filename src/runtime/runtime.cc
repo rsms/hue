@@ -10,15 +10,22 @@
 #include <unistd.h>
 #include <string>
 
+#define _writef(z, fmt, ...) do { \
+  char buf[z+1]; \
+  int len = snprintf(buf, z+1, fmt, __VA_ARGS__); \
+  write(STDOUT_FILENO, buf, len); \
+} while(0)
+
 namespace hue {
 
 void stdout_write(const Bool v) {
-  if (v) write(STDOUT_FILENO, "true", 4); else write(STDOUT_FILENO, "false", 5);
+  if (v) write(STDOUT_FILENO, "true", 4);
+  else   write(STDOUT_FILENO, "false", 5);
 }
 
-void stdout_write(const Float v) { printf("%f", v); }
-void stdout_write(const Int   v) { printf("%lld", v); }
-void stdout_write(const Byte  v) { printf("%x", v); }
+void stdout_write(const Float v) { _writef(32, "%f", v); }
+void stdout_write(const Int   v) { _writef(32, "%lld", v); }
+void stdout_write(const Byte  v) { _writef(32, "%x", v); }
 
 void stdout_write(const UChar v) {
   std::string utf8string = Text::UCharToUTF8String(v);

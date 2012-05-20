@@ -114,7 +114,8 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
     
     // Generate a globally unique mangled name
     //std::string mangledName = uniqueMangledName((*variables)[0]->name());
-    std::string mangledName = (*variables)[0]->name().UTF8String();
+    std::string mangledName = module_->getModuleIdentifier() + ":";
+    mangledName += (*variables)[0]->name().UTF8String();
     mangledName += mangle(*funcNode->functionType());
     
     // Has this function already been declared? (that is, same namespace, name, arg types and result types)

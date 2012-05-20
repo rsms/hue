@@ -1,5 +1,165 @@
 # -- WIP -- (symbol reachability of "fib")
-fib = ^(N Int) Int: if N < 2: N; else: (fib n-1) + fib n-2
+fib = ^(N Int) Int:
+        if N < 2:
+          N
+        else:
+          (fib n-1) + fib n-2
+
+func fib Int (N Int) if N < 2 N else (fib n-1) + (fib n-2)
+fib = ^ Int (N Int) if N < 2 N else (fib n-1) + (fib n-2)
+
+fib = ^ Int (N Int)
+  if N < 2 N else (fib n-1) + (fib n-2)
+
+fib = n Int -> if n < 2 n else (fib n-1) + (fib n-2)
+
+FOO = map "foo" ^ Char (c Char) Character:toUpper c
+FOO = map "foo" ^ Char (c Char) -> Character:toUpper c
+
+Character = { toUpper = func Char (c Char) c + 26 }
+typeof Character # -> {toUpper = func Char (c Char)}
+
+
+age = years_since 1983 5 17
+unless = macro test a b -> if test b else a
+
+fib = func n Int -> unless n < 2 (fib n - 1) + (fib n - 2) n
+
+foo = func a, b, c Int, d Float -> a * b * c * d
+
+println = func (a Int)
+  hue:io:println_int a
+
+FOO = map "foo" (c Char) -> Character:toUpper c
+
+# FuncExpr = 'func' FuncType Expression+
+# FuncTypeExpr = 'funct' FuncType
+#
+# FuncType = Result? '(' Parameters? ')'
+# Result = TypeList
+# Parameters = VariableList
+#
+
+# MacroExpr = 'macro' SymbolList '->' Expression
+# SymbolList = Identifier+
+
+# Some macro wizardry to add type aliasing:
+type = macro T -> macro -> T
+Text = type [Char] # == Text = macro -> [Char]
+# Now we can write
+toUpper2 = (s Text) -> map s (func c -> Character:toUpper c)
+# instead of
+toUpper = ^(s) map s func (c) Character:toUpper c
+
+# Instead of allowing multiple return values, a function can instead return either a record...
+userInfo = ^(id) {id = 123, name = "John", age = 29}
+nameForID = ^(id) (userInfo id):name
+# ...or list
+userInfo = func (id Int) ["John", "123", "29"]
+nameForID = func (id Int) (userInfo id):0
+
+
+# Templates? We probably need something along these lines to allow
+# Calling functions operating on "base types", e.g. map which operates
+# on list:
+map = func (list [?1], modifier func(?1)?1) [?1]
+  with item in list modifier item
+# This means that map's implementations are lazy and compile-time dynamic. As soon as we
+# hit a use of map, we lazily implement the function:
+x = map "abc" Character:toUpper  # ?1 = Char -- ?1 is defined by the first substitution ("Char")
+# The above would case this implicit function to be created:
+map = func (list [Char], modifier func(Char)Char) [Char]
+  with item in list modifier item
+# In a sense, the template is a macro which is expanded at first use to define the function
+# being implemented.
+
+# Or we could just rely on macros:
+mapimpl = macro T -> func (list [T], modifier func(T)T) [T]
+  with item in list modifier item
+map = mapimpl Char
+map = mapimpl Int
+# Yeah, macros are powerful and by not having a special template construct, the language
+# stays simple.
+
+
+# What if all functions are lazily implemented, based on input type?
+foo = func a b c -> a * b * c
+# Means "foo represents a funtion that takes 3 arguments" and the body is not evaluated
+# until an implementation is created.
+bar = foo 1 2 3
+# Would:
+# 1. Convert arguments to a list of types
+# 2. Look for an implementation of foo that takes the same type of arguments
+# 3. If not found:
+#    3.1. create an implementation of foo that takes the arguments
+  foo = funcimpl  ?  (a Int b Int c Int) a * b * c
+#    3.2. infer type by looking at the type returned by the last expression
+#    3.3. finalize implementation
+  foo = funcimpl Int (a Int b Int c Int) a * b * c
+
+# If we want to export a function, we have two very different ways of doing so:
+#  1. Export each variant explicitly:
+      export foo Int (Int Int Int)
+      export foo Float (Float Float Int)
+      ...
+#  2. Decide to always make Hue source code available, thus we can export an lazy
+#     definition and have any importers compile that abstract function into implementations.
+      export foo
+      # In some other module:
+      use foomodule
+      bar = foo 1 2 3
+
+# 2.2:
+# A module exporting foo could in fact mark any implementations it produced as "public"
+# and export metadata about these implementations. That way another module could simply
+# use those implementations.
+# When generating an implementation, that impl should be namespaced according to the origin
+# of the abstract definition and not for whatever module caused the implementation.
+#
+# E.g.
+module Foo/1.0.0
+export foo = func a b c -> a * b * c
+export bar = foo 1 2 3
+# Foo would be exported with the following metadata:
+#
+#   env->getModule("foo")->metadata => {
+#     symbols: {
+#       foo: {
+#         type: Func,
+#         variants: [ {args: ["a","b","c"], body: "a * b * c"} ],
+#       },
+#       bar: { type: Int, value: 6 },
+#     },
+#   }
+#
+# The system environment would manage all implementations:
+#
+#   env->invariants() => { "Foo:foo": [ "III$I" ] }
+#
+# Where each invariant would be guaranteed to exist as e.g:
+#
+#   public i64 Foo$foo$III$I i64, i64, i64 ...
+#
+# Another module using Foo:
+module other
+import Foo
+bar = Foo:foo 1.0 2.0 3.0
+# Would cause an implementation to be created unless one already exists.
+#
+#   env->invariants() => { "Foo:foo": [ "III$I", "FFF$F" ] }
+#
+#
+# Actually, that is crazy since we would have to generate this code at runtime, which would break
+# the awesomeness of strong typing. It's probably better if the compiler generates effectively
+# redundant but isolated implementations.
+#
+# E.g. when compiling the other module, the compiler would 
+#
+
+# (defn fib (N Int)
+#   (if (N < 2)
+#     N
+#     (+ (fib (- n 1)) (fib (- n 2)))))
 
 #x = ? (N < 10):
 #      a = 5

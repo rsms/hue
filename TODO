@@ -1,0 +1,137 @@
+# TODO
+
+• List literals (underlying impl is the persistent vector)
+
+• Records
+
+  foo = {
+    bar = 1234
+    baz = {
+      hello = "Hello"
+      grok = ^(s Text) Text: Text:toUpper s
+    }
+  }
+  foo:bar == 1234
+  foo:bar:baz:hello == "Hello"
+  (foo:bar:baz:grok "hello") == "HELLO"
+
+• Conceptual: Should we have the notion of invoking functions "on" something
+  or stricly "with" something?
+
+    A: foo = "Hello"; foo2 = foo.cat " World"
+    B: foo = "Hello"; foo2 = cat foo " World"
+    A: foo = [1 2 3]; L = foo.length
+    B: foo = [1 2 3]; L = length foo
+    A: foo = bar.firstItem().length.hexadecimal
+    B: foo = hexadecimal (length (firstItem bar))
+    A: foo = bar.magicDistance 123
+    B: foo = Bar:magicDistance bar 123
+
+    I think B is better as it makes it even more clear that functions take
+    state (they don't have state).
+
+• List slices
+
+    foo = [1 2 3 4 5]
+    bar = foo[1:] == [2 3 4 5]
+
+    Simply a composite type (no copy needed since it's only referencing something)
+      struct slice {
+        const vector vec // must hold a reference
+        const int start
+        const int end
+      }
+
+• Closures — functions that capture their environment
+
+  Here, firstChar is captured by ^(Char)Char:
+  
+  foo = ^(s Text) Text:
+          firstChar = s[:1]
+          map s ^(c Char) Char: firstChar
+
+  On the same note, here's a fun function:
+
+    Elegant Clojure "blank?" function which checks to see whether a string is blank: either empty or consisting of only whitespace.
+      (defn blank? [s] (every? #(Character/isWhitespace %) s))
+
+    Hue equivalent:
+      blank? = ^(s Text) Bool: every? Character:isWhitespace s
+
+    The every? function takes a function and a collection as its arguments and returns true if that function returns true for every item in the collection.
+
+• Types
+
+    Name = type Text
+    User = type {id Int, name Text}
+
+• Refs — mutable containers providing transactions
+
+    User = type {id Int, name Text}
+    users = Ref [User]
+    # users => []
+    update users append User {id = 1, name = "Bart"}
+    # users => [User{id = 1, name = "Bart"}]
+    update users append User {id = 2, name = "Lisa"}
+    # users => [User{id = 1, name = "Bart"}, User{id = 2, name = "Lisa"}]
+    userList = deref users
+    # userList => [User{id = 1, name = "Bart"}, User{id = 2, name = "Lisa"}]
+    set users []
+    # users => []
+    # userList => [User{id = 1, name = "Bart"}, User{id = 2, name = "Lisa"}]
+
+  Does this mean we need something similar to C++ templates, so that `Ref [User]` can be possible? And what about `deref`? It needs to know the type of the ref. One way to do this it not to do it, by implementing this stuff in the compiler as a special case. In that case, should Ref have a special name, perhaps "$" or "~"?
+
+• Macros
+
+    unless = macro test a b -> if %test %b else %a
+    foo1 = unless (4 < 5) 100 200
+    foo2 = if (4 < 5) 200 else 100
+
+• Exporting of things from modules
+
+  Move export style:
+
+    pow = func (n Int) -> Int n * n
+    bar = 123
+    export pow bar
+
+  Or perhaps a top-of-module "exports"? (Becomes tedious but obvious)
+
+    exports
+      pow func (n Int) -> Int
+      bar Int
+
+• Require/use instead of external functions makes everything cleaner.
+
+    require hue:io hue:text
+    hue:io:println (hue:text:toUpper "Hello")
+
+    use hue:io hue:text
+    println (toUpper "Hello")
+
+  Or "import" style?
+
+    io = import hue:io
+    txt = import hue:text
+    io:println (txt:toUpper "Hello")
+
+  The runtime library, and any extensions, need to explicitly export their functions instead of just defining them.
+
+    using namespace hue;
+    Vector<Char>* toUpper(Vector<Char>* text) { ... }
+    void hue_init(Env* env) {
+      Module* m = env->getModule("text"); // get or create
+      Func* fun = Func::create(toUpper);
+      fun->result = Type(Type::Vector, Type(Type::Char));
+      fun->arguments.push_back( Type(Type::Vector, Type(Type::Char)) );
+      m->export("toUpper", fun);
+      env->export(m);
+    }
+
+
+
+
+
+
+
