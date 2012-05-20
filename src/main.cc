@@ -66,8 +66,12 @@ namespace {
     cl::value_desc("path"),
     cl::init(" "));
 
-  cl::opt<bool> NoExecution("no-exec",
-    cl::desc("Do not execute program (useful for linting or generating IR code)"),
+  cl::opt<bool> OnlyParse("parse-only",
+    cl::desc("Only parse the source, but do not compile or execute."),
+    cl::init(false));
+
+  cl::opt<bool> OnlyCompile("compile-only",
+    cl::desc("Only compile the source, but do not execute."),
     cl::init(false));
 
   // Determine optimization level.
@@ -176,8 +180,7 @@ int main(int argc, char **argv, char * const *envp) {
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
 
-  cl::ParseCommandLineOptions(argc, argv,
-                              "hue/llvm interpreter & dynamic compiler\n");
+  cl::ParseCommandLineOptions(argc, argv, "hue interpreter & dynamic compiler\n");
 
   // If the user doesn't want core files, disable them.
   if (DisableCoreFiles)
@@ -208,8 +211,12 @@ int main(int argc, char **argv, char * const *envp) {
     std::cerr << parser.errors().size() << " parse error(s)." << std::endl;
     return 1;
   }
-  std::cerr << "Parsed module: " << moduleFunc->body()->toString() << std::endl;
-  //return 0; // xxx only parser
+
+  // Only parse? Then we are done.
+  if (OnlyParse) {
+    std::cout << moduleFunc->body()->toString() << std::endl;
+    return 0;
+  }
   
   // Generate code
   codegen::Visitor codegenVisitor;
@@ -219,7 +226,6 @@ int main(int argc, char **argv, char * const *envp) {
     std::cerr << codegenVisitor.errors().size() << " error(s) during code generation." << std::endl;
     return 1;
   }
-
   
   // Output IR
   if (OutputIR != " ") {
@@ -235,8 +241,8 @@ int main(int argc, char **argv, char * const *envp) {
     }
   }
 
-  // Do not execute program?
-  if (NoExecution)
+  // Only compile? Then we are done.
+  if (OnlyCompile)
     return 0;
 
   // Okay. Let's run this code.
