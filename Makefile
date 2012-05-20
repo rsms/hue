@@ -2,6 +2,7 @@
 cxx_sources :=  	src/main.cc \
 									src/Text.cc \
 									src/Logger.cc \
+                	src/Mangle.cc \
                 	src/codegen/Visitor.cc \
                 	src/codegen/assignment.cc \
                 	src/codegen/binop.cc \
@@ -149,7 +150,7 @@ test: test_lang
 test_deps:
 	@mkdir -p $(test_build_dir)
 
-test_lib_deps: libhuert test_deps
+test_lib_deps: hue test_deps
 
 test_mangle: test_lib_deps $(test_build_dir)/test_mangle
 	$(test_build_dir)/test_mangle
@@ -177,16 +178,22 @@ test_vector_perf: $(test_build_dir)/test_vector_perf
 # Hue language tests
 test_lang_deps: test_lib_deps
 
-test_lang: test_lang_data_literals test_lang_bools test_lang_funcs
+test_lang: test_lang_data_literals \
+					 test_lang_bools \
+					 test_lang_funcs \
+					 test_func_inferred_result_type
 
-test_lang_data_literals: test_lang_deps $(test_build_dir)/test_lang_data_literals.hue.img
-	bash -c '$(test_build_dir)/test_lang_data_literals.hue.img | grep "Hello World" >/dev/null || exit 1'
+test_lang_data_literals: test_lang_deps
+	bash -c '$(build_bin_dir)/hue test/test_lang_data_literals.hue | grep "Hello World" >/dev/null || exit 1'
 
-test_lang_bools: test_lang_deps $(test_build_dir)/test_lang_bools.hue.img
-	bash -c '$(test_build_dir)/test_lang_bools.hue.img | grep "false" >/dev/null || exit 1'
+test_lang_bools: test_lang_deps
+	bash -c '$(build_bin_dir)/hue test/test_lang_bools.hue | grep "false" >/dev/null || exit 1'
 
-test_lang_funcs: test_lang_deps $(test_build_dir)/test_lang_funcs.hue.img
-	$(test_build_dir)/test_lang_funcs.hue.img
+test_lang_funcs: test_lang_deps
+	$(build_bin_dir)/hue test/test_lang_funcs.hue
+
+test_func_inferred_result_type: test_lang_deps
+	bash -c '$(build_bin_dir)/hue test/test_func_inferred_result_type.hue | grep "45.900000 2 2.000000" >/dev/null || exit 1'
 
 # test/build/X <- test/X.cc
 $(test_build_dir)/%: test/%.cc

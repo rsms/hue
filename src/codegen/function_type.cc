@@ -4,7 +4,7 @@
 
 
 
-Function *Visitor::codegenFunctionType(const ast::FunctionType *node,
+Function *Visitor::codegenFunctionType(ast::FunctionType *node,
                                        std::string name, // = "",
                                        Type *returnType  // = 0
                                        ) {

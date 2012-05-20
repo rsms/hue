@@ -109,22 +109,45 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
   ast::FunctionType* hueFuncType = 0;
   
   if (node->rhs()->nodeTypeID() == ast::Node::TFunction) {
-    const ast::Function* funcNode = static_cast<const ast::Function*>(node->rhs());
+    ast::Function* funcNode = static_cast<ast::Function*>(node->rhs());
     hueFuncType = funcNode->functionType();
-    
-    // Generate a globally unique mangled name
-    //std::string mangledName = uniqueMangledName(variable->name());
-    std::string mangledName = module_->getModuleIdentifier() + ":";
-    mangledName += variable->name().UTF8String();
-    mangledName += mangle(*funcNode->functionType());
-    
-    // Has this function already been declared? (that is, same namespace, name, arg types and result types)
-    if (module_->getNamedValue(mangledName) != 0 || module_->getNamedGlobal(mangledName) != 0) {
-      return error("Implementation has already been defined for the symbol");
+
+    if (hueFuncType->returnType() == 0 || !hueFuncType->returnType()->isUnknown()) {
+      // Result type is known.
+
+      // Generate a mangled name
+      std::string mangledName = module_->getModuleIdentifier() + ":";
+      mangledName += variable->name().UTF8String();
+      mangledName += mangle(*funcNode->functionType());
+      
+      // Has this function already been declared? (that is, same namespace, name, arg types and result types)
+      if (moduleHasNamedGlobal(mangledName)) {
+        return error("Implementation has already been defined for the symbol");
+      }
+      
+      // Generate function
+      rhsValue = codegenFunction(funcNode, mangledName);
+
+    } else {
+      // Result type need to be inferred -- codegen function before we decide to keep it.
+      std::string tempName = uniqueMangledName(variable->name());
+      rhsValue = codegenFunction(funcNode, tempName);
+      Function* F = static_cast<Function*>(rhsValue);
+
+      // Generate a mangled name
+      std::string mangledName = module_->getModuleIdentifier() + ":";
+      mangledName += variable->name().UTF8String();
+      mangledName += mangle(F->getFunctionType());
+
+      // Has this function already been declared? (that is, same namespace, name, arg types and result types)
+      if (moduleHasNamedGlobal(mangledName)) {
+        F->eraseFromParent();
+        return error("Implementation has already been defined for the symbol");
+      }
+
+      // Rename the function
+      F->setName(mangledName);
     }
-    
-    // Generate function
-    rhsValue = codegenFunction(funcNode, mangledName);
 
   } else if (node->rhs()->nodeTypeID() == ast::Node::TExternalFunction) {
     const ast::ExternalFunction* externalFuncNode = static_cast<const ast::ExternalFunction*>(node->rhs());

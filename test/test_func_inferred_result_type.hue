@@ -1,0 +1,14 @@
+foo = func (a Float) a * 9
+foo = func (a, b Int) a * b
+foo = func (a, b Int) 1.0 * a * b
+
+print = extern _ZN3hue12stdout_writeEx (v Int)
+print = extern _ZN3hue12stdout_writeEd (v Float)
+print = extern _ZN3hue12stdout_writeEPNS_6TextS_E (v [Char])
+
+print (x1 = foo 5.1)
+print " "
+print (x2 Int = foo 1 2)
+print " "
+print (x3 Float = foo 1 2)
+print "\n"

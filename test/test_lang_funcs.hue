@@ -1,11 +1,11 @@
 #foo = ^(a) a
 #foo = ^(a b) a * b
 
-foo = func (a Float) Float: a
-foo = func (a Int) Int: a
-foo = func (a, b Int) Int: a * b
-foo = func (a, b Int) Float: 1.0 * a * b
-foo = func (a, b Float) Float: a * b
+foo = func (a Float) a
+foo = func (a Int) a
+foo = func (a, b Int) a * b
+foo = func (a, b Int) 1.0 * a * b
+foo = func (a, b Float) a * b
 
 #foo = func (a Int -> Int a # error "Implementation has already been defined for the symbol"
 #foo = 4            # error "Symbol has already been defined"

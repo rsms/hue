@@ -3,7 +3,7 @@
 #ifndef HUE__CODEGEN_LLVM_VISITOR_H
 #define HUE__CODEGEN_LLVM_VISITOR_H
 
-#define DEBUG_LLVM_VISITOR 1
+#define DEBUG_LLVM_VISITOR 0
 #if DEBUG_LLVM_VISITOR
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_LLVM_VISITOR DEBUG_TRACE
@@ -100,7 +100,8 @@ class Visitor {
       symbol.owningScope = this;
     }
     
-    bool setFunctionSymbol(const Text& name, ast::FunctionType* hueT, llvm::FunctionType* T, llvm::Value *V);
+    bool setFunctionSymbol(const Text& name, ast::FunctionType* hueT, llvm::FunctionType* T,
+                           llvm::Value *V);
     
     // Look up a symbol only in this scope.
     // Use Visitor::lookupSymbol to lookup stuff in any scope
@@ -153,7 +154,7 @@ public:
   inline const std::vector<std::string>& warnings() const { return warnings_; };
   
   // Generate code for a module rooting at *root*
-  llvm::Module *genModule(llvm::LLVMContext& context, const Text moduleName, const ast::Function *root);
+  llvm::Module *genModule(llvm::LLVMContext& context, const Text moduleName, ast::Function *root);
   
   static llvm::FunctionType* functionTypeForValue(llvm::Value* V);
   
@@ -179,6 +180,10 @@ protected:
   
   FunctionSymbolList lookupFunctionSymbols(const Text& name) const;
 
+  bool moduleHasNamedGlobal(llvm::StringRef name) const {
+    return module_->getNamedValue(name) != 0
+        || module_->getNamedGlobal(name) != 0;
+  }
 
   typedef enum {
     CandidateErrorArgCount = 0,
@@ -231,6 +236,33 @@ protected:
              && llvm::ArrayType::classof(T = T->getContainedType(0))
               ? static_cast<llvm::ArrayType*>(T) : 0 );
   }
+
+  ast::Type::TypeID ASTTypeIDForIRType(const llvm::Type* T) {
+    switch(T->getTypeID()) {
+      case llvm::Type::VoidTyID:      return ast::Type::None;
+      case llvm::Type::DoubleTyID:    return ast::Type::Float;
+      case llvm::Type::IntegerTyID: {
+        switch (T->getPrimitiveSizeInBits()) {
+          case 1: return ast::Type::Bool;
+          case 8: return ast::Type::Byte;
+          case 32: return ast::Type::Char;
+          case 64: return ast::Type::Int;
+          default: return ast::Type::MaxTypeID;
+        }
+      }
+      //case llvm::Type::FunctionTyID:
+      // case StructTyID: return       ///< 11: Structures
+      // case ArrayTyID: return        ///< 12: Arrays
+      // case PointerTyID: return      ///< 13: Pointers
+      // case VectorTyID: return       ///< 14: SIMD 'packed' format, or other vector type
+      default: return ast::Type::MaxTypeID;
+    }
+  }
+
+  ast::Type *ASTTypeForIRType(const llvm::Type* T) {
+    ast::Type::TypeID typeID = ASTTypeIDForIRType(T);
+    return typeID == ast::Type::MaxTypeID ? 0 : new ast::Type(typeID);
+  }
   
   llvm::Value* wrapValueInGEP(llvm::Value* V) {
     llvm::Value *zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm::getGlobalContext()), 0);
@@ -252,7 +284,7 @@ protected:
   }
   
   // Returns a module-global uniqe mangled name rooted in *name*
-  //std::string uniqueMangledName(const Text& name) const;
+  std::string uniqueMangledName(const Text& name) const;
   
   // Create an alloca of type T
   llvm::AllocaInst *createAlloca(llvm::Type* T, const Text& name) {
@@ -286,11 +318,11 @@ protected:
   // Emit LLVM IR for this AST node along with all the things it depends on.
   // "Value" is the class used to represent a
   // "Static Single Assignment (SSA) register" or "SSA value" in LLVM.
-  llvm::Value *codegen(const ast::Node *node) {
+  llvm::Value *codegen(ast::Node *node) {
     DEBUG_TRACE_LLVM_VISITOR;
     //std::cout << "Node [" << node->nodeTypeID() << "]" << std::endl;
     switch (node->nodeTypeID()) {
-      #define HANDLE(Name) case ast::Node::T##Name: return codegen##Name(static_cast<const ast::Name*>(node));
+      #define HANDLE(Name) case ast::Node::T##Name: return codegen##Name(static_cast<ast::Name*>(node));
       HANDLE(Symbol);
       HANDLE(BinaryOp);
       HANDLE(Function);
@@ -307,13 +339,13 @@ protected:
     }
   }
   
-  llvm::Function *codegenFunctionType(const ast::FunctionType *node,
+  llvm::Function *codegenFunctionType(ast::FunctionType *node,
                                       std::string name = "",
                                       llvm::Type *returnType = 0);
   
   llvm::Value *codegenExternalFunction(const ast::ExternalFunction* node);
   
-  llvm::Value *codegenFunction(const ast::Function *node,
+  llvm::Value *codegenFunction(ast::Function *node,
                                std::string name = "",
                                llvm::Type* returnType = 0,
                                llvm::Value* returnValue = 0);

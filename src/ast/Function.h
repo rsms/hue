@@ -35,7 +35,15 @@ public:
     : Node(TFunctionType), args_(args), returnType_(returnType), isPublic_(isPublic) {}
 
   VariableList *args() const { return args_; }
+
   Type *returnType() const { return returnType_; }
+  void setReturnType(Type* T) {
+    if (returnType_ != T) {
+      Type* OT = returnType_;
+      returnType_ = T;
+      if (OT) delete OT;
+    }
+  }
   
   bool isPublic() const { return isPublic_; }
   void setIsPublic(bool isPublic) { isPublic_ = isPublic; }

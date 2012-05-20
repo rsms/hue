@@ -92,7 +92,7 @@ public:
     : Expression(TAssignment), var_(var), rhs_(rhs) {}
 
   const Variable* variable() const { return var_; };
-  const Expression* rhs() const { return rhs_; }
+  Expression* rhs() const { return rhs_; }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;

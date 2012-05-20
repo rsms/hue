@@ -43,20 +43,14 @@ void Visitor::dumpBlockSymbols() {
 
 
 // Returns a module-global uniqe mangled name rooted in *name*
-/*std::string Visitor::uniqueMangledName(const std::string& name) const {
-  std::string mname = name;
-  while (module_->getNamedValue(mname) != 0 || module_->getNamedGlobal(mname) != 0) {
-    char buf[12]; snprintf(buf, 12, "__%d", i);
-    mname = 
-    
-  }
-  
+std::string Visitor::uniqueMangledName(const Text& name) const {
   std::string mname;
+  std::string utf8name = name.UTF8String();
   int i = 0;
   while (1) {
     // Take the LHS var name and use it for the function name
     if (i > 0) {
-      char buf[12]; snprintf(buf, 12, "$$%d", i);
+      char buf[12]; snprintf(buf, 12, "__%d", i);
       mname = mangledName(utf8name + buf);
     } else {
       mname = mangledName(utf8name);
@@ -68,7 +62,7 @@ void Visitor::dumpBlockSymbols() {
     ++i;
   }
   return mname;
-}*/
+}
 
 
 bool Visitor::IRTypesForASTVariables(std::vector<Type*>& argSpec, ast::VariableList *argVars) {
@@ -210,7 +204,7 @@ FunctionType* Visitor::functionTypeForValue(Value* V) {
 
 bool Visitor::BlockScope::setFunctionSymbol(const Text& name, ast::FunctionType* hueT,
                                             FunctionType* FT, Value *V) {
-  rlog("setFunctionSymbol: name: " << name);
+  //rlog("setFunctionSymbol: name: " << name);
   
   FunctionSymbolList& funcs = functions_[name];
   
@@ -261,7 +255,7 @@ Visitor::FunctionSymbolList Visitor::lookupFunctionSymbols(const Text& name) con
 // ----------- trivial generators ------------
 
 
-llvm::Module *Visitor::genModule(llvm::LLVMContext& context, const Text moduleName, const ast::Function *root) {
+llvm::Module *Visitor::genModule(llvm::LLVMContext& context, const Text moduleName, ast::Function *root) {
   DEBUG_TRACE_LLVM_VISITOR;
   llvm::Module *module = new Module(moduleName.UTF8String(), context);
   
@@ -303,14 +297,14 @@ Value *Visitor::codegenBlock(const ast::Block *block) {
     lastValue = codegen(*it1);
     if (lastValue == 0) return 0;
   }
+
+
+  //rlog("codegen'd block: "); BB->dump();
   
-  BasicBlock* BB = builder_.GetInsertBlock();
-  rlog("codegen'd block: "); BB->dump();
-  
-  rlog("block's last value: "); lastValue->dump();
-  if (lastValue->getType()->isFunctionTy()) {
-    rlog("ZOMG FUNC");
-  }
+  //rlog("block's last value: "); lastValue->dump();
+  //if (lastValue->getType()->isFunctionTy()) {
+  //  rlog("ZOMG FUNC");
+  //}
   
   return (lastValue == 0) ? error("Empty block") : lastValue;
 }

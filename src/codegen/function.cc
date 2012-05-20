@@ -5,30 +5,33 @@
 
 #include "_VisitorImplHeader.h"
 
-Value *Visitor::codegenFunction(const ast::Function *node,
+Value *Visitor::codegenFunction(ast::Function *node,
                                 std::string name,  // = ""
                                 Type* returnType,  // = 0
                                 Value* returnValue // = 0
-                                ) {
+                                )
+{
   DEBUG_TRACE_LLVM_VISITOR;
-  
-  // TODO: Parser or something should infer the return type BEFORE we get here so we
-  // can build a proper function interface definition.
+
+  bool inferredReturnType = false;
   
   // Figure out return type (unless it's been overridden by returnType) if
   // the interface declares the return type.
-  if (returnType == 0 && node->functionType()->returnType() != 0) {
-    returnType = IRTypeForASTType(node->functionType()->returnType());
-    if (returnType == 0)
-      return error("Unable to transcode return type from AST to IR");
+  if (returnType == 0) {
+    if (    node->functionType()->returnType() != 0
+         && !node->functionType()->returnType()->isUnknown() )
+    {
+      returnType = IRTypeForASTType(node->functionType()->returnType());
+      if (returnType == 0)
+        return error("Unable to transcode return type from AST to IR");
+    } else {
+      inferredReturnType = true;
+      returnType = builder_.getVoidTy();
+    }
   }
-  
-  // Function *F = Function::Create(FunctionType::get(builder_.getVoidTy(), false),
-  //                                       llvm::Function::AppendingLinkage, "tmpfunc", module_);
   
   // Generate interface
   Function* F = codegenFunctionType(node->functionType(), name, returnType);
-  //Function* F = codegenFunctionType(node->functionType(), "", returnType);
   if (F == 0) return 0;
 
   // Setup function body
@@ -64,39 +67,30 @@ Value *Visitor::codegenFunction(const ast::Function *node,
     }
   }
   
-  // Add named function to symbol list
-  //if (!name.empty()) {
-    //block()->
-  //}
-  
-  //dumpBlockSymbols();
-  
   // Generate block code
   Value *lastValue = codegenBlock(node->body());
-  
-  // Failed to generate body?
   if (lastValue == 0) {
-    // Error reading body, remove function.
     F->eraseFromParent();
     return 0;
   }
   
-  // Set the return value
-  if (returnValue == 0) {
+  // Unless the return value has been overridden, set it from the last value
+  if (returnValue == 0)
     returnValue = lastValue;
-  }
-  
-  // If returnType is nil, that means we should infer the type
-  if (returnType == 0) {
-    returnType = returnValue->getType();
-    //FunctionType *getFunctionType();
+
+  // Emit block terminator (return)
+  if (builder_.CreateRet(returnValue) == 0) {
+    F->eraseFromParent();
+    return error("Failed to build terminating return instruction");
   }
   
   // Return value changed -- generate func interface
-  if (F->getReturnType()->getTypeID() != returnType->getTypeID()) {
-    F->eraseFromParent();
-    return error("Not implemented: Function return type inference");
-  /*
+  if (inferredReturnType) {
+    returnType = returnValue->getType();
+
+    //F->eraseFromParent();
+    //return error("Not implemented: Function return type inference");
+
     // From: http://llvm.org/docs/doxygen/html/DeadArgumentElimination_8cpp_source.html
     
     // Derive new function type with different return type but same parameters
@@ -110,12 +104,11 @@ Value *Visitor::codegenFunction(const ast::Function *node,
     NF->copyAttributesFrom(F);
     F->getParent()->getFunctionList().insert(F, NF);
     NF->takeName(F);
-    
-    
+
     // Loop over all of the callers of the function, transforming the call sites
     // to pass in a smaller number of arguments into the new function.
     //
-    std::vector<Value*> Args;
+    /*std::vector<Value*> Args;
     size_t NumArgs = params.size();
     while (!F->use_empty()) {
       std::cerr << "MOS" << std::endl;
@@ -160,54 +153,53 @@ Value *Visitor::codegenFunction(const ast::Function *node,
       // Finally, remove the old call from the program, reducing the use-count of
       // F.
       Call->eraseFromParent();
-    }
-    
+    }*/
     
     // Since we have now created the new function, splice the body of the old
     // function right into the new function, leaving the old rotting hulk of the
     // function empty.
     NF->getBasicBlockList().splice(NF->begin(), F->getBasicBlockList());
+
+    // Loop over the argument list, transferring uses of the old arguments over to
+    // the new arguments, also transferring over the names as well.  While we're at
+    // it, remove the dead arguments from the DeadArguments list.
+    for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(),
+         I2 = NF->arg_begin(); I != E; ++I, ++I2) {
+      // Move the name and users over to the new version.
+      I->replaceAllUsesWith(I2);
+      I2->takeName(I);
+    }
     
+    // Swap F and erase the old function.
     Function *OF = F;
     F = NF;
-    
-    // Finally, nuke the old function.
-    OF->eraseFromParent();*/
+    OF->eraseFromParent();
+
+  } else { // inferReturnType
+    // Return type should match the actual type
+    assert(F->getReturnType()->getTypeID() == returnType->getTypeID());
+  }
+
+  // Update the AST node if the return type is unknown
+  if (node->functionType()->returnType() == 0 || node->functionType()->returnType()->isUnknown()) {
+    ast::Type* astReturnType = ASTTypeForIRType(returnType);
+    if (astReturnType == 0)
+      return error("Unable to transcode return type from IR to AST");
+    node->functionType()->setReturnType(astReturnType);
   }
   
   // Check return type against function's declared return type
-  if (F->getFunctionType()->isValidReturnType(returnType) == false) {
-    F->eraseFromParent();
+  // if (F->getFunctionType()->isValidReturnType(returnType) == false) {
+  //   F->eraseFromParent();
     
-    std::cerr << "F " << name << std::endl;
-    std::cerr << "LT: "; if (!returnValue->getType()) std::cerr << "<nil>" << std::endl; else {
-      returnValue->getType()->dump(); std::cerr << std::endl; }
-    std::cerr << "RT: "; if (!returnType) std::cerr << "<nil>" << std::endl; else {
-      returnType->dump(); std::cerr << std::endl; }
+  //   std::cerr << "F " << name << std::endl;
+  //   std::cerr << "LT: "; if (!returnValue->getType()) std::cerr << "<nil>" << std::endl; else {
+  //     returnValue->getType()->dump(); std::cerr << std::endl; }
+  //   std::cerr << "RT: "; if (!returnType) std::cerr << "<nil>" << std::endl; else {
+  //     returnType->dump(); std::cerr << std::endl; }
     
-    return error("Function return type mismatch (does not match declared return type)");
-  }
-  
-  // Finish off the function by defining the return value
-  // See CreateAggregateRet for returning multiple values
-  // See CreateRetVoid for no return value
-  //std::cerr << "builder_.CreateRet ";
-  //lastValue->dump();
-  ReturnInst *retInst;
-  if (returnValue) {
-    // Explicit return value
-    retInst = builder_.CreateRet(returnValue);
-  } else {
-    retInst = builder_.CreateRet(lastValue);
-  }
-  if (!retInst) {
-    F->eraseFromParent();
-    return error("Failed to build terminating return instruction");
-  }
-  
-  //TerminatorInst *tinst = BB->getTerminator();
-  //std::cerr << "BB->getTerminator(): ";
-  //if (!tinst) std::cerr << "<nil>" << std::endl; else tinst->dump();
+  //   return error("Function return type mismatch (does not match declared return type)");
+  // }
 
   // Validate the generated code, checking for consistency.
   verifyFunction(*F);

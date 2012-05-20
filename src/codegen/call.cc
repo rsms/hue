@@ -93,7 +93,7 @@ Value *Visitor::codegenCall(const ast::Call* node, ast::Type* expectedReturnType
     argValues.push_back(inputV);
   }
   
-  // Find a function that matches the arguments (TODO: and result type(s))
+  // Find a function that matches the arguments
   FunctionSymbolList::const_iterator it2 = candidateFuncsMatchingArgCount.begin();
   FunctionSymbolList candidateFuncsMatchingTypes;
   for (; it2 != candidateFuncsMatchingArgCount.end(); ++it2) {
@@ -146,7 +146,7 @@ Value *Visitor::codegenCall(const ast::Call* node, ast::Type* expectedReturnType
       ast::Type* candidateReturnType = (*it3).hueType->returnType();
       
       // Number of results must match, or we ignore this candidate
-      if (candidateReturnType != expectedReturnType) {
+      if (!expectedReturnType->isEqual(*candidateReturnType)) {
         continue; // ignore candidate
       }
       
