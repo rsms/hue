@@ -6,6 +6,7 @@
 #include "_VisitorImplHeader.h"
 
 Value *Visitor::codegenFunction(ast::Function *node,
+                                const Text& symbol,
                                 std::string name,  // = ""
                                 Type* returnType,  // = 0
                                 Value* returnValue // = 0
@@ -27,6 +28,7 @@ Value *Visitor::codegenFunction(ast::Function *node,
     } else {
       inferredReturnType = true;
       returnType = builder_.getVoidTy();
+      //returnType = Type::getLabelTy(getGlobalContext());
     }
   }
   
@@ -34,10 +36,18 @@ Value *Visitor::codegenFunction(ast::Function *node,
   Function* F = codegenFunctionType(node->functionType(), name, returnType);
   if (F == 0) return 0;
 
+  // If the return type is inferred, register us in the current BlockScope
+  //BlockScope* bs = inferredReturnType->blockScope();
+
   // Setup function body
   BasicBlock *BB = BasicBlock::Create(getGlobalContext(), "", F);
   assert(BB != 0);
   BlockScope bs(*this, BB);
+  // BB->getParent() -> Function
+
+  // Export the current function into the bs
+  // TODO: replace __func with the actual symbol name.
+  bs.setFunctionSymbol("__func", node->functionType(), F->getFunctionType(), F);
   
   // setSymbol for arguments, and alloca+store if mutable
   ast::VariableList *args = node->functionType()->args();

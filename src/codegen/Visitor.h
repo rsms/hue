@@ -76,7 +76,10 @@ class Visitor {
   // Represents a scope of named symbols.
   class BlockScope {
   public:
-    BlockScope(Visitor& visitor, llvm::BasicBlock *block) : visitor_(visitor), block_(block) {
+    BlockScope(Visitor& visitor,
+               llvm::BasicBlock *block,
+               bool owningFHasLazyResult = false)
+        : visitor_(visitor), block_(block) {
       visitor_.blockStack_.push_back(this);
       visitor_.builder_.SetInsertPoint(block);
     }
@@ -346,6 +349,7 @@ protected:
   llvm::Value *codegenExternalFunction(const ast::ExternalFunction* node);
   
   llvm::Value *codegenFunction(ast::Function *node,
+                               const Text& symbol = "",
                                std::string name = "",
                                llvm::Type* returnType = 0,
                                llvm::Value* returnValue = 0);

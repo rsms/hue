@@ -45,7 +45,7 @@ Value *Visitor::codegenBinaryOp(const ast::BinaryOp *binOpExp) {
       } else if (type->isDoubleTy()) {
         return builder_.CreateFAdd(L, R, "addtmp");
       } else {
-        break;
+        return error(R_FMT("Invalid operand type for binary operator \"" << binOpExp->operatorName() << "\"" ));
       }
     }
     

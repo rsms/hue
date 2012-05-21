@@ -192,7 +192,6 @@ Value *Visitor::codegenCall(const ast::Call* node, ast::Type* expectedReturnType
           CandidateErrorAmbiguous));
     }
   }
-
   
   // Create call instruction
   if (targetFT->getReturnType()->isVoidTy()) {

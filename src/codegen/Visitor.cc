@@ -261,8 +261,8 @@ llvm::Module *Visitor::genModule(llvm::LLVMContext& context, const Text moduleNa
   
   module_ = module;
   llvm::Value *returnValue = llvm::ConstantInt::get(llvm::getGlobalContext(), APInt(64, 0, true));
-  //llvm::Value *moduleFunc = codegenFunction(root, std::string("minit__") + moduleName, builder_.getInt64Ty());
-  llvm::Value *moduleFunc = codegenFunction(root, "main", returnValue->getType(), returnValue);
+  //llvm::Value *moduleFunc = codegenFunction(root, "main", std::string("minit__") + moduleName, builder_.getInt64Ty());
+  llvm::Value *moduleFunc = codegenFunction(root, "main", "main", returnValue->getType(), returnValue);
   module_ = 0;
   
   // Failure?
