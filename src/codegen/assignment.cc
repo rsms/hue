@@ -132,7 +132,8 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
       // Result type need to be inferred -- codegen function before we decide to keep it.
       std::string tempName = uniqueMangledName(variable->name());
       rhsValue = codegenFunction(funcNode, tempName);
-      Function* F = static_cast<Function*>(rhsValue);
+      Function* F = dynamic_cast<Function*>(rhsValue);
+      if (F == 0) return 0;
 
       // Generate a mangled name
       std::string mangledName = module_->getModuleIdentifier() + ":";
