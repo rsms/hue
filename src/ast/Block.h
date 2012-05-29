@@ -18,7 +18,7 @@ public:
   const ExpressionList& expressions() const { return expressions_; };
   void addExpression(Expression *expression) { expressions_.push_back(expression); };
 
-  virtual Type *resultType() const {
+  virtual const Type *resultType() const {
     if (expressions_.size() != 0) {
       return expressions_.back()->resultType();
     } else {
@@ -26,10 +26,10 @@ public:
     }
   }
 
-  virtual void setResultType(Type* T) {
+  virtual void setResultType(const Type* T) {
     assert(T->isUnknown() == false); // makes no sense to set T=unknown
     // Call setResultType with T for last expression if the last expression is unknown
-    if (expressions_.size() != 0 && expressions_.back()->resultType()->isUnknown()) {
+    if (expressions_.size() != 0) {
       expressions_.back()->setResultType(T);
     }
   }

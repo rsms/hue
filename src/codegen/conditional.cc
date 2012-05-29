@@ -23,6 +23,10 @@ Value* Visitor::codegenConditional(const ast::Conditional *cond) {
     if (testV == 0) return 0;
   }
 
+  // Conditional result type
+  Type* resultT = IRTypeForASTType(cond->resultType());
+  if (resultT == 0) return 0;
+
   // True, false and end block
   BasicBlock *trueBB = BasicBlock::Create(getGlobalContext(), "then");
   BasicBlock *falseBB = BasicBlock::Create(getGlobalContext(), "else");
@@ -41,6 +45,12 @@ Value* Visitor::codegenConditional(const ast::Conditional *cond) {
   Value *trueV = codegenBlock(cond->trueBlock());
   if (trueV == 0) return 0;
 
+  // Check result type and appempt cast if needed
+  if (trueV->getType() != resultT) {
+    trueV = castValueTo(trueV, resultT);
+    if (trueV == 0) return 0;
+  }
+
   // Terminate the true block with a "jump" to the "endif" block
   builder_.CreateBr(endBB);
 
@@ -57,6 +67,12 @@ Value* Visitor::codegenConditional(const ast::Conditional *cond) {
   Value *falseV = codegenBlock(cond->falseBlock());
   if (falseV == 0) return 0;
 
+  // Check result type and appempt cast if needed
+  if (falseV->getType() != resultT) {
+    falseV = castValueTo(falseV, resultT);
+    if (falseV == 0) return 0;
+  }
+
   // Terminate the false block with a "jump" to the "endif" block
   builder_.CreateBr(endBB);
 
@@ -67,10 +83,6 @@ Value* Visitor::codegenConditional(const ast::Conditional *cond) {
   // Create endif block
   F->getBasicBlockList().push_back(endBB);
   builder_.SetInsertPoint(endBB);
-
-  // Conditional result type
-  Type* resultT = IRTypeForASTType(cond->resultType());
-  if (resultT == 0) return 0;
 
   // Add PHI to the endif block
   PHINode *phi = builder_.CreatePHI(resultT, 2, "ifres");

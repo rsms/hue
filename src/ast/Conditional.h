@@ -23,32 +23,34 @@ public:
   Block* falseBlock() const { return falseBlock_; }
   void setFalseBlock(Block* B) { falseBlock_ = B; }
 
-  virtual Type *resultType() const {
+  virtual const Type *resultType() const {
     assert(trueBlock_);
-    Type* BT = trueBlock_->resultType();
-    if (BT && !BT->isUnknown())
-      return BT;
+    const Type* trueT = trueBlock_->resultType();
+    const Type* falseT = falseBlock_->resultType();
 
-    assert(falseBlock_);
-    BT = falseBlock_->resultType();
-    if (BT && !BT->isUnknown())
-      return BT;
-
-    return resultType_; // Type::Unknown
+    if (trueT && !trueT->isUnknown() && falseT && !falseT->isUnknown()) {
+      // Return the highest fidelity type
+      const Type* T = Type::highestFidelity(trueT, falseT);
+      if (T == 0) {
+        // The types are different in a way where neither is better (e.g. int vs func)
+        return resultType_; // Type::Unknown
+      } else {
+        return T;
+      }
+    } else if (trueT && !trueT->isUnknown()) {
+      return trueT;
+    } else if (falseT && !falseT->isUnknown()) {
+      return falseT;
+    } else {
+      return resultType_; // Type::Unknown
+    }
   }
 
-  virtual void setResultType(Type* T) {
+  virtual void setResultType(const Type* T) {
     assert(trueBlock_);
-    Type* BT = trueBlock_->resultType();
-    if (!BT || BT->isUnknown()) {
-      trueBlock_->setResultType(T);
-    }
-
+    trueBlock_->setResultType(T);
     assert(falseBlock_);
-    BT = falseBlock_->resultType();
-    if (!BT || BT->isUnknown()) {
-      falseBlock_->setResultType(T);
-    }
+    falseBlock_->setResultType(T);
   }
 
   virtual std::string toString(int level = 0) const {

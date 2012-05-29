@@ -1,0 +1,32 @@
+# A classic recursive function, calculating the factorial of a natural number.
+# When compiled with optimizations, this will be unrolled into a very efficient
+# tail recursive call (in LLVM 3.0, this is only true for the integer version.)
+
+factorial = func (n Int) if n == 0 1 else n * factorial n - 1
+factorial = func (n Float) if n == 0 1 else n * factorial n - 1
+
+# Import print functions
+print = extern _ZN3hue12stdout_writeEx (v Int)
+print = extern _ZN3hue12stdout_writeEd (v Float)
+print = extern _ZN3hue12stdout_writeEPNS_6TextS_E (v [Char])
+
+# Calulate factorials
+print (factorial 10)
+print " "
+print (factorial 10.0)
+print "\n"
+#>> 3628800 3628800.0
+
+# Alternative ways of structuring the function's code:
+#
+# a. Being more explicit about execution order:
+#   factorial = func (n Int)
+#     if (n == 0) 1 else (n * (factorial n - 1))
+#
+# b. Utilizing multiple lines for readability
+#   factorial = func (n Int)
+#     if n == 0
+#       1
+#     else
+#       n * factorial n - 1
+#

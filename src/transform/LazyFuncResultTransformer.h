@@ -132,7 +132,7 @@ public:
       if (!visit(expression)) return false;
     }
 
-    //rlog("block->resultType(): " << block->resultType()->toString());
+    //rlog("block->resultType(): " << (block->resultType() ? block->resultType()->toString() : std::string("<null>")) );
     return true;
   }
 
@@ -149,8 +149,10 @@ public:
     visitBlock(cond->falseBlock());
 
     // If we know the result type, set the result type of any unresolved dependants
-    if (!cond->resultType()->isUnknown()) {
-      cond->setResultType(cond->resultType());
+    const ast::Type* resultType = cond->resultType();
+    if (!resultType->isUnknown()) {
+      //rlog("COND set " << resultType->toString());
+      cond->setResultType(resultType);
     }
 
     return true;

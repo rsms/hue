@@ -29,13 +29,9 @@ public:
   virtual ~Expression() {}
 
   // Type of result from this expression
-  virtual Type *resultType() const { return resultType_; }
-  virtual void setResultType(Type* T) {
-    if (resultType_ != T) {
-      Type* OT = resultType_;
-      resultType_ = T;
-      if (OT) delete OT;
-    }
+  virtual const Type *resultType() const { return resultType_; }
+  virtual void setResultType(const Type* T) {
+    resultType_ = T;
   }
 
   virtual std::string toString(int level = 0) const {
@@ -45,7 +41,7 @@ public:
   }
 
 protected:
-  Type* resultType_;
+  const Type* resultType_;
 };
 
 // Numeric integer literals like "3".
@@ -102,7 +98,7 @@ public:
   const Variable* variable() const { return var_; };
   Expression* rhs() const { return rhs_; }
 
-  virtual Type *resultType() const {
+  virtual const Type *resultType() const {
     if (rhs_ && var_->hasUnknownType()) {
       return rhs_->resultType();
     } else {
@@ -110,7 +106,7 @@ public:
     }
   }
 
-  virtual void setResultType(Type* T) throw(std::logic_error) {
+  virtual void setResultType(const Type* T) throw(std::logic_error) {
     throw std::logic_error("Can not set type for compound 'Assignment' expression");
   }
 

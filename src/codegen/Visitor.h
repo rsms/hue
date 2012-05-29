@@ -352,7 +352,7 @@ protected:
   
   llvm::Value *codegenBlock(const ast::Block *block);
   llvm::Value *codegenAssignment(const ast::Assignment* node);
-  llvm::Value *codegenCall(const ast::Call* node, ast::Type* expectedReturnType = 0);
+  llvm::Value *codegenCall(const ast::Call* node, const ast::Type* expectedReturnType = 0);
   llvm::Value *codegenConditional(const ast::Conditional* node);
   llvm::Value *codegenIntLiteral(const ast::IntLiteral *literal, bool fixedSize = true);
   llvm::Value *codegenFloatLiteral(const ast::FloatLiteral *literal, bool fixedSize = true);

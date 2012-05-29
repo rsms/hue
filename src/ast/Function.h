@@ -36,13 +36,9 @@ public:
 
   VariableList *args() const { return args_; }
 
-  Type *resultType() const { return resultType_; }
-  void setResultType(Type* T) {
-    if (resultType_ != T) {
-      Type* OT = resultType_;
-      resultType_ = T;
-      if (OT) delete OT;
-    }
+  const Type *resultType() const { return resultType_; }
+  void setResultType(const Type* T) {
+    resultType_ = T;
   }
 
   bool resultTypeIsUnknown() const { return resultType_ && resultType_->isUnknown(); }
@@ -95,7 +91,7 @@ public:
   
 private:
   VariableList *args_;
-  Type *resultType_;
+  const Type *resultType_;
   bool isPublic_;
 };
 
@@ -113,10 +109,10 @@ public:
   Block *body() const { return body_; }
 
   // Override Expression result type
-  virtual Type *resultType() const {
+  virtual const Type *resultType() const {
     return functionType_ ? functionType_->resultType() : 0;
   }
-  virtual void setResultType(Type* T) {
+  virtual void setResultType(const Type* T) {
     if (functionType_) functionType_->setResultType(T);
   }
 
@@ -145,10 +141,10 @@ public:
   inline FunctionType *functionType() const { return functionType_; }
 
   // Override Expression result type
-  virtual Type *resultType() const {
+  virtual const Type *resultType() const {
     return functionType_ ? functionType_->resultType() : 0;
   }
-  virtual void setResultType(Type* T) {
+  virtual void setResultType(const Type* T) {
     if (functionType_) functionType_->setResultType(T);
   }
   

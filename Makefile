@@ -199,7 +199,8 @@ test_lang: test_lang_data_literals \
 					 test_lang_conditionals \
 					 test_lang_funcs \
 					 test_func_inferred_result_type \
-					 test_func_fib
+					 test_func_fib \
+					 test_factorial
 
 test_lang_data_literals: test_lang_deps
 	bash -c '$(build_bin_dir)/hue test/test_lang_data_literals.hue | grep "Hello World" >/dev/null || exit 1'
@@ -211,13 +212,16 @@ test_lang_conditionals: test_lang_deps
 	$(build_bin_dir)/hue test/test_lang_conditionals.hue
 
 test_lang_funcs: test_lang_deps
-	$(build_bin_dir)/hue test/test_lang_funcs.hue
+	bash -c '$(build_bin_dir)/hue test/test_lang_funcs.hue >/dev/null || exit 1'
 
 test_func_inferred_result_type: test_lang_deps
 	bash -c '$(build_bin_dir)/hue test/test_func_inferred_result_type.hue | grep "45.900000 2 2.000000" >/dev/null || exit 1'
 
 test_func_fib: test_lang_deps
 	bash -c '$(build_bin_dir)/hue test/test_func_fib.hue | grep "2178309" >/dev/null || exit 1'
+
+test_factorial: test_lang_deps
+	bash -c '$(build_bin_dir)/hue test/test_factorial.hue | grep "3628800 3628800.0" >/dev/null || exit 1'
 
 # test/build/X <- test/X.cc
 $(test_build_dir)/%: test/%.cc

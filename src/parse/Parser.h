@@ -223,7 +223,7 @@ public:
     assert(varList != 0);
     VariableList::const_reverse_iterator rit = varList->rbegin();
     VariableList::const_reverse_iterator rend = varList->rend();
-    Type *currentT = 0;
+    const Type *currentT = 0;
     for (; rit != rend; ++rit) {
       Variable* var = *rit;
       if (var->hasUnknownType()) {

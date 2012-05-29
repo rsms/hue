@@ -21,9 +21,9 @@ public:
   Node* value() const { return value_; }
   void setValue(Node* value) { value_ = value; }
 
-  virtual Type *resultType() const;
+  virtual const Type *resultType() const;
 
-  virtual void setResultType(Type* T);
+  virtual void setResultType(const Type* T);
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;

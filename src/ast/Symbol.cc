@@ -4,7 +4,7 @@
 
 namespace hue { namespace ast {
 
-Type *Symbol::resultType() const {
+const Type *Symbol::resultType() const {
   if (value_ && value_->isExpression()) {
     return static_cast<Expression*>(value_)->resultType();
   } else if (value_ && value_->isFunctionType()) {
@@ -17,7 +17,7 @@ Type *Symbol::resultType() const {
   }
 }
 
-void Symbol::setResultType(Type* T) {
+void Symbol::setResultType(const Type* T) {
   assert(T->isUnknown() == false); // makes no sense to set T=unknown
   // Call setResultType with T for value_ if value_ result type is unknown
   if (value_) {

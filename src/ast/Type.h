@@ -44,6 +44,8 @@ public:
 
   inline bool isUnknown() const { return typeID_ == Unknown; }
   inline bool isFunction() const { return typeID_ == Func; }
+  inline bool isInt() const { return typeID_ == Int; }
+  inline bool isFloat() const { return typeID_ == Float; }
   
   virtual std::string toString() const {
     switch (typeID_) {
@@ -59,11 +61,26 @@ public:
   }
   
   virtual std::string toHueSource() const { return toString(); }
+
+  static const Type* highestFidelity(const Type* T1, const Type* T2) {
+    if (T1 == T2 || T1->isEqual(*T2)) {
+      return T1;
+    } else if (T1->isInt() && T2->isFloat()) {
+      return T2;
+    } else if (T2->isInt() && T1->isFloat()) {
+      return T1;
+    } else {
+      // Unknown
+      return 0;
+    }
+  }
   
 private:
   TypeID typeID_;
   Text name_;
 };
+
+static const Type UnknownType(Type::Unknown);
 
 
 class ArrayType : public Type {

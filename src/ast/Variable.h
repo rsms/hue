@@ -24,9 +24,9 @@ public:
   const bool& isMutable() const { return isMutable_; }
   const Text& name() const { return name_; }
   
-  Type *type() const { return type_; }
+  const Type *type() const { return type_; }
   bool hasUnknownType() const { return !type_ || type_->typeID() == Type::Unknown; }
-  void setType(Type *type) { type_ = type; }
+  void setType(const Type *type) { type_ = type; }
   
   std::string toString(int level = 0) const {
     std::ostringstream ss;
@@ -42,7 +42,7 @@ public:
 private:
   bool isMutable_;
   Text name_;
-  Type *type_;
+  const Type *type_;
 };
 
 

@@ -28,7 +28,7 @@ public:
   Expression *lhs() const { return lhs_; }
   Expression *rhs() const { return rhs_; }
 
-  virtual Type *resultType() const {
+  virtual const Type *resultType() const {
     if (isComparison()) {
       return resultType_; // always Type::Bool
     } else if (!lhs_->resultType()->isUnknown()) {
@@ -38,7 +38,7 @@ public:
     }
   }
 
-  virtual void setResultType(Type* T) {
+  virtual void setResultType(const Type* T) {
     assert(T->isUnknown() == false); // makes no sense to set T=unknown
     // Call setResultType with T for LHS and RHS which are unknown
     if (lhs_ && lhs_->resultType()->isUnknown()) {

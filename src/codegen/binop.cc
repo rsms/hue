@@ -19,11 +19,11 @@ Value *Visitor::codegenBinaryOp(const ast::BinaryOp *binOpExp) {
   // Numbers: cast to richest type if needed
   if (LT->isIntegerTy() && RT->isDoubleTy()) {
     // Cast L to double
-    rlog("Binop: Cast LHS to double");
+    //rlog("Binop: Cast LHS to double");
     L = builder_.CreateSIToFP(L, (type = RT), "itoftmp");
   } else if (LT->isDoubleTy() && RT->isIntegerTy()) {
     // Cast R to double
-    rlog("Binop: Cast RHS to double. LHS -> "); L->dump();
+    //rlog("Binop: Cast RHS to double. LHS -> "); L->dump();
     R = builder_.CreateSIToFP(R, (type = LT), "itoftmp");
   }
 

@@ -23,15 +23,15 @@ public:
   Function* callee() const { return callee_; }
   void setCallee(Function* F) { callee_ = F; }
 
-  virtual Type *resultType() const {
+  virtual const Type *resultType() const {
     if (callee_ != 0) {
-      return callee_->resultType();
+      return callee_->resultType() ? callee_->resultType() : &UnknownType;
     } else {
       return resultType_; // Type::Unknown
     }
   }
 
-  virtual void setResultType(Type* T) {
+  virtual void setResultType(const Type* T) {
     assert(T->isUnknown() == false); // makes no sense to set T=unknown
     // Call setResultType with T for callee if callee's resultType is unknown
     if (callee_ && callee_->resultType()->isUnknown()) {

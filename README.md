@@ -27,6 +27,22 @@ Objectives and plans:
 
 Seriously, this is just for fun. Don't expect anything from this project.
 
+## Examples
+
+fib.hue
+
+    fib = func (n Int)
+      if n < 2
+        n
+      else
+        (fib n-1) + fib n-2
+
+    fib 32  # -> 2178309
+
+factorial.hue
+
+  
+
 ## Building
 
 First, you need to grab and build llvm. See `deps/llvm/README` for details.
