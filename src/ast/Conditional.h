@@ -5,6 +5,7 @@
 #define HUE__AST_CONDITIONALS_H
 #include "Expression.h"
 #include "Block.h"
+#include <assert.h>
 #include <vector>
 
 namespace hue { namespace ast {
@@ -29,10 +30,45 @@ public:
   void addBranch(Expression* test1, Block* block1) {
     branches_.push_back(Branch(test1, block1));
   }
-  inline const BranchList& branches() const { return branches_; }
+  const BranchList& branches() const { return branches_; }
+  BranchList& branches() { return branches_; }
   
   Block* defaultBlock() const { return defaultBlock_; }
   void setDefaultBlock(Block* B) { defaultBlock_ = B; }
+
+  virtual Type *resultType() const {
+    // Return first branch that has known type
+    for (BranchList::const_iterator I = branches_.begin(), E = branches_.end(); I != E; ++I) {
+      const Branch& branch = *I;
+      Type* BT = branch.block->resultType();
+      if (BT && !BT->isUnknown())
+        return BT;
+    }
+
+    assert(defaultBlock_);
+    Type* BT = defaultBlock_->resultType();
+    if (BT && !BT->isUnknown())
+      return BT;
+
+    return resultType_; // Type::Unknown
+  }
+
+  virtual void setResultType(Type* T) {
+    // call setResultType on each branch block that has an unknown type
+    for (BranchList::iterator I = branches_.begin(), E = branches_.end(); I != E; ++I) {
+      Branch& branch = *I;
+      Type* BT = branch.block->resultType();
+      if (!BT || BT->isUnknown()) {
+        branch.block->setResultType(T);
+      }
+    }
+
+    assert(defaultBlock_);
+    Type* BT = defaultBlock_->resultType();
+    if (!BT || BT->isUnknown()) {
+      defaultBlock_->setResultType(T);
+    }
+  }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;

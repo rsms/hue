@@ -18,18 +18,17 @@ Value *Visitor::codegenFunction(ast::Function *node,
   
   // Figure out return type (unless it's been overridden by returnType) if
   // the interface declares the return type.
-  if (returnType == 0) {
-    if (    node->functionType()->returnType() != 0
-         && !node->functionType()->returnType()->isUnknown() )
-    {
-      returnType = IRTypeForASTType(node->functionType()->returnType());
-      if (returnType == 0)
-        return error("Unable to transcode return type from AST to IR");
-    } else {
-      inferredReturnType = true;
-      returnType = builder_.getVoidTy();
-      //returnType = Type::getLabelTy(getGlobalContext());
-    }
+  if (returnType != 0) {
+    ast::Type* astReturnType = ASTTypeForIRType(returnType);
+    node->functionType()->setResultType(astReturnType);
+  } else if (!node->functionType()->resultTypeIsUnknown()) {
+    returnType = IRTypeForASTType(node->functionType()->resultType());
+    if (returnType == 0)
+      return error("Unable to transcode return type from AST to IR");
+  } else {
+    inferredReturnType = true;
+    returnType = builder_.getVoidTy();
+    //returnType = Type::getLabelTy(getGlobalContext());
   }
   
   // Generate interface
@@ -47,7 +46,7 @@ Value *Visitor::codegenFunction(ast::Function *node,
 
   // Export the current function into the bs
   // TODO: replace __func with the actual symbol name.
-  bs.setFunctionSymbol("__func", node->functionType(), F->getFunctionType(), F);
+  bs.setFunctionSymbol(symbol, node->functionType(), F->getFunctionType(), F);
   
   // setSymbol for arguments, and alloca+store if mutable
   ast::VariableList *args = node->functionType()->args();
@@ -191,11 +190,11 @@ Value *Visitor::codegenFunction(ast::Function *node,
   }
 
   // Update the AST node if the return type is unknown
-  if (node->functionType()->returnType() == 0 || node->functionType()->returnType()->isUnknown()) {
+  if (node->functionType()->resultType() == 0 || node->functionType()->resultType()->isUnknown()) {
     ast::Type* astReturnType = ASTTypeForIRType(returnType);
     if (astReturnType == 0)
       return error("Unable to transcode return type from IR to AST");
-    node->functionType()->setReturnType(astReturnType);
+    node->functionType()->setResultType(astReturnType);
   }
   
   // Check return type against function's declared return type

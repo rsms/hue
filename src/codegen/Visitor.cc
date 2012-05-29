@@ -280,7 +280,7 @@ Value *Visitor::codegenExternalFunction(const ast::ExternalFunction* node) {
   
   // Figure out return type (unless it's been overridden by returnType) if
   // the interface declares the return type.
-  Type* returnType = IRTypeForASTType(node->functionType()->returnType());
+  Type* returnType = IRTypeForASTType(node->functionType()->resultType());
   if (returnType == 0) return error("Unable to transcode return type from AST to IR");
   
   return codegenFunctionType(node->functionType(), node->name().UTF8String(), returnType);
@@ -290,10 +290,10 @@ Value *Visitor::codegenExternalFunction(const ast::ExternalFunction* node) {
 Value *Visitor::codegenBlock(const ast::Block *block) {
   DEBUG_TRACE_LLVM_VISITOR;
   
-  const ast::NodeList& nodes = block->nodes();
-  ast::NodeList::const_iterator it1 = nodes.begin();
+  const ast::ExpressionList& expressions = block->expressions();
+  ast::ExpressionList::const_iterator it1 = expressions.begin();
   Value *lastValue = 0;
-  for (; it1 < nodes.end(); it1++) {
+  for (; it1 < expressions.end(); it1++) {
     lastValue = codegen(*it1);
     if (lastValue == 0) return 0;
   }
@@ -347,16 +347,22 @@ Value *Visitor::resolveSymbol(const Text& name) {
       // TODO: Future: If we support funcs that capture its environment, that code should
       // likely live here.
       return error((std::string("Unknown variable \"") + name.UTF8String() + "\" (no reachable symbols in scope)").c_str());
-    } else {
+    }
+    #if DEBUG_LLVM_VISITOR
+    else {
       rlog("Resolving \"" << name << "\" to a global constant");
     }
-  } else {
+    #endif
+  } 
+  #if DEBUG_LLVM_VISITOR
+  else {
     if (GlobalValue::classof(symbol.value)) {
       rlog("Resolving \"" << name << "\" to a global & local constant");
     } else {
       rlog("Resolving \"" << name << "\" to a local variable");
     }
   }
+  #endif
 
   // Load an alloca or return a reference
   if (symbol.isAlloca()) {

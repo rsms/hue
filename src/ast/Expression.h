@@ -15,16 +15,37 @@
 
 namespace hue { namespace ast {
 
+class FunctionType;
+
+class Expression;
+typedef std::vector<Expression*> ExpressionList;
+
 // Base class for all expression nodes.
 class Expression : public Node {
 public:
-  Expression(NodeTypeID t = TExpression) : Node(t) {}
+  Expression(NodeTypeID t, Type* resultType) : Node(t), resultType_(resultType) {}
+  Expression(NodeTypeID t = TExpression, Type::TypeID resultTypeID = Type::Unknown)
+      : Node(t), resultType_(new Type(resultTypeID)) {}
   virtual ~Expression() {}
+
+  // Type of result from this expression
+  virtual Type *resultType() const { return resultType_; }
+  virtual void setResultType(Type* T) {
+    if (resultType_ != T) {
+      Type* OT = resultType_;
+      resultType_ = T;
+      if (OT) delete OT;
+    }
+  }
+
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     ss << "<Expression>";
     return ss.str();
   }
+
+protected:
+  Type* resultType_;
 };
 
 // Numeric integer literals like "3".
@@ -33,7 +54,7 @@ class IntLiteral : public Expression {
   const uint8_t radix_;
 public:
   IntLiteral(Text value, uint8_t radix = 10)
-    : Expression(TIntLiteral), value_(value), radix_(radix) {}
+    : Expression(TIntLiteral, Type::Int), value_(value), radix_(radix) {}
 
   const Text& text() const { return value_; }
   const uint8_t& radix() const { return radix_; }
@@ -49,7 +70,7 @@ public:
 class FloatLiteral : public Expression {
   Text value_;
 public:
-  FloatLiteral(Text value) : Expression(TFloatLiteral), value_(value) {}
+  FloatLiteral(Text value) : Expression(TFloatLiteral, Type::Float), value_(value) {}
   const Text& text() const { return value_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
@@ -62,24 +83,11 @@ public:
 class BoolLiteral : public Expression {
   bool value_;
 public:
-  BoolLiteral(bool value) : Expression(TBoolLiteral), value_(value) {}
+  BoolLiteral(bool value) : Expression(TBoolLiteral, Type::Bool), value_(value) {}
   inline bool isTrue() const { return value_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     ss << "<BoolLiteral " << (value_ ? "true" : "false") << '>';
-    return ss.str();
-  }
-};
-
-// Referencing a symbol, like "a".
-class Symbol : public Expression {
-  Text name_;
-public:
-  Symbol(const Text &name) : Expression(TSymbol), name_(name) {}
-  const Text& name() const { return name_; }
-  virtual std::string toString(int level = 0) const {
-    std::ostringstream ss;
-    ss << "<Symbol name=" << name_ << '>';
     return ss.str();
   }
 };
@@ -94,86 +102,30 @@ public:
   const Variable* variable() const { return var_; };
   Expression* rhs() const { return rhs_; }
 
+  virtual Type *resultType() const {
+    if (rhs_ && var_->hasUnknownType()) {
+      return rhs_->resultType();
+    } else {
+      return var_->type();
+    }
+  }
+
+  virtual void setResultType(Type* T) throw(std::logic_error) {
+    throw std::logic_error("Can not set type for compound 'Assignment' expression");
+  }
+
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<Assignment ";
-    var_->toString(level+1);
-    ss << " = " << rhs_->toString(level+1) << '>';
+    ss << "<Assignment "
+       << var_->toString(level+1)
+       << " = " << rhs_->toString(level+1)
+       << '>';
     return ss.str();
   }
 private:
   Variable* var_;
   Expression* rhs_;
-};
-
-// Binary operators.
-class BinaryOp : public Expression {
-public:
-  enum Type {
-    SimpleLTR = 0, // '=', '+', '>', '&', etc -- operator_ holds the value
-    EqualityLTR, // '<=' '>=' '!=' '==' -- operator_ holds the value of the first byte
-  };
-  
-  BinaryOp(char op, Expression *lhs, Expression *rhs, Type type)
-      : Expression(TBinaryOp), operator_(op) , lhs_(lhs) , rhs_(rhs), type_(type) {}
-  
-  inline Type type() const { return type_; }
-  inline bool isEqualityLTRType() const { return type_ == EqualityLTR; }
-  inline char operatorValue() const { return operator_; }
-  Expression *lhs() const { return lhs_; }
-  Expression *rhs() const { return rhs_; }
-  
-  std::string operatorName() const {
-    if (type_ == EqualityLTR) {
-      return std::string(1, '=') + operator_;
-    } else {
-      return std::string(1, operator_);
-    }
-  }
-  
-  virtual std::string toString(int level = 0) const {
-    std::ostringstream ss;
-    NodeToStringHeader(level, ss);
-    ss << "<BinaryOp "
-       << (lhs_ ? lhs_->toString(level+1) : "<null>")
-       << " '" << operator_;
-    if (type_ == EqualityLTR) ss << '=';
-    ss << "' "
-       << (rhs_ ? rhs_->toString(level+1) : "<null>")
-       << ">";
-    return ss.str();
-  }
-private:
-  char operator_;
-  Expression *lhs_, *rhs_;
-  Type type_;
-};
-
-// Function calls.
-class Call : public Expression {
-public:
-  typedef std::vector<Expression*> ArgumentList;
-  
-  Call(const Text &calleeName, ArgumentList &args)
-    : Expression(TCall), calleeName_(calleeName), args_(args) {}
-
-  const Text& calleeName() const { return calleeName_; }
-  const ArgumentList& arguments() const { return args_; }
-
-  virtual std::string toString(int level = 0) const {
-    std::ostringstream ss;
-    NodeToStringHeader(level, ss);
-    ss << "<Call " << calleeName_ << " (";
-    ArgumentList::const_iterator it;
-    if ((it = args_.begin()) < args_.end()) { ss << (*it)->toString(level+1); it++; }
-    for (; it < args_.end(); it++) {          ss << ", " << (*it)->toString(level+1); }
-    ss << ")>";
-    return ss.str();
-  }
-private:
-  Text calleeName_;
-  ArgumentList args_;
 };
 
 

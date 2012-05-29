@@ -3,7 +3,7 @@
 #ifndef HUE__CODEGEN_LLVM_VISITOR_H
 #define HUE__CODEGEN_LLVM_VISITOR_H
 
-#define DEBUG_LLVM_VISITOR 1
+#define DEBUG_LLVM_VISITOR 0
 #if DEBUG_LLVM_VISITOR
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_LLVM_VISITOR DEBUG_TRACE
@@ -11,15 +11,7 @@
   #define DEBUG_TRACE_LLVM_VISITOR do{}while(0)
 #endif
 
-#include "../ast/Node.h"
-#include "../ast/Expression.h"
-#include "../ast/Function.h"
-#include "../ast/Block.h"
-#include "../ast/Type.h"
-#include "../ast/Variable.h"
-#include "../ast/Conditional.h"
-#include "../ast/DataLiteral.h"
-#include "../ast/TextLiteral.h"
+#include <hue/ast/ast.h>
 
 #include "../Logger.h"
 #include "../Text.h"
@@ -54,7 +46,8 @@ class Visitor {
     inline bool isAlloca() const { return value ? llvm::AllocaInst::classof(value) : false; };
     inline bool empty() const { return value == 0; }
     Symbol() : value(0), isMutable(true), owningScope(0) {}
-    Symbol(llvm::Value *V, bool M = true, BlockScope* S = 0) : value(V), isMutable(M), owningScope() {}
+    Symbol(llvm::Value *V, bool M = true, BlockScope* S = 0)
+      : value(V), isMutable(M), owningScope(S) {}
   };
 
   typedef std::map<Text, Symbol> SymbolMap;
@@ -209,7 +202,7 @@ protected:
   
   //llvm::Type* returnTypeForFunctionType(const ast::FunctionType *node) {
   //  // Find out the return type of the function
-  //  ast::Type *returnType = node->returnType();
+  //  ast::Type *returnType = node->resultType();
   //  return (returnType == 0) ? builder_.getVoidTy() : IRTypeForASTType(returnType);
   //}
   
@@ -355,20 +348,15 @@ protected:
                                llvm::Value* returnValue = 0);
   
   llvm::Value *codegenBlock(const ast::Block *block);
-  
   llvm::Value *codegenAssignment(const ast::Assignment* node);
-  
   llvm::Value *codegenCall(const ast::Call* node, ast::Type* expectedReturnType = 0);
   llvm::Value *codegenConditional(const ast::Conditional* node);
-  
   llvm::Value *codegenIntLiteral(const ast::IntLiteral *literal, bool fixedSize = true);
   llvm::Value *codegenFloatLiteral(const ast::FloatLiteral *literal, bool fixedSize = true);
   llvm::Value *codegenBoolLiteral(const ast::BoolLiteral *literal);
   llvm::Value *codegenDataLiteral(const ast::DataLiteral *literal);
   llvm::Value *codegenTextLiteral(const ast::TextLiteral *literal);
-  
   llvm::Value *codegenBinaryOp(const ast::BinaryOp *binExpr);
-  
   llvm::Value *codegenSymbol(const ast::Symbol *symbolExpr);
 
 

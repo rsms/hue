@@ -7,14 +7,7 @@
 
 #include "TokenBuffer.h"
 #include "../Logger.h"
-#include "../ast/Node.h"
-#include "../ast/Block.h"
-#include "../ast/Expression.h"
-#include "../ast/Function.h"
-#include "../ast/Conditional.h"
-#include "../ast/DataLiteral.h"
-#include "../ast/TextLiteral.h"
-#include "../ast/ListLiteral.h"
+#include <hue/ast/ast.h>
 
 #include <vector>
 
@@ -365,9 +358,9 @@ public:
     
       // Okay, we know this is a binop.
       char binOperator = token_.textValue[0];
-      BinaryOp::Type binType = BinaryOp::SimpleLTR;
+      BinaryOp::Kind binKind = BinaryOp::SimpleLTR;
       if (token_.type == Token::BinaryComparisonOperator) {
-        binType = BinaryOp::EqualityLTR;
+        binKind = BinaryOp::EqualityLTR;
       }
       
       nextToken();  // eat binop
@@ -385,7 +378,7 @@ public:
       }
     
       // Merge LHS and RHS
-      lhs = new BinaryOp(binOperator, lhs, rhs, binType);
+      lhs = new BinaryOp(binOperator, lhs, rhs, binKind);
     }
   }
   
@@ -495,7 +488,7 @@ public:
       }
       
       // Add the expression to the function body
-      block->addNode(expr);
+      block->addExpression(expr);
       
       // Read any linebreaks and check the line level after each linebreak, starting with the one
       // we just read.
@@ -815,7 +808,7 @@ public:
       Expression* expression = parseExpression();
       rlog("Parsed expression " << expression->toString());
       if (expression == 0) return 0;
-      listLit->addNode(expression);
+      listLit->addExpression(expression);
     }
     
     // Expect terminating ']'

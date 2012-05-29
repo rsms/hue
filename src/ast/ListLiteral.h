@@ -9,20 +9,20 @@ namespace hue { namespace ast {
 
 class ListLiteral : public Expression {
 public:
-  ListLiteral() : Expression(TListLiteral) {}
-  const NodeList& nodes() const { return nodes_; };
-  void addNode(Node *node) { nodes_.push_back(node); };
+  ListLiteral() : Expression(TListLiteral, new ArrayType(new Type(Type::Unknown))) {}
+  const ExpressionList& expressions() const { return expressions_; };
+  void addExpression(Expression *expression) { expressions_.push_back(expression); };
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    ss << "<ListLiteral #" << nodes_.size() << " [";
-    NodeList::const_iterator it1;
-    it1 = nodes_.begin();
-    if (it1 < nodes_.end()) {
+    ss << "<ListLiteral " << expressions_.size() << "[";
+    ExpressionList::const_iterator it1;
+    it1 = expressions_.begin();
+    if (it1 < expressions_.end()) {
       ss << (*it1)->toString(level+1);
       it1++;
     }
-    for (; it1 < nodes_.end(); it1++) {
+    for (; it1 < expressions_.end(); it1++) {
       ss << ", " << (*it1)->toString(level+1);
     }
     ss << "]>";
@@ -30,7 +30,7 @@ public:
   }
   
 private:
-  NodeList nodes_;
+  ExpressionList expressions_;
 };
 
 }} // namespace hue.ast

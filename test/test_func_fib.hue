@@ -1,0 +1,14 @@
+# Here we test two things:
+#
+# 1. Recursive function result type inference (infer the result type
+#    for a function that is used by itself)
+#
+# 2. The implementation of the classic recursive fib function.
+#
+
+print = extern _ZN3hue12stdout_writeEx (v Int)
+
+fib = func (n Int) if n < 2: n; else: (fib n-1) + (fib n-2)
+
+x = fib 32
+print x # -> 2178309

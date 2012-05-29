@@ -30,20 +30,22 @@ public:
 class FunctionType : public Node {
 public:
   FunctionType(VariableList *args = 0,
-               Type *returnType = 0,
+               Type *resultType = 0,
                bool isPublic = false)
-    : Node(TFunctionType), args_(args), returnType_(returnType), isPublic_(isPublic) {}
+    : Node(TFunctionType), args_(args), resultType_(resultType), isPublic_(isPublic) {}
 
   VariableList *args() const { return args_; }
 
-  Type *returnType() const { return returnType_; }
-  void setReturnType(Type* T) {
-    if (returnType_ != T) {
-      Type* OT = returnType_;
-      returnType_ = T;
+  Type *resultType() const { return resultType_; }
+  void setResultType(Type* T) {
+    if (resultType_ != T) {
+      Type* OT = resultType_;
+      resultType_ = T;
       if (OT) delete OT;
     }
   }
+
+  bool resultTypeIsUnknown() const { return resultType_ && resultType_->isUnknown(); }
   
   bool isPublic() const { return isPublic_; }
   void setIsPublic(bool isPublic) { isPublic_ = isPublic; }
@@ -62,7 +64,7 @@ public:
     }
     
     ss << ")";
-    if (returnType_) ss << ' ' << returnType_->toString();
+    if (resultType_) ss << ' ' << resultType_->toString();
     ss << '>';
     return ss.str();
   }
@@ -84,8 +86,8 @@ public:
       ss << ')';
     }
     
-    if (returnType_)
-      ss << ' ' << returnType_->toHueSource();
+    if (resultType_)
+      ss << ' ' << resultType_->toHueSource();
     
     return ss.str();
   }
@@ -93,7 +95,7 @@ public:
   
 private:
   VariableList *args_;
-  Type *returnType_;
+  Type *resultType_;
   bool isPublic_;
 };
 
@@ -110,6 +112,14 @@ public:
   FunctionType *functionType() const { return functionType_; }
   Block *body() const { return body_; }
 
+  // Override Expression result type
+  virtual Type *resultType() const {
+    return functionType_ ? functionType_->resultType() : 0;
+  }
+  virtual void setResultType(Type* T) {
+    if (functionType_) functionType_->setResultType(T);
+  }
+
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
@@ -123,6 +133,7 @@ public:
 };
 
 // Represents an external function declaration.
+// TODO: Join Function and ExternalFunction classes
 class ExternalFunction : public Expression {
   Text name_;
   FunctionType *functionType_;
@@ -132,6 +143,14 @@ public:
   
   inline const Text& name() const { return name_; }
   inline FunctionType *functionType() const { return functionType_; }
+
+  // Override Expression result type
+  virtual Type *resultType() const {
+    return functionType_ ? functionType_->resultType() : 0;
+  }
+  virtual void setResultType(Type* T) {
+    if (functionType_) functionType_->setResultType(T);
+  }
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;

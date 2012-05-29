@@ -24,25 +24,26 @@ class Node {
 public:
   enum NodeTypeID {
     TNode,
-    TBlock,
-    
+
     TFunctionType,
+    TVariable,
+    
+    // Expressions
+    TExpression,
     TFunction,
     TExternalFunction,
-    
-    TExpression,
+    TBlock,
+    TSymbol,
+    TAssignment,
+    TBinaryOp,
+    TCall,
+    TConditional,
     TIntLiteral,
     TFloatLiteral,
     TBoolLiteral,
     TDataLiteral,
     TTextLiteral,
     TListLiteral,
-    
-    TSymbol,
-    TAssignment,
-    TBinaryOp,
-    TCall,
-    TConditional,
     
     _TypeCount
   };
@@ -51,7 +52,16 @@ public:
   virtual ~Node() {}
   
   inline const NodeTypeID& nodeTypeID() const { return type_; }
-  inline bool isFunctionType() const { return type_ == TFunction || type_ == TExternalFunction; }
+
+  inline bool isFunctionType() const { return type_ == TFunctionType; }
+  inline bool isVariable() const { return type_ == TVariable; }
+
+  inline bool isExpression() const { return type_ >= TExpression; }
+  inline bool isFunction() const { return type_ == TFunction; }
+  inline bool isExternalFunction() const { return type_ == TExternalFunction; }
+  inline bool isCall() const { return type_ == TCall; }
+
+  inline bool isCallable() const { return isFunction() || isExternalFunction(); }
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss; NodeToStringHeader(level, ss); ss << "<Node>";

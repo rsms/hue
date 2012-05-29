@@ -85,7 +85,9 @@ Value* Visitor::codegenConditional(const ast::Conditional *cond) {
     
     // Update result type
     resultT = (resultT == 0) ? trueV->getType() : highestFidelityType(resultT, trueV->getType());
-    if (resultT == 0) return error("Incompatible types in conditional branches");
+    if (resultT == 0) {
+      return error(R_FMT("Incompatible types in conditional branches: "));
+    }
     
     // We will eventually use the outcome of this block for the PHI in the endif block
     blocksAndValues.push_back(BlockAndValue(trueBB, trueV));
@@ -116,7 +118,14 @@ Value* Visitor::codegenConditional(const ast::Conditional *cond) {
 
   // Update result type
   resultT = highestFidelityType(resultT, defaultV->getType());
-  if (resultT == 0) return error("Incompatible types in conditional branches");
+  if (resultT == 0) {
+    // Unknown
+    ast::Type* T1 = resultT ? ASTTypeForIRType(resultT) : 0;
+    ast::Type* T2 = defaultV && defaultV->getType() ? ASTTypeForIRType(defaultV->getType()) : 0;
+    return error(R_FMT("Incompatible types in conditional branches: "
+                       << (T1 ? T1->toString() : "null") << " != "
+                       << (T2 ? T2->toString() : "null") ));
+  }
   
   // Save
   BasicBlock* defaultBB = builder_.GetInsertBlock();

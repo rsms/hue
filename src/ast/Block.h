@@ -4,29 +4,47 @@
 #ifndef HUE__AST_BLOCK_H
 #define HUE__AST_BLOCK_H
 #include "Expression.h"
+#include "../Logger.h"
+#include <assert.h>
 
 namespace hue { namespace ast {
 
 class Block : public Expression {
 public:
   Block() : Expression(TBlock) {}
-  Block(Node *node) : Expression(TBlock), nodes_(1, node) {}
-  Block(const NodeList &nodes) : Expression(TBlock), nodes_(nodes) {}
+  Block(Expression *expression) : Expression(TBlock), expressions_(1, expression) {}
+  Block(const ExpressionList &expressions) : Expression(TBlock), expressions_(expressions) {}
   
-  const NodeList& nodes() const { return nodes_; };
-  void addNode(Node *node) { nodes_.push_back(node); };
+  const ExpressionList& expressions() const { return expressions_; };
+  void addExpression(Expression *expression) { expressions_.push_back(expression); };
+
+  virtual Type *resultType() const {
+    if (expressions_.size() != 0) {
+      return expressions_.back()->resultType();
+    } else {
+      return resultType_; // Type::Unknown
+    }
+  }
+
+  virtual void setResultType(Type* T) {
+    assert(T->isUnknown() == false); // makes no sense to set T=unknown
+    // Call setResultType with T for last expression if the last expression is unknown
+    if (expressions_.size() != 0 && expressions_.back()->resultType()->isUnknown()) {
+      expressions_.back()->setResultType(T);
+    }
+  }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    ss << "<Block #" << nodes_.size() << " (";
-    NodeList::const_iterator it1;
-    it1 = nodes_.begin();
-    if (it1 < nodes_.end()) {
+    ss << "<Block (";
+    ExpressionList::const_iterator it1;
+    it1 = expressions_.begin();
+    if (it1 < expressions_.end()) {
       //NodeToStringHeader(level, ss);
       ss << (*it1)->toString(level+1);
       it1++;
     }
-    for (; it1 < nodes_.end(); it1++) {
+    for (; it1 < expressions_.end(); it1++) {
       //NodeToStringHeader(level, ss);
       ss << ", " << (*it1)->toString(level+1);
     }
@@ -40,7 +58,7 @@ public:
   // }
   
 private:
-  NodeList nodes_;
+  ExpressionList expressions_;
 };
 
 }} // namespace hue.ast

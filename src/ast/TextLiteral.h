@@ -10,7 +10,7 @@ namespace hue { namespace ast {
 
 class TextLiteral : public Expression {
 public:
-  TextLiteral(const Text& text) : Expression(TTextLiteral), text_(text) {}
+  TextLiteral(const Text& text) : Expression(TTextLiteral, new ArrayType(new Type(Type::Char))), text_(text) {}
   const Text& text() const { return text_; }
 
   virtual std::string toString(int level = 0) const {

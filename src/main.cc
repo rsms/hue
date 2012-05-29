@@ -14,6 +14,8 @@
 #include "parse/TokenBuffer.h"
 #include "parse/Parser.h"
 
+#include "transform/LazyFuncResultTransformer.h"
+
 #include "Text.h"
 
 #include <llvm/Support/raw_ostream.h>
@@ -203,6 +205,14 @@ int main(int argc, char **argv, char * const *envp) {
   if (!moduleFunc) return 1;
   if (parser.errors().size() != 0) {
     std::cerr << parser.errors().size() << " parse error(s)." << std::endl;
+    return 1;
+  }
+
+  // Apply lazy function result transformer. Updates the AST and resolves any
+  // unknown function result types.
+  transform::LazyFuncResultTransformer LFR(moduleFunc->body());
+  if (!LFR.run(ErrorMsg)) {
+    std::cerr << "Parse error: " << ErrorMsg << std::endl;
     return 1;
   }
 

@@ -3,6 +3,8 @@ cxx_sources :=  	src/main.cc \
 									src/Text.cc \
 									src/Logger.cc \
                 	src/Mangle.cc \
+                	src/ast/Symbol.cc \
+                	src/transform/Scope.cc \
                 	src/codegen/Visitor.cc \
                 	src/codegen/assignment.cc \
                 	src/codegen/binop.cc \
@@ -29,7 +31,21 @@ rt_headers_pub := src/Text.h \
                   src/utf8/unchecked.h \
                   src/runtime/runtime.h \
                   src/runtime/object.h \
-                  src/runtime/Vector.h
+                  src/runtime/Vector.h \
+                	src/ast/ast.h \
+                	src/ast/Type.h \
+                	src/ast/Node.h \
+                	src/ast/Expression.h \
+                	src/ast/Symbol.h \
+                	src/ast/BinaryOp.h \
+                	src/ast/Call.h \
+                	src/ast/Block.h \
+                	src/ast/Conditional.h \
+                	src/ast/Function.h \
+                	src/ast/DataLiteral.h \
+                	src/ast/ListLiteral.h \
+                	src/ast/TextLiteral.h \
+                	src/ast/Variable.h
 
 # Tools
 CC = clang
@@ -181,7 +197,8 @@ test_lang_deps: test_lib_deps
 test_lang: test_lang_data_literals \
 					 test_lang_bools \
 					 test_lang_funcs \
-					 test_func_inferred_result_type
+					 test_func_inferred_result_type \
+					 test_func_fib
 
 test_lang_data_literals: test_lang_deps
 	bash -c '$(build_bin_dir)/hue test/test_lang_data_literals.hue | grep "Hello World" >/dev/null || exit 1'
@@ -194,6 +211,9 @@ test_lang_funcs: test_lang_deps
 
 test_func_inferred_result_type: test_lang_deps
 	bash -c '$(build_bin_dir)/hue test/test_func_inferred_result_type.hue | grep "45.900000 2 2.000000" >/dev/null || exit 1'
+
+test_func_fib: test_lang_deps
+	bash -c '$(build_bin_dir)/hue test/test_func_fib.hue | grep "2178309" >/dev/null || exit 1'
 
 # test/build/X <- test/X.cc
 $(test_build_dir)/%: test/%.cc
@@ -221,14 +241,10 @@ hue_bin: $(objects)
 	@mkdir -p $(build_bin_dir)
 	$(LD) $(LDFLAGS) $(XXLDFLAGS) $(libllvm_ld_flags) $(libhuert_ld_flags) -o $(build_bin_dir)/hue $^
 
-hue_bin2: src/main2.cc
-	@mkdir -p $(build_bin_dir)
-	$(LD) $(LDFLAGS) $(XXLDFLAGS) $(libllvm_ld_flags) -o $(build_bin_dir)/hue $^
-
 # compiler C++ source -> objects
 $(object_dir)/%.o: %.cc
 	@mkdir -p $(compiler_object_dirs)
-	$(CXXC) $(CFLAGS) $(CXXFLAGS) $(libllvm_cxx_flags) -I$(build_include_dir) -c -o $@ $<
+	$(CXXC) $(CFLAGS) $(CXXFLAGS) $(libllvm_cxx_flags) $(libhuert_cxx_flags) -I$(build_include_dir) -c -o $@ $<
 
 # ---------------------------------------------------------------------------------
 # Runtime

@@ -10,7 +10,7 @@ namespace hue { namespace ast {
 
 class DataLiteral : public Expression {
 public:
-  DataLiteral(const ByteString& data) : Expression(TDataLiteral), data_(data) {}
+  DataLiteral(const ByteString& data) : Expression(TDataLiteral, new ArrayType(new Type(Type::Byte))), data_(data) {}
 
   inline const ByteString& data() const { return data_; };
 

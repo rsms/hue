@@ -112,7 +112,7 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
     ast::Function* funcNode = static_cast<ast::Function*>(node->rhs());
     hueFuncType = funcNode->functionType();
 
-    if (hueFuncType->returnType() == 0 || !hueFuncType->returnType()->isUnknown()) {
+    if (hueFuncType->resultType() == 0 || !hueFuncType->resultType()->isUnknown()) {
       // Result type is known.
 
       // Generate a mangled name

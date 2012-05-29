@@ -42,7 +42,8 @@ public:
     return (typeID_ != Named || other.name() == name());
   }
 
-  bool isUnknown() const { return typeID_ == Unknown; }
+  inline bool isUnknown() const { return typeID_ == Unknown; }
+  inline bool isFunction() const { return typeID_ == Func; }
   
   virtual std::string toString() const {
     switch (typeID_) {

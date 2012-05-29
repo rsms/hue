@@ -143,7 +143,7 @@ Value *Visitor::codegenCall(const ast::Call* node, ast::Type* expectedReturnType
     for (; it3 != candidateFuncsMatchingTypes.end(); ++it3) {
 
       // Get the list types that the candidate returns
-      ast::Type* candidateReturnType = (*it3).hueType->returnType();
+      ast::Type* candidateReturnType = (*it3).hueType->resultType();
       
       // Number of results must match, or we ignore this candidate
       if (!expectedReturnType->isEqual(*candidateReturnType)) {

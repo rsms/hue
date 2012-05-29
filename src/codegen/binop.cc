@@ -84,7 +84,7 @@ Value *Visitor::codegenBinaryOp(const ast::BinaryOp *binOpExp) {
     
     case '<': {
       // '<='
-      if (binOpExp->isEqualityLTRType()) {
+      if (binOpExp->isEqualityLTRKind()) {
         if (type->isIntegerTy()) {
           return builder_.CreateICmpSLE(L, R, "letmp"); // -> Int 0|1
         } else if (type->isDoubleTy()) {
@@ -122,7 +122,7 @@ Value *Visitor::codegenBinaryOp(const ast::BinaryOp *binOpExp) {
     
     case '>': {
       // '>='
-      if (binOpExp->isEqualityLTRType()) {
+      if (binOpExp->isEqualityLTRKind()) {
         if (type->isIntegerTy()) {
           return builder_.CreateICmpSGE(L, R, "getmp"); // -> Int 0|1
         } else if (type->isDoubleTy()) {
@@ -160,7 +160,7 @@ Value *Visitor::codegenBinaryOp(const ast::BinaryOp *binOpExp) {
     
     case '!': {
       // '!='
-      if (binOpExp->isEqualityLTRType()) {
+      if (binOpExp->isEqualityLTRKind()) {
         if (type->isIntegerTy()) {
           return builder_.CreateICmpNE(L, R, "netmp"); // -> Int 0|1
         } else if (type->isDoubleTy()) {
@@ -185,7 +185,7 @@ Value *Visitor::codegenBinaryOp(const ast::BinaryOp *binOpExp) {
     
     case '=': {
       // '=='
-      if (binOpExp->isEqualityLTRType()) {
+      if (binOpExp->isEqualityLTRKind()) {
         if (type->isIntegerTy()) {
           return builder_.CreateICmpEQ(L, R, "eqtmp"); // -> Int 0|1
         } else if (type->isDoubleTy()) {
