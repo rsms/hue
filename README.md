@@ -17,16 +17,6 @@ I'm just having some fun. This is by no means the futurez of programming, brogra
   - Runtime library: Provides a few select features like stdio access
 - Features an immutable persistent vector implementation inspired by Clojure that's pretty darn fast (almost constant time complexity.)
 
-Objectives and plans:
-
-1. Have fun
-2. Take is slowly and go bottom-up, analyzing machine code and drinking coffee
-3. Functions that can capture its environment
-4. Complex types (records/structs/et al) with automatic reference counting
-5. Listen to Black Sabbath and take over the worlds
-
-Seriously, this is just for fun. Don't expect anything from this project.
-
 ## Examples
 
 A classic example of a recursive procedure is the function used to calculate the factorial of a natural number. When compiled with optimizations in Hue, this becomes a true tail recursive function.
@@ -81,6 +71,17 @@ You could chain hue with llvm tools to compile a machine image:
 If you don't have a local llvm installation, you might need to add the llvm bin directory from deps to your PATH environment variable before running the above.
 
     PATH=$PATH:$(pwd)/deps/llvm/bin/bin
+
+
+## Objectives and plans
+
+1. Have fun
+2. Take is slowly and go bottom-up, analyzing machine code and drinking coffee
+3. Functions that can capture its environment
+4. Complex types (records/structs/et al) with automatic reference counting
+5. Listen to Black Sabbath and take over the worlds
+
+Seriously, this is just for fun. Don't expect anything from this project.
 
 ## License
 
