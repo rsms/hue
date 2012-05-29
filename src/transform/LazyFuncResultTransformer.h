@@ -139,15 +139,14 @@ public:
 
   bool visitConditional(ast::Conditional* cond) {
     DEBUG_TRACE_LFR_VISITOR;
-    for (Conditional::BranchList::iterator I = cond->branches().begin(),
-                                           E = cond->branches().end(); I != E; ++I) {
-      if ( ! visitBlock((*I).block) ) return false;
-    }
     
-    if (cond->defaultBlock() == 0)
-      return error(errs_ << "Missing default block in conditional");
+    if (cond->testExpression() == 0) return error(errs_ << "Missing test expression in conditional");
+    if (cond->trueBlock() == 0) return error(errs_ << "Missing true block in conditional");
+    if (cond->falseBlock() == 0) return error(errs_ << "Missing false block in conditional");
 
-    visitBlock(cond->defaultBlock());
+    visit(cond->testExpression());
+    visitBlock(cond->trueBlock());
+    visitBlock(cond->falseBlock());
 
     // If we know the result type, set the result type of any unresolved dependants
     if (!cond->resultType()->isUnknown()) {

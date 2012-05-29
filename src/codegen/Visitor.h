@@ -222,7 +222,10 @@ protected:
       }
       //case ast::Type::Func: ...
       //case ast::Type::Named: ...
-      default: return 0;
+      default: {
+        error(std::string("No conversion from AST type ") + T->toString() + " to IR type");
+        return 0;
+      }
     }
   }
   

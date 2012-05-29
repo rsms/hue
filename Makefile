@@ -196,6 +196,7 @@ test_lang_deps: test_lib_deps
 
 test_lang: test_lang_data_literals \
 					 test_lang_bools \
+					 test_lang_conditionals \
 					 test_lang_funcs \
 					 test_func_inferred_result_type \
 					 test_func_fib
@@ -205,6 +206,9 @@ test_lang_data_literals: test_lang_deps
 
 test_lang_bools: test_lang_deps
 	bash -c '$(build_bin_dir)/hue test/test_lang_bools.hue | grep "false" >/dev/null || exit 1'
+
+test_lang_conditionals: test_lang_deps
+	$(build_bin_dir)/hue test/test_lang_conditionals.hue
 
 test_lang_funcs: test_lang_deps
 	$(build_bin_dir)/hue test/test_lang_funcs.hue

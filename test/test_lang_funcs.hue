@@ -1,5 +1,9 @@
-#foo = ^(a) a
-#foo = ^(a b) a * b
+#
+# This test makes sure that function invariants works properly.
+#
+# A function can have multiple implementations where each implementation
+# must have a unique set of argument types (count + types).
+# 
 
 foo = func (a Float) a
 foo = func (a Int) a

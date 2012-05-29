@@ -1,0 +1,18 @@
+# Conditional = 'if' TestExpr TrueExpr 'else' FalseExpr
+x = if 1
+  y = if 2
+    200
+  else
+    300
+  y + 1000
+else
+  300
+
+x2 = if 1 100 else 200
+
+x3 = if 1
+  100
+else if 2
+  200
+else
+  300

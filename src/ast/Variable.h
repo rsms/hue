@@ -33,7 +33,7 @@ public:
     //NodeToStringHeader(level, ss);
     ss << "<Variable "
        << name_ << ' '
-       << (isMutable_ ? "MUTABLE " : "const ")
+       << (isMutable_ ? "MUTABLE " : "")
        << (type_ ? type_->toString() : "?")
        << '>';
     return ss.str();

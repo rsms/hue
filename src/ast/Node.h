@@ -60,6 +60,7 @@ public:
   inline bool isFunction() const { return type_ == TFunction; }
   inline bool isExternalFunction() const { return type_ == TExternalFunction; }
   inline bool isCall() const { return type_ == TCall; }
+  inline bool isBlock() const { return type_ == TBlock; }
 
   inline bool isCallable() const { return isFunction() || isExternalFunction(); }
   
