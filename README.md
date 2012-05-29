@@ -5,17 +5,17 @@ A functional programming language.
 I'm just having some fun. This is by no means the futurez of programming, brogramming or anything like that (except it will be renamed to skynet in 2018 and take over the world, but more on that later).
 
 - Everything is an expression
-- Values are immutable (can't be modified) by default
-- Compiles down to super-tight machine code (thanks to LLVM) that's so fast it makes your mama faint
+- Values are immutable (can't be modified)
 - Fully Unicode (Text type is UTF-32, source files are interpreted as UTF-8 and language symbols can be almost any Unicode character).
-- Built on top of LLVM and thus can generate LLVM IR
 - Fast JIT compiler
+- Close to the metal — built on top of LLVM and thus compiles down to highly optimized machine code that's so fast it makes your mama faint
 - Neat codebase with clearly separated components
-  - Tokenizer: Reads UTF-8 encoded text and streams Hue language tokens
-  - Parser: Reads Hue language tokens and streams Hue language structures
-  - Compiler ("codegen"): Reads Hue language structures and streams LLVM structures
+  - Tokenizer: Reads UTF-8 encoded text and streams Hue language tokens.
+  - Parser: Reads Hue language tokens and streams Hue language structures.
+  - Transformer: Reads Reads Hue language structures (AST) and transforms the code (i.e. finalizes incomplete function types and infers expression result values).
+  - Compiler ("codegen"): Reads Hue language structures (AST) and streams LLVM structures.
   - Runtime library: Provides a few select features like stdio access
-- Contains a immutable persistent vector implementation inspired by Clojure that's pretty darn fast. Technically O(log32(n)) random access complexity, which is almost constant, which is awesome.
+- Features an immutable persistent vector implementation inspired by Clojure that's pretty darn fast (almost constant time complexity.)
 
 Objectives and plans:
 
@@ -29,7 +29,12 @@ Seriously, this is just for fun. Don't expect anything from this project.
 
 ## Examples
 
-fib.hue
+A classic example of a recursive procedure is the function used to calculate the factorial of a natural number. When compiled with optimizations in Hue, this becomes a true tail recursive function.
+
+    factorial = func (n Int) if n == 0 1 else n * factorial n - 1
+    factorial 10  # -> 3628800
+
+The well known mathematical recursive function that computes the Nth Fibonacci number:
 
     fib = func (n Int)
       if n < 2
@@ -39,11 +44,7 @@ fib.hue
 
     fib 32  # -> 2178309
 
-factorial.hue
-
-    factorial = func (n Int) if n == 0 1 else n * factorial n - 1
-    
-    factorial 10  # -> 3628800
+Have a look at the tests in the `test` directory for more examples.
 
 ## Building
 
