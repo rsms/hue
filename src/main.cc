@@ -294,10 +294,11 @@ void repl(llvm::Module *Mod, llvm::FunctionPassManager* funcPassManager, llvm::E
 
     // Print what we parsed
     // TODO: Make this toggle-able
-    for (ast::ExpressionList::const_iterator I = moduleBlock->expressions().begin(),
-          E = moduleBlock->expressions().end(); I != E; ++I) {
-      std::cout << TS_Dark_Gray << (*I)->toString() << TS_None << std::endl;
-    }
+    outs() << TS_Dark_Gray << moduleBlock->toString() << TS_None "\n";
+    // for (ast::ExpressionList::const_iterator I = moduleBlock->expressions().begin(),
+    //       E = moduleBlock->expressions().end(); I != E; ++I) {
+    //   std::cout << TS_Dark_Gray << (*I)->toString() << TS_None << std::endl;
+    // }
 
     // Wrap parsed block in a function
     ast::Function* moduleFunc = Parser::wrapBlockInFunction(moduleBlock);

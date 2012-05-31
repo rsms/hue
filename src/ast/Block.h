@@ -44,7 +44,9 @@ public:
       ++I;
     }
     for (;I != E; ++I) {
-      ss << " " << (*I)->toString(level);
+      if (level == 0) ss << "\n";
+      else NodeToStringHeader(level, ss);
+      ss << (*I)->toString(level);
     }
     //ss << ")";
     return ss.str();

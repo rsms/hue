@@ -118,8 +118,9 @@ public:
     std::ostringstream ss;
     //NodeToStringHeader(level, ss);
     ss << '(' << (functionType_ ? functionType_->toString(level) : "<no function type>")
-       << " "
-       << (body_ ? body_->toString(level+1) : "nil")
+       << " ";
+    NodeToStringHeader(level, ss);
+    ss << (body_ ? body_->toString(level) : "nil")
        << ')';
     return ss.str();
   }

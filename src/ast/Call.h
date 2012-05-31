@@ -41,7 +41,7 @@ public:
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
+    //NodeToStringHeader(level, ss);
     ss << "(";
     ss << calleeName_;
     for (ArgumentList::const_iterator I = args_.begin(), E = args_.end(); I != E; ++I) {

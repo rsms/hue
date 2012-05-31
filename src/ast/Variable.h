@@ -29,16 +29,14 @@ public:
   void setType(const Type *type) { type_ = type; }
   
   std::string toString(int level = 0) const {
-    return name_.UTF8String();
-    // std::ostringstream ss;
-    // //NodeToStringHeader(level, ss);
-    // ss << name_ << ':';
-    // if (isMutable_)
-    //   ss << "<MUTABLE>";
-    // if (!hasUnknownType())
-    //   ss << " " << type_->toString();
-    // //ss << ')';
-    // return ss.str();
+    std::ostringstream ss;
+    ss << name_;
+    ss << ':';
+    if (isMutable_)
+      ss << "<MUTABLE>";
+    if (!hasUnknownType())
+      ss << type_->toString();
+    return ss.str();
   }
   
 private:

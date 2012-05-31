@@ -39,12 +39,14 @@ public:
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
+    //NodeToStringHeader(level, ss);
+    ss << "(if " << (testExpression_ ? testExpression_->toString(level) : "nil");
+    NodeToStringHeader(level+1, ss);
+    ss << (trueBlock_ ? trueBlock_->toString(level+1) : "nil");
     NodeToStringHeader(level, ss);
-    ss << "(if " << (testExpression_ ? testExpression_->toString(level+1) : "nil");
+    ss << "else ";
     NodeToStringHeader(level+1, ss);
-    ss << " " << (trueBlock_ ? trueBlock_->toString(level+1) : "nil");
-    NodeToStringHeader(level+1, ss);
-    ss << "else " << (falseBlock_ ? falseBlock_->toString(level+1) : "nil")
+    ss << (falseBlock_ ? falseBlock_->toString(level+1) : "nil")
        << ")";
     return ss.str();
   }
