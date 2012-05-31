@@ -30,7 +30,7 @@ public:
 class FunctionType : public Node {
 public:
   FunctionType(VariableList *args = 0,
-               Type *resultType = 0,
+               const Type *resultType = 0,
                bool isPublic = false)
     : Node(TFunctionType), args_(args), resultType_(resultType), isPublic_(isPublic) {}
 
@@ -49,26 +49,24 @@ public:
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
-    ss << "<FunctionType (";
-    
+    //NodeToStringHeader(level, ss);
+    ss << "func (";
     if (args_) {
       VariableList::const_iterator it1;
       it1 = args_->begin();
       if (it1 < args_->end()) { ss << (*it1)->toString(); it1++; }
       for (; it1 < args_->end(); it1++) { ss << ", " << (*it1)->toString(); }
     }
-    
     ss << ")";
+
     if (resultType_) ss << ' ' << resultType_->toString();
-    ss << '>';
     return ss.str();
   }
   
   
   virtual std::string toHueSource() const {
     std::ostringstream ss;
-    ss << "^";
+    ss << "func ";
     
     if (args_ && !args_->empty()) {
       ss << '(';
@@ -118,12 +116,11 @@ public:
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
-    ss << "<Function "
-       << (functionType_ ? functionType_->toString(level+1) : "<null>")
-       << " -> "
-       << (body_ ? body_->toString(level+1) : "<null>")
-       << '>';
+    //NodeToStringHeader(level, ss);
+    ss << '(' << (functionType_ ? functionType_->toString(level) : "<no function type>")
+       << " "
+       << (body_ ? body_->toString(level+1) : "nil")
+       << ')';
     return ss.str();
   }
 };
@@ -151,8 +148,8 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<ExternalFunction name='" << name_
-       << "' " << (functionType_ ? functionType_->toString(level+1) : "?")
+    ss << "<extern '" << name_
+       << "' " << (functionType_ ? functionType_->toString(level+1) : "<no function type>")
        << '>';
     return ss.str();
   }

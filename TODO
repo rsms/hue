@@ -129,7 +129,10 @@
       env->export(m);
     }
 
+• Simple API
 
+  parse text -> program
+  eval program -> result
 
 
 

@@ -80,10 +80,11 @@ class Parser {
   typedef uint32_t LineLevel;
   static const LineLevel RootLineLevel = UINT32_MAX;
   static const LineLevel InferLineLevel = UINT32_MAX-1;
+
   TokenBuffer& tokens_;
   Token token_;
   Token previousToken_;
-  Token& futureToken_;
+  Token futureToken_;
   bool isParsingCallArguments_ = false;
   LineLevel previousLineLevel_ = 0;
   LineLevel currentLineLevel_ = 0;
@@ -97,8 +98,12 @@ public:
   explicit Parser(TokenBuffer& tokens)
     : tokens_(tokens)
     , token_(NullToken)
-    , previousToken_()
-    , futureToken_(const_cast<Token&>(NullToken)) {}
+    , previousToken_(NullToken)
+    , futureToken_(NullToken)
+  {
+    // Advance to first token in stream
+    nextToken();
+  }
   
   // ------------------------------------------------------------------------
   // Error handling
@@ -107,6 +112,8 @@ public:
     ss << str << " (" << token_.toString() << ")";
     errors_.push_back(ss.str());
     
+    // TODO: Use macros in termstyle.h for colors
+
     #if DEBUG_PARSER
     fprintf(stderr, "\e[31;1mError: %s\e[0m (%s)\n Token trace:\n", str.c_str(), token_.toString().c_str());
     // list token trace
@@ -153,13 +160,29 @@ public:
         || token_.type == Token::Assignment
         || token_.type == Token::Semicolon;
   }
+
+
+  // bool isGood() const {
+  //   return token_.type != Token::End && token_.type != Token::Error && token_.type != Token::Unexpected;
+  // }
+
+  bool end() const {
+    return token_.type == Token::End;
+  }
+
+  //const Token& token() const { return token_; }
+
+
+  static ast::Function* wrapBlockInFunction(ast::Block* block, bool isPublic = true) {
+    return new Function(new FunctionType(0, block->resultType(), isPublic), block);
+  }
   
   // ------------------------------------------------------------------------
   
   // Variable = Identifier 'MUTABLE'? Type?
   Variable *parseVariable(const Text& identifierName) {
     DEBUG_TRACE_PARSER;
-    Type *T = NULL;
+    const Type *T = 0;
     bool isMutable = false;
     
     if (token_.type == Token::Mutable) {
@@ -387,9 +410,9 @@ public:
   // Type = ArrayType | PrimitiveType
   // ArrayType = '[' PrimitiveType ']'
   // PrimitiveType = 'Int' | 'Float' | 'func' | 'extern' | Identifier
-  Type *parseType() {
+  const Type *parseType() {
     DEBUG_TRACE_PARSER;
-    Type* T = 0;
+    const Type* T = 0;
     
     // Array? '[' subtype ']'
     if (token_.type == Token::LeftSqBracket) {
@@ -402,21 +425,20 @@ public:
       // Expect ']'
       if (token_.type != Token::RightSqBracket) {
         error("Expected terminating ']' after array type");
-        delete T;
         return 0;
       }
       nextToken(); // Eat ']'
       
-      return new ArrayType(T);
+      return ArrayType::get(T);
     }
     
-         if (token_.type == Token::IntSymbol)   T = new Type(Type::Int);
-    else if (token_.type == Token::FloatSymbol) T = new Type(Type::Float);
-    else if (token_.type == Token::Func)        T = new Type(Type::Func);
-    else if (token_.type == Token::Bool)        T = new Type(Type::Bool);
-    else if (token_.type == Token::Byte)        T = new Type(Type::Byte);
-    else if (token_.type == Token::Char)        T = new Type(Type::Char);
-    else if (token_.type == Token::Identifier)  T = new Type(token_.textValue);
+         if (token_.type == Token::IntSymbol)   T = &IntType;
+    else if (token_.type == Token::FloatSymbol) T = &FloatType;
+    else if (token_.type == Token::Func)        T = &FuncType;
+    else if (token_.type == Token::Bool)        T = &BoolType;
+    else if (token_.type == Token::Byte)        T = &ByteType;
+    else if (token_.type == Token::Char)        T = &CharType;
+    //else if (token_.type == Token::Identifier)  T = new Type(token_.textValue);
     else error("Unexpected token while expecting type identifier");
     
     nextToken(); // eat token
@@ -434,7 +456,7 @@ public:
     TypeList *typeList = new TypeList();
     
     while (1) {
-      Type *type = parseType();
+      const Type* type = parseType();
       if (!type) {
         delete typeList; // todo: delete contents
         return 0;
@@ -555,7 +577,7 @@ public:
     DEBUG_TRACE_PARSER;
     
     VariableList *variableList = NULL;
-    Type* returnType = 0;
+    const Type* returnType = 0;
   
     // Parameters =
     if (token_.type == Token::LeftParen) {
@@ -693,9 +715,9 @@ public:
   ///   ::= primary '='
   ///   ::= primary
   ///
-  Expression *parseExpression() {
+  Expression *parseExpression(bool allowEnd = false) {
     DEBUG_TRACE_PARSER;
-    Expression *lhs = parsePrimary();
+    Expression *lhs = parsePrimary(allowEnd);
     if (!lhs) return 0;
     
     //// Backslash means "ignore the following sequence of linebreaks and comments
@@ -736,6 +758,12 @@ public:
   Expression *parseParen() {
     DEBUG_TRACE_PARSER;
     nextToken(); // eat '('
+
+    // Special case: Empty group
+    if (token_.type == Token::RightParen) {
+      nextToken(); // eat ')'
+      return error("Empty expression");
+    }
     
     ScopeFlag<bool> sf0(&isParsingCallArguments_, false);
     
@@ -821,7 +849,7 @@ public:
   }
   
   // Primary = Literal | Identifier | IfExpr
-  Expression* parsePrimary() {
+  Expression* parsePrimary(bool allowEnd = false) {
     entry:
     DEBUG_TRACE_PARSER;
     switch (token_.type) {
@@ -863,8 +891,24 @@ public:
       }
       
       case Token::Error: return error(token_.textValue.UTF8String());
-      case Token::End:   return error("Premature end");
+      case Token::End:   return allowEnd ? 0 : error("Premature end");
       default:           return error("Unexpected token");
+    }
+  }
+  
+  
+  // parse() -- Parse a module (parse a block and wrap it in an anonymous function)
+  Function *parseModule() {
+    DEBUG_TRACE_PARSER;
+    
+    // Parse the root block
+    Block* block = parseBlock();
+    
+    // If we got a block, put it inside an anonymous func and return that func.
+    if (block) {
+      return wrapBlockInFunction(block);
+    } else {
+      return 0;
     }
   }
   
@@ -943,25 +987,6 @@ public:
       currentLineLevel_ = token_.length;
     }
     return token_;
-  }
-  
-  
-  // parse() -- Parse a module. Returns the AST for the parsed code.
-  Function *parseModule() {
-    DEBUG_TRACE_PARSER;
-    
-    // Advance to first token in stream
-    nextToken();
-    
-    // Parse the root block
-    Block* block = parseBlock();
-    
-    // If we got a block, put it inside an anonymous func and return that func.
-    if (block) {
-      return new Function(new FunctionType(0, 0, /* isPublic = */ true), block);
-    } else {
-      return 0;
-    }
   }
 };
 

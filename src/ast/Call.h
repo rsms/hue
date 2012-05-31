@@ -42,13 +42,12 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<Call ";
+    ss << "(";
     ss << calleeName_;
-    ss << " (";
-    ArgumentList::const_iterator it;
-    if ((it = args_.begin()) < args_.end()) { ss << (*it)->toString(level+1); it++; }
-    for (; it < args_.end(); it++) {          ss << ", " << (*it)->toString(level+1); }
-    ss << ")>";
+    for (ArgumentList::const_iterator I = args_.begin(), E = args_.end(); I != E; ++I) {
+      ss << " " << (*I)->toString(level+1);
+    }
+    ss << ")";
     return ss.str();
   }
 private:

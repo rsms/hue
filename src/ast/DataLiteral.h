@@ -10,14 +10,15 @@ namespace hue { namespace ast {
 
 class DataLiteral : public Expression {
 public:
-  DataLiteral(const ByteString& data) : Expression(TDataLiteral, new ArrayType(new Type(Type::Byte))), data_(data) {}
+  DataLiteral(const ByteString& data)
+      : Expression(TDataLiteral, ArrayType::get(ByteType)), data_(data) {}
 
   inline const ByteString& data() const { return data_; };
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<DataLiteral [" << data_.size() << "] '";
+    ss << "'";
     ByteString::const_iterator it = data_.begin();
     
     for (; it != data_.end(); ++ it) {
@@ -35,7 +36,7 @@ public:
       }
     }
     
-    ss << "'>";
+    ss << "'";
     return ss.str();
   }
   

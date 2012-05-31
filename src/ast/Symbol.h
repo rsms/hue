@@ -26,13 +26,14 @@ public:
   virtual void setResultType(const Type* T);
 
   virtual std::string toString(int level = 0) const {
-    std::ostringstream ss;
-    ss << "<Symbol name=" << name_;
-    if (value_) {
-      ss << " -> " << value_->toString(level);
-    }
-    ss << '>';
-    return ss.str();
+    return name_.UTF8String();
+    // std::ostringstream ss;
+    // ss << "<Symbol name=" << name_;
+    // if (value_) {
+    //   ss << " -> " << value_->toString(level);
+    // }
+    // ss << '>';
+    // return ss.str();
   }
 protected:
   Text name_;

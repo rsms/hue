@@ -16,7 +16,7 @@ class Type {
 public:
   enum TypeID {
     Unknown = 0,
-    None, // void
+    Nil, // == i1 0
     Named,
     Float,
     Int,
@@ -49,43 +49,52 @@ public:
   
   virtual std::string toString() const {
     switch (typeID_) {
-      case Named: return name_.UTF8String();
-      case Float: return "Float";
-      case Int: return "Int";
-      case Char: return "Char";
-      case Byte: return "Byte";
-      case Bool: return "Bool";
-      case Func: return "func";
-      default: return "?";
+      case Unknown: return "?";
+      case Nil:     return "Nil";
+      case Named:   return name_.UTF8String();
+      case Float:   return "Float";
+      case Int:     return "Int";
+      case Char:    return "Char";
+      case Byte:    return "Byte";
+      case Bool:    return "Bool";
+      case Func:    return "func";
+      case Array:   return "[?]";
+      default:      return "";
     }
   }
   
   virtual std::string toHueSource() const { return toString(); }
 
-  static const Type* highestFidelity(const Type* T1, const Type* T2) {
-    if (T1 == T2 || T1->isEqual(*T2)) {
-      return T1;
-    } else if (T1->isInt() && T2->isFloat()) {
-      return T2;
-    } else if (T2->isInt() && T1->isFloat()) {
-      return T1;
-    } else {
-      // Unknown
-      return 0;
-    }
-  }
+  static const Type* highestFidelity(const Type* T1, const Type* T2);
   
 private:
   TypeID typeID_;
   Text name_;
 };
 
-static const Type UnknownType(Type::Unknown);
+extern const Type UnknownType;
+extern const Type NilType;
+extern const Type FloatType;
+extern const Type IntType;
+extern const Type CharType;
+extern const Type ByteType;
+extern const Type BoolType;
+extern const Type FuncType;
 
 
 class ArrayType : public Type {
+  ArrayType(const Type* type) : Type(Array), type_(type) {}
 public:
-  ArrayType(Type* type) : Type(Array), type_(type) {}
+  static const ArrayType* get(const Type* elementType) {
+    // TODO: reuse
+    return new ArrayType(elementType);
+  }
+
+  static const ArrayType* get(const Type& elementType) {
+    // TODO: reuse
+    return get(&elementType);
+  }
+
   inline const Type* type() const { return type_; }
   
   virtual std::string toString() const {
@@ -95,11 +104,11 @@ public:
     return s;
   }
 private:
-  Type* type_;
+  const Type* type_;
 };
 
 
-typedef std::vector<Type*> TypeList;
+typedef std::vector<const Type*> TypeList;
 
 }} // namespace hue::ast
 #endif  // HUE__AST_TYPE_DECLARATION_H

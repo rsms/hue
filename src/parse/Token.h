@@ -61,7 +61,7 @@ public:
     
     If,           // 'if'
     Else,         // 'else'
-    None,         // 'none'
+    Nil,          // 'nil'
     
     // Special meaning
     Error,        // textValue = message, intValue = code
@@ -174,7 +174,7 @@ const TokenTypeInfo Token::TypeInfo[] = {
   
   {"If",                  0,0,0},
   {"Else",                0,0,0},
-  {"None",                0,0,0},
+  {"Nil",                 0,0,0},
   
   {"Error",               .hasTextValue = 1,0, .hasIntValue = 1},
   {"End",                 0,0,0},

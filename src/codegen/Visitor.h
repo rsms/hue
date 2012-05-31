@@ -128,6 +128,19 @@ public:
     , builder_(llvm::getGlobalContext())
     {}
   
+  void setModule(llvm::Module* module) {
+    module_ = module;
+  }
+
+  void reset() {
+    module_ = 0;
+    errors_.clear();
+    warnings_.clear();
+    builder_.ClearInsertionPoint();
+    blockStack_.clear();
+    arrayStructTypes_.clear();
+  }
+
   // Register an error
   llvm::Value *error(const std::string& str) {
     std::ostringstream ss;
@@ -209,6 +222,7 @@ protected:
   llvm::Type *IRTypeForASTType(const ast::Type* T) {
     if (T == 0) return builder_.getVoidTy();
     switch (T->typeID()) {
+      case ast::Type::Nil:    return builder_.getInt1Ty();
       case ast::Type::Float:  return builder_.getDoubleTy();
       case ast::Type::Int:    return builder_.getInt64Ty();
       case ast::Type::Char:   return builder_.getInt32Ty();
@@ -238,7 +252,7 @@ protected:
 
   ast::Type::TypeID ASTTypeIDForIRType(const llvm::Type* T) {
     switch(T->getTypeID()) {
-      case llvm::Type::VoidTyID:      return ast::Type::None;
+      case llvm::Type::VoidTyID:      return ast::Type::Nil;
       case llvm::Type::DoubleTyID:    return ast::Type::Float;
       case llvm::Type::IntegerTyID: {
         switch (T->getPrimitiveSizeInBits()) {
@@ -313,6 +327,8 @@ protected:
   llvm::GlobalVariable* createArray(llvm::Constant* constantArray, const llvm::Twine &name = "");
   
   // ------------------------------------------------
+
+public:
   
   // Emit LLVM IR for this AST node along with all the things it depends on.
   // "Value" is the class used to represent a

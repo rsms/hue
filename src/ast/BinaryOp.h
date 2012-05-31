@@ -31,10 +31,8 @@ public:
   virtual const Type *resultType() const {
     if (isComparison()) {
       return resultType_; // always Type::Bool
-    } else if (!lhs_->resultType()->isUnknown()) {
-      return lhs_->resultType();
     } else {
-      return rhs_->resultType();
+      return Type::highestFidelity(lhs_->resultType(), rhs_->resultType());
     }
   }
 
@@ -59,14 +57,14 @@ public:
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
-    ss << "<BinaryOp "
-       << (lhs_ ? lhs_->toString(level+1) : "<null>")
-       << " '" << operator_;
+    //NodeToStringHeader(level, ss);
+    ss << "(";
     if (kind_ == EqualityLTR) ss << '=';
-    ss << "' "
-       << (rhs_ ? rhs_->toString(level+1) : "<null>")
-       << ">";
+    ss << operator_ << " "
+       << (lhs_ ? lhs_->toString(level+1) : "nil")
+       << " "
+       << (rhs_ ? rhs_->toString(level+1) : "nil")
+       << ")";
     return ss.str();
   }
 private:

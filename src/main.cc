@@ -7,17 +7,6 @@
 #include <iostream>
 #include <fstream>
 
-#include "codegen/Visitor.h"
-
-#include "parse/FileInput.h"
-#include "parse/Tokenizer.h"
-#include "parse/TokenBuffer.h"
-#include "parse/Parser.h"
-
-#include "transform/LazyFuncResultTransformer.h"
-
-#include "Text.h"
-
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/PassManager.h>
@@ -50,6 +39,19 @@
 #include <llvm/Support/TargetSelect.h>
 #include <cerrno>
 
+#include "parse/FileInput.h"
+#include "parse/Tokenizer.h"
+#include "parse/TokenBuffer.h"
+#include "parse/Parser.h"
+
+#include "transform/LazyFuncResultTransformer.h"
+
+#include "codegen/Visitor.h"
+
+#include "Text.h"
+#include "termstyle.h"
+#include "linenoise/linenoise.h"
+
 using namespace llvm;
 using namespace hue;
 
@@ -75,6 +77,10 @@ namespace {
 
   cl::opt<bool> OnlyParse("parse-only",
     cl::desc("Only parse the source, but do not compile or execute."),
+    cl::init(false));
+
+  cl::opt<bool> BatchMode("batch",
+    cl::desc("Do NOT run in interactive (REPL) mode."),
     cl::init(false));
 
   cl::opt<bool> OnlyCompile("compile-only",
@@ -164,6 +170,227 @@ namespace {
 }
 
 
+// Parse text into a Hue expression
+ast::Block* parse(const Text& text, const Text& sourceName) {
+  // A tokenizer produce tokens parsed from a ByteInput
+  Tokenizer tokenizer(text);
+  
+  // A TokenBuffer reads tokens from a Tokenizer and maintains limited history
+  TokenBuffer tokens(tokenizer);
+  
+  // A parser reads the token buffer and produce an AST
+  Parser parser(tokens);
+
+  // Block to hold the expression(s) we will parse
+  ast::Block* block = new ast::Block(&NilType);
+
+  // Parse all available expressions
+  while (!parser.end()) {
+    Expression *expr = parser.parseExpression(true);
+    if (expr == 0) {
+      if (parser.end()) {
+        break;
+      }
+      //errs() << "Failed to parse expression in " << sourceName.UTF8String() << "\n";
+      delete block;
+      return 0;
+    }
+    block->addExpression(expr);
+  }
+
+  // Check for errors
+  if (parser.errors().size() != 0) {
+    //std::cerr << parser.errors().size() << " parse error(s)." << std::endl;
+    delete block;
+    return 0;
+  }
+
+  // Apply transformations
+
+  // Apply lazy function result transformer. Updates the AST and resolves any
+  // unknown function result types.
+  transform::LazyFuncResultTransformer LFR(block);
+  std::string ErrorMsg;
+  if (!LFR.run(ErrorMsg)) {
+    std::cerr << "Parse error: " << ErrorMsg << std::endl;
+    delete block;
+    return 0;
+  }
+
+  return block;
+}
+
+
+void repl_completion(const char *buf, linenoiseCompletions *lc) {
+  // if (buf[0] == 'h') {
+  //   linenoiseAddCompletion(lc, "hello");
+  //   linenoiseAddCompletion(lc, "hello there");
+  // }
+}
+
+
+void repl(llvm::Module *Mod, llvm::FunctionPassManager* funcPassManager, llvm::ExecutionEngine *EE) {
+  ast::Block* moduleBlock = 0;
+  unsigned long inputCounter = 0;
+
+  // Setup linenoise
+  const char* historyFilename = ".hue_history";
+  linenoiseSetCompletionCallback(repl_completion);
+  linenoiseHistorySetMaxLen(1000);
+  linenoiseHistoryLoad(historyFilename);
+
+  // Create code generator
+  codegen::Visitor codegen;
+  codegen.setModule(Mod);
+
+  // Run static constructors.
+  errno = 0;
+  EE->runStaticConstructorsDestructors(Mod, false);
+
+  char* inputBytes = 0;
+  const char* prompt = "> ";
+  if (1) { // is color terminal
+    prompt = TS_Yellow "→" TS_None " ";
+  }
+
+  repl_loop:
+  while (!feof(stdin)) {
+    // Name this iteration
+    char replIterationName[100];
+    snprintf(replIterationName, 100, "repl#%lu", ++inputCounter);
+
+    // Read input
+    if (inputBytes != 0) free(inputBytes);
+    inputBytes = linenoise(prompt);
+    if (inputBytes == 0) break; // EOF
+    if (inputBytes[0] == '\0') continue; // empty
+
+    // Check if empty so to avoid recording empty entries in history
+    size_t i = 0, len = strlen(inputBytes);
+    for (; i < len && (inputBytes[i] == ' ' || inputBytes[i] == '\t'); ++i) {}
+    if (i == len) continue; // empty
+
+    // Parse into text as UTF-8 data
+    Text input(inputBytes);
+
+    // Record the input into history
+    if (linenoiseHistoryAdd(inputBytes, 0))
+      linenoiseHistorySave(historyFilename);
+
+    // Parse
+    std::cerr << TS_Brown "** Parsing input '" << input << "'" TS_None << std::endl;
+    if (moduleBlock != 0) delete moduleBlock;
+    moduleBlock = parse(input, "<stdin>");
+    if (moduleBlock == 0) {
+      errs() << TS_Brown "** parse() failed.\n" TS_None;
+      goto repl_loop;
+    }
+
+    // If we got no expressions, we are done with this iteration
+    if (moduleBlock->expressions().size() == 0) {
+      errs() << TS_Light_Red "Error: Empty expression\n" TS_None;
+      goto repl_loop;
+    }
+
+    // Print what we parsed
+    // TODO: Make this toggle-able
+    for (ast::ExpressionList::const_iterator I = moduleBlock->expressions().begin(),
+          E = moduleBlock->expressions().end(); I != E; ++I) {
+      std::cout << TS_Dark_Gray << (*I)->toString() << TS_None << std::endl;
+    }
+
+    // Wrap parsed block in a function
+    ast::Function* moduleFunc = Parser::wrapBlockInFunction(moduleBlock);
+    //outs() << moduleFunc->toString() << "\n";
+
+    // Generate code
+    errs() << TS_Brown "** Generating code\n" TS_None;
+    llvm::Function* moduleF = (llvm::Function*)codegen.codegenFunction(moduleFunc, "", replIterationName);
+    if (moduleF == 0) {
+      //errs() << TS_Light_Red << codegen.errors().size() << " error(s) during code generation.\n" TS_None;
+      goto repl_loop;
+    }
+
+    // Apply optimizations
+    if (funcPassManager) {
+      // Execute all of the passes scheduled for execution. Keep track of
+      // whether any of the passes modifies the module, and if so, return true.
+      funcPassManager->run(*moduleF);
+    }
+
+    // Print generated code
+    // TODO: Make this toggle-able
+    outs() << TS_Dark_Gray;
+    //moduleF->print(outs(), 0);
+    for (llvm::Function::const_iterator I = moduleF->begin(), E = moduleF->end(); I != E; ++I) {
+      (*I).print(outs(), 0);
+    }
+    outs() << TS_None;
+
+    // Execute
+    errs() << TS_Brown "** Executing\n" TS_None;
+    std::vector<llvm::GenericValue> args;
+    llvm::GenericValue returnV = EE->runFunction(moduleF, args);
+
+    // Find out what the function returns and print a representation
+    const ast::Type* resultType = moduleFunc->resultType();
+    std::cout << TS_Light_Blue;
+    switch (resultType->typeID()) {
+      case ast::Type::Nil:
+        std::cout << TS_Dark_Gray "nil"; break;
+      
+      case ast::Type::Float:
+        std::cout << returnV.DoubleVal; break;
+
+      case ast::Type::Int: {
+        std::cout << (int64_t)returnV.IntVal.getLimitedValue();
+        break;
+      }
+
+      case ast::Type::Char:
+        std::cout << (uint32_t)returnV.IntVal.getLimitedValue(UINT32_MAX); break;
+
+      case ast::Type::Byte:
+        std::cout << (uint8_t)returnV.IntVal.getLimitedValue(UINT8_MAX); break;
+
+      case ast::Type::Bool:
+        std::cout << (returnV.IntVal.getLimitedValue(1) ? "true" : "false"); break;
+
+      case ast::Type::Func: {
+        ast::Expression* lastExpr = moduleBlock->expressions().back();
+        // TODO: Represent the actual result
+        std::cout << TS_Brown << lastExpr->toString();
+        break;
+      }
+
+      case ast::Type::Array: {
+        // TODO: Represent an array
+        std::cout << TS_Cyan << "[" << returnV.PointerVal << "]"; break;
+      }
+
+      // TODO: case ast::Type::Named:
+      
+      default:
+        std::cout << "?"; break;
+    }
+    std::cout << TS_None << std::endl;
+
+
+    // Clean up
+    EE->freeMachineCodeForFunction(moduleF);
+    moduleF->removeFromParent();
+  }
+
+  if (inputBytes != 0)
+    free(inputBytes);
+
+  codegen.reset(); // todo: use this when we reset our REPL env
+
+  // Run static destructors.
+  EE->runStaticConstructorsDestructors(Mod, true);
+}
+
+
 int main(int argc, char **argv, char * const *envp) {
   sys::PrintStackTraceOnErrorSignal();
   PrettyStackTraceProgram X(argc, argv);
@@ -176,60 +403,62 @@ int main(int argc, char **argv, char * const *envp) {
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
 
-  cl::ParseCommandLineOptions(argc, argv, "hue interpreter & dynamic compiler\n");
+  cl::ParseCommandLineOptions(argc, argv, "Hue interpreter & dynamic compiler\n");
 
   // If the user doesn't want core files, disable them.
   if (DisableCoreFiles)
     sys::Process::PreventCoreFiles();
   
   std::string ErrorMsg;
+  ast::Block* moduleBlock = 0;
 
-  // Read input file
-  Text textSource;
-  if (!textSource.setFromUTF8FileOrSTDIN(InputFile.c_str(), ErrorMsg)) {
-    std::cerr << "Failed to open input file: " << ErrorMsg << std::endl;
-    return 1;
-  }
-  
-  // A tokenizer produce tokens parsed from a ByteInput
-  Tokenizer tokenizer(textSource);
-  
-  // A TokenBuffer reads tokens from a Tokenizer and maintains limited history
-  TokenBuffer tokens(tokenizer);
-  
-  // A parser reads the token buffer and produce an AST
-  Parser parser(tokens);
-  
-  // Parse the input into an AST
-  ast::Function *moduleFunc = parser.parseModule();
-  if (!moduleFunc) return 1;
-  if (parser.errors().size() != 0) {
-    std::cerr << parser.errors().size() << " parse error(s)." << std::endl;
-    return 1;
+  // Force batch mode if we are given any source files
+  if (!InputFile.empty() && InputFile != "-") {
+    BatchMode = true;
   }
 
-  // Apply lazy function result transformer. Updates the AST and resolves any
-  // unknown function result types.
-  transform::LazyFuncResultTransformer LFR(moduleFunc->body());
-  if (!LFR.run(ErrorMsg)) {
-    std::cerr << "Parse error: " << ErrorMsg << std::endl;
-    return 1;
+
+  if (BatchMode) {
+    // Read input file
+    Text textSource;
+    if (!textSource.setFromUTF8FileOrSTDIN(InputFile.c_str(), ErrorMsg)) {
+      std::cerr << "Failed to open input file: " << ErrorMsg << std::endl;
+      return 1;
+    }
+    
+    // Parse
+    if ((moduleBlock = parse(textSource, InputFile)) == 0)
+      return 1;
+
+    // Only parse? Then we are done.
+    if (OnlyParse) {
+      std::cout << moduleBlock->toString() << std::endl;
+      return 0;
+    }
+
   }
 
-  // Only parse? Then we are done.
-  if (OnlyParse) {
-    std::cout << moduleFunc->body()->toString() << std::endl;
-    return 0;
+
+  // Argv and module name
+  std::string moduleName;
+  if (!FakeArgv0.empty()) {
+    // If the user specifically requested an argv[0] to pass into the program,
+    // do it now.
+    moduleName = InputFile = FakeArgv0;
+  } else {
+    // Otherwise, if there is a .hue suffix on the executable strip it off
+    if (StringRef(InputFile).endswith(".hue"))
+      InputFile.erase(InputFile.length() - 4);
+    moduleName = InputFile;
   }
-  
-  // Generate code
-  codegen::Visitor codegenVisitor;
-  llvm::Module *Mod = codegenVisitor.genModule(llvm::getGlobalContext(), "hello", moduleFunc);
-  //std::cout << "moduleIR: " << Mod << std::endl;
-  if (!Mod) {
-    std::cerr << codegenVisitor.errors().size() << " error(s) during code generation." << std::endl;
-    return 1;
-  }
+  // Add the module's name to the start of the vector of arguments to main().
+  InputArgv.insert(InputArgv.begin(), InputFile);
+
+
+  // LLVM module
+  llvm::Module *Mod = new Module(moduleName, Context);
+
+
 
   // Create ExecutionEngine
   EngineBuilder builder(Mod);
@@ -270,13 +499,29 @@ int main(int argc, char **argv, char * const *envp) {
       errs() << argv[0] << ": error creating EE: " << ErrorMsg << "\n";
     else
       errs() << argv[0] << ": unknown error creating EE!\n";
-    exit(1);
+    return 1;
   }
 
+  EE->RegisterJITEventListener(createOProfileJITEventListener());
+
+
+
   // Setup optimization pass manager
-  PassManager* passManager = 0;
+  PassManager* modPassManager = 0;
+  FunctionPassManager* funcPassManager = 0;
+  PassManagerBase* passManager = 0;
+
   if (OLvl != CodeGenOpt::None) {
-    passManager = new PassManager();
+    if (!BatchMode) {
+      // In REPL mode, we apply passes to functions, since that's our largest chunk
+      // of work.
+      passManager = funcPassManager = new FunctionPassManager(Mod);
+    } else {
+      // In batch mode, our largest chunk is the complete module, so we apply passes
+      // to complete modules.
+      passManager = modPassManager = new PassManager();
+    }
+
     // Set up the optimizer pipeline.
     // Start with registering info about how the target lays out data structures.
     passManager->add(new TargetData(*EE->getTargetData()));
@@ -288,7 +533,8 @@ int main(int argc, char **argv, char * const *envp) {
     // This is useful because some passes (ie TraceValues) insert a lot of string
     // constants into the program, regardless of whether or not they duplicate an
     // existing string.
-    passManager->add(createConstantMergePass());
+    if (modPassManager)
+      passManager->add(createConstantMergePass());
     
     // Do simple "peephole" optimizations and bit-twiddling optzns.
     passManager->add(createInstructionCombiningPass());
@@ -303,7 +549,8 @@ int main(int argc, char **argv, char * const *envp) {
     passManager->add(createGVNPass());
 
     // uses a heuristic to inline direct function calls to small functions.
-    passManager->add(createFunctionInliningPass());
+    if (modPassManager)
+      passManager->add(createFunctionInliningPass());
     
     // Simplify the control flow graph (deleting unreachable blocks, etc).
     passManager->add(createCFGSimplificationPass());
@@ -326,113 +573,137 @@ int main(int argc, char **argv, char * const *envp) {
     // them the readnone/readonly attribute. It also discovers function arguments
     // that are not captured by the function and marks them with the nocapture
     // attribute.
-    passManager->add(createFunctionAttrsPass());
+    if (modPassManager)
+      passManager->add(createFunctionAttrsPass());
   }
 
-  // Apply optimizations
-  if (passManager) {
-    // Execute all of the passes scheduled for execution. Keep track of
-    // whether any of the passes modifies the module, and if so, return true.
-    passManager->run(*Mod);
-  }
-  
-  // Output IR
-  if (OutputIR != " ") {
-    if (OutputIR.empty() || OutputIR == "-") {
-      Mod->print(outs(), 0);
-    } else {
-      llvm::raw_fd_ostream os(OutputIR.c_str(), ErrorMsg);
-      if (os.has_error()) {
-        std::cerr << "Failed to open file for output: " << ErrorMsg << std::endl;
-        return 1;
-      }
-      Mod->print(os, 0);
+
+
+  if (!BatchMode) {
+    if (NoLazyCompilation) {
+      errs() << argv[0] << ": Can not disable lazy compilation in REPL mode\n";
     }
-  }
 
-  // Only compile? Then we are done.
-  if (OnlyCompile)
-    return 0;
+    // Enable lazy compilation
+    EE->DisableLazyCompilation(NoLazyCompilation);
 
-  // Okay. Let's run this code.
+    // Enter REPL
+    repl(Mod, funcPassManager, EE);
 
-  // If not jitting lazily, load the whole bitcode file eagerly too.
-  if (NoLazyCompilation) {
-    if (Mod->MaterializeAllPermanently(&ErrorMsg)) {
-      errs() << argv[0] << ": bitcode didn't read correctly.\n";
-      errs() << "Reason: " << ErrorMsg << "\n";
-      exit(1);
-    }
-  }
-
-  EE->RegisterJITEventListener(createOProfileJITEventListener());
-
-  EE->DisableLazyCompilation(NoLazyCompilation);
-
-  // If the user specifically requested an argv[0] to pass into the program,
-  // do it now.
-  if (!FakeArgv0.empty()) {
-    InputFile = FakeArgv0;
   } else {
-    // Otherwise, if there is a .hue suffix on the executable strip it off
-    if (StringRef(InputFile).endswith(".hue"))
-      InputFile.erase(InputFile.length() - 4);
+    // Batch mode (not REPL)
+
+    // Module wrapper function
+    ast::Function* moduleFunc = Parser::wrapBlockInFunction(moduleBlock);
+
+    // xxx
+    std::cout << moduleFunc->toString() << std::endl;
+
+    // Create code generator
+    codegen::Visitor codegen;
+    codegen.setModule(Mod);
+
+    // Generate code
+    llvm::Function* moduleF = (llvm::Function*)codegen.codegenFunction(moduleFunc, "", moduleName);
+    if (moduleF == 0) {
+      std::cerr << codegen.errors().size() << " error(s) during code generation." << std::endl;
+      return 1;
+    }
+    codegen.reset();
+  
+    // Apply optimizations
+    if (modPassManager) {
+      // Execute all of the passes scheduled for execution. Keep track of
+      // whether any of the passes modifies the module, and if so, return true.
+      modPassManager->run(*Mod);
+    }
+
+    // Output IR (-output-ir)
+    if (OutputIR != " ") {
+      if (OutputIR.empty() || OutputIR == "-") {
+        Mod->print(outs(), 0);
+      } else {
+        llvm::raw_fd_ostream os(OutputIR.c_str(), ErrorMsg);
+        if (os.has_error()) {
+          std::cerr << "Failed to open file for output: " << ErrorMsg << std::endl;
+          return 1;
+        }
+        Mod->print(os, 0);
+      }
+    }
+
+    // Only compile? Then we are done. (-compile-only)
+    if (OnlyCompile)
+      return 0;
+
+    // If not jitting lazily, load the whole bitcode file eagerly too.
+    if (NoLazyCompilation) {
+      if (Mod->MaterializeAllPermanently(&ErrorMsg)) {
+        errs() << argv[0] << ": bitcode didn't read correctly.\n";
+        errs() << "Reason: " << ErrorMsg << "\n";
+        exit(1);
+      }
+      EE->DisableLazyCompilation(NoLazyCompilation);
+    }
+
+    // If the program doesn't explicitly call exit, we will need the Exit 
+    // function later on to make an explicit call, so get the function now. 
+    Constant *Exit = Mod->getOrInsertFunction("exit", llvm::Type::getVoidTy(Context),
+                                                      llvm::Type::getInt32Ty(Context),
+                                                      NULL);
+
+    // Reset errno to zero on entry to main.
+    errno = 0;
+   
+    // Run static constructors.
+    EE->runStaticConstructorsDestructors(false);
+
+    if (NoLazyCompilation) {
+      for (Module::iterator I = Mod->begin(), E = Mod->end(); I != E; ++I) {
+        llvm::Function *Fn = &*I;
+        if (Fn != moduleF && !Fn->isDeclaration())
+          EE->getPointerToFunction(Fn);
+      }
+    }
+
+    // Run main.
+    int Result = EE->runFunctionAsMain(moduleF, InputArgv, envp);
+
+    // Run static destructors.
+    EE->runStaticConstructorsDestructors(true);
+    
+    // If the program didn't call exit explicitly, we should call it now. 
+    // This ensures that any atexit handlers get called correctly.
+    if (llvm::Function *ExitF = dyn_cast<llvm::Function>(Exit)) {
+      std::vector<GenericValue> Args;
+      GenericValue ResultGV;
+      ResultGV.IntVal = APInt(32, Result);
+      Args.push_back(ResultGV);
+      EE->runFunction(ExitF, Args);
+      errs() << "ERROR: exit(" << Result << ") returned!\n";
+      abort();
+    } else {
+      errs() << "ERROR: exit defined with wrong prototype!\n";
+      abort();
+    }
+
   }
 
-  // Add the module's name to the start of the vector of arguments to main().
-  InputArgv.insert(InputArgv.begin(), InputFile);
 
   // Call the main function from M as if its signature were:
   //   int main (int argc, char **argv, const char **envp)
   // using the contents of Args to determine argc & argv, and the contents of
   // EnvVars to determine envp.
   //
-  llvm::Function *EntryFn = Mod->getFunction(EntryFunc);
-  if (!EntryFn) {
-    errs() << '\'' << EntryFunc << "\' function not found in module.\n";
-    return -1;
-  }
+  // llvm::Function *EntryFn = Mod->getFunction(EntryFunc);
+  // if (!EntryFn) {
+  //   errs() << '\'' << EntryFunc << "\' function not found in module.\n";
+  //   return -1;
+  // }
 
-  // If the program doesn't explicitly call exit, we will need the Exit 
-  // function later on to make an explicit call, so get the function now. 
-  Constant *Exit = Mod->getOrInsertFunction("exit", llvm::Type::getVoidTy(Context),
-                                                    llvm::Type::getInt32Ty(Context),
-                                                    NULL);
+
   
-  // Reset errno to zero on entry to main.
-  errno = 0;
- 
-  // Run static constructors.
-  EE->runStaticConstructorsDestructors(false);
 
-  if (NoLazyCompilation) {
-    for (Module::iterator I = Mod->begin(), E = Mod->end(); I != E; ++I) {
-      llvm::Function *Fn = &*I;
-      if (Fn != EntryFn && !Fn->isDeclaration())
-        EE->getPointerToFunction(Fn);
-    }
-  }
-
-  // Run main.
-  int Result = EE->runFunctionAsMain(EntryFn, InputArgv, envp);
-
-  // Run static destructors.
-  EE->runStaticConstructorsDestructors(true);
-  
-  // If the program didn't call exit explicitly, we should call it now. 
-  // This ensures that any atexit handlers get called correctly.
-  if (llvm::Function *ExitF = dyn_cast<llvm::Function>(Exit)) {
-    std::vector<GenericValue> Args;
-    GenericValue ResultGV;
-    ResultGV.IntVal = APInt(32, Result);
-    Args.push_back(ResultGV);
-    EE->runFunction(ExitF, Args);
-    errs() << "ERROR: exit(" << Result << ") returned!\n";
-    abort();
-  } else {
-    errs() << "ERROR: exit defined with wrong prototype!\n";
-    abort();
-  }
   
   //
   // From here:

@@ -23,7 +23,7 @@ typedef std::vector<Expression*> ExpressionList;
 // Base class for all expression nodes.
 class Expression : public Node {
 public:
-  Expression(NodeTypeID t, Type* resultType) : Node(t), resultType_(resultType) {}
+  Expression(NodeTypeID t, const Type* resultType) : Node(t), resultType_(resultType) {}
   Expression(NodeTypeID t = TExpression, Type::TypeID resultTypeID = Type::Unknown)
       : Node(t), resultType_(new Type(resultTypeID)) {}
   virtual ~Expression() {}
@@ -36,7 +36,7 @@ public:
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    ss << "<Expression>";
+    ss << "(?)";
     return ss.str();
   }
 
@@ -57,7 +57,7 @@ public:
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    ss << "<IntLiteral value=" << value_ << '>';
+    ss << value_;
     return ss.str();
   }
 };
@@ -70,7 +70,7 @@ public:
   const Text& text() const { return value_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    ss << "<FloatLiteral value=" << value_ << '>';
+    ss << value_;
     return ss.str();
   }
 };
@@ -83,7 +83,7 @@ public:
   inline bool isTrue() const { return value_; }
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    ss << "<BoolLiteral " << (value_ ? "true" : "false") << '>';
+    ss << (value_ ? "true" : "false");
     return ss.str();
   }
 };
@@ -113,10 +113,11 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<Assignment "
+    ss << "(= "
        << var_->toString(level+1)
-       << " = " << rhs_->toString(level+1)
-       << '>';
+       << " "
+       << rhs_->toString(level+1)
+       << ')';
     return ss.str();
   }
 private:

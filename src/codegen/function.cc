@@ -45,8 +45,8 @@ Value *Visitor::codegenFunction(ast::Function *node,
   // BB->getParent() -> Function
 
   // Export the current function into the bs
-  // TODO: replace __func with the actual symbol name.
-  bs.setFunctionSymbol(symbol, node->functionType(), F->getFunctionType(), F);
+  if (!symbol.empty())
+    bs.setFunctionSymbol(symbol, node->functionType(), F->getFunctionType(), F);
   
   // setSymbol for arguments, and alloca+store if mutable
   ast::VariableList *args = node->functionType()->args();
@@ -68,6 +68,7 @@ Value *Visitor::codegenFunction(ast::Function *node,
       
         // Register or override the value ref with the alloca inst
         bs.setSymbol(var->name(), Alloca, /* isMutable = */true);
+
       } else {
         // Register the symbol
         bs.setSymbol(var->name(), &arg, /* isMutable = */false);
@@ -92,6 +93,13 @@ Value *Visitor::codegenFunction(ast::Function *node,
     F->eraseFromParent();
     return error("Failed to build terminating return instruction");
   }
+
+  // if (!inferredReturnType) {
+  //   if (returnValue->getType() != returnType) {
+  //     // Oops. The parser failed to predict the correct result type.
+  //     inferredReturnType = true;
+  //   }
+  // }
   
   // Return value changed -- generate func interface
   if (inferredReturnType) {
@@ -184,9 +192,9 @@ Value *Visitor::codegenFunction(ast::Function *node,
     F = NF;
     OF->eraseFromParent();
 
-  } else { // inferReturnType
-    // Return type should match the actual type
-    assert(F->getReturnType()->getTypeID() == returnType->getTypeID());
+  } else if (returnValue->getType() != returnType) {
+    // Return type should match the actual type, but it doesn't.
+    return error("Function return type is incompatible with the actual result type");
   }
 
   // Update the AST node if the return type is unknown

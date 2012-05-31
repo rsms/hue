@@ -9,7 +9,7 @@ namespace hue { namespace ast {
 
 class ListLiteral : public Expression {
 public:
-  ListLiteral() : Expression(TListLiteral, new ArrayType(new Type(Type::Unknown))) {}
+  ListLiteral() : Expression(TListLiteral, ArrayType::get(UnknownType)) {}
   const ExpressionList& expressions() const { return expressions_; };
   void addExpression(Expression *expression) { expressions_.push_back(expression); };
   

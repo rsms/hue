@@ -432,7 +432,7 @@ public:
             else if i32CMP_then_CONSUME_SYMBOL(Else,         4, 'e','l','s','e');
             else if i32CMP_then_CONSUME_SYMBOL(Func,         4, 'f','u','n','c');
             else if i32CMP_then_CONSUME_SYMBOL(External,     6, 'e','x','t','e','r','n');
-            else if i32CMP_then_CONSUME_SYMBOL(None,         4, 'n','o','n','e');
+            else if i32CMP_then_CONSUME_SYMBOL(Nil,          3, 'n','i','l');
             else if i32CMP_then_CONSUME_SYMBOL(Bool,         4, 'B','o','o','l');
             else if i32CMP_then_CONSUME_SYMBOL(IntSymbol,    3, 'I','n','t');
             else if i32CMP_then_CONSUME_SYMBOL(FloatSymbol,  5, 'F','l','o','a','t');

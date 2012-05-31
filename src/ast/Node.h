@@ -13,7 +13,7 @@ namespace hue { namespace ast {
 inline static void NodeToStringHeader(int level, std::ostream& ss) {
   if (level > 0) {
     ss << std::endl;
-    for (int i=level; --i; ) ss << "  ";
+    for (int i=level; i--; ) ss << "  ";
   }
 }
 

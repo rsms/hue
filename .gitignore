@@ -4,6 +4,7 @@
 *.hue.ll
 *.hue.img
 *.
+.hue_history
 
 build
 test/build

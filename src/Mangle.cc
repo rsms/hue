@@ -13,7 +13,7 @@ std::string mangle(const ast::TypeList& types) {
   std::ostringstream ss;
   ast::TypeList::const_iterator it = types.begin();
   for (; it != types.end(); ++it) {
-    ast::Type* T = *it;
+    const ast::Type* T = *it;
     ss << mangle(*T);
   }
   return ss.str();

@@ -27,23 +27,7 @@ public:
     assert(trueBlock_);
     const Type* trueT = trueBlock_->resultType();
     const Type* falseT = falseBlock_->resultType();
-
-    if (trueT && !trueT->isUnknown() && falseT && !falseT->isUnknown()) {
-      // Return the highest fidelity type
-      const Type* T = Type::highestFidelity(trueT, falseT);
-      if (T == 0) {
-        // The types are different in a way where neither is better (e.g. int vs func)
-        return resultType_; // Type::Unknown
-      } else {
-        return T;
-      }
-    } else if (trueT && !trueT->isUnknown()) {
-      return trueT;
-    } else if (falseT && !falseT->isUnknown()) {
-      return falseT;
-    } else {
-      return resultType_; // Type::Unknown
-    }
+    return Type::highestFidelity(trueT, falseT);
   }
 
   virtual void setResultType(const Type* T) {
@@ -56,13 +40,12 @@ public:
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<Conditional "
-       << "if " << (testExpression_ ? testExpression_->toString(level+1) : "<nil>");
+    ss << "(if " << (testExpression_ ? testExpression_->toString(level+1) : "nil");
     NodeToStringHeader(level+1, ss);
-    ss << "then " << (trueBlock_ ? trueBlock_->toString(level+1) : "<nil>");
+    ss << " " << (trueBlock_ ? trueBlock_->toString(level+1) : "nil");
     NodeToStringHeader(level+1, ss);
-    ss << "else " << (falseBlock_ ? falseBlock_->toString(level+1) : "<nil>")
-       << ">";
+    ss << "else " << (falseBlock_ ? falseBlock_->toString(level+1) : "nil")
+       << ")";
     return ss.str();
   }
   

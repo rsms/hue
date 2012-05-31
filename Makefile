@@ -3,7 +3,9 @@ cxx_sources :=  	src/main.cc \
 									src/Text.cc \
 									src/Logger.cc \
                 	src/Mangle.cc \
+                	src/linenoise/linenoise.cc \
                 	src/ast/Symbol.cc \
+                	src/ast/Type.cc \
                 	src/transform/Scope.cc \
                 	src/codegen/Visitor.cc \
                 	src/codegen/assignment.cc \
@@ -15,6 +17,8 @@ cxx_sources :=  	src/main.cc \
                 	src/codegen/conditional.cc \
                 	src/codegen/data_literal.cc \
                 	src/codegen/text_literal.cc
+
+binhue_c_sources :=
 
 cxx_rt_sources := src/Text.cc \
                   src/Logger.cc \
@@ -29,6 +33,7 @@ rt_headers_pub := src/Text.h \
                   src/utf8/core.h \
                   src/utf8/checked.h \
                   src/utf8/unchecked.h \
+                  src/linenoise/linenoise.h \
                   src/runtime/runtime.h \
                   src/runtime/object.h \
                   src/runtime/Vector.h \
@@ -75,7 +80,8 @@ test_build_dir := ./test/build
 # Source files to Object files
 object_dir := $(build_dir)/.objs
 cxx_objects := ${cxx_sources:.cc=.o}
-_objects := $(cxx_objects)
+binhue_c_objects := ${binhue_c_sources:.c=.o}
+_objects := $(cxx_objects) $(binhue_c_objects)
 objects = $(patsubst %,$(object_dir)/%,$(_objects))
 main_deps := ${objects:.o=.d}
 
@@ -122,12 +128,22 @@ libllvm_cxx_flags := $(libllvm_c_flags) -fno-rtti -fno-common
 # --- libhuert ---------------------------------------------------------------------
 rt_headers_build_dir := $(build_include_dir)/hue
 rt_headers_export := $(patsubst src/%,$(rt_headers_build_dir)/%,$(rt_headers_pub))
+rt_headers_export += $(patsubst deps/%,$(rt_headers_build_dir)/%,$(rt_headers_pub))
 rt_headers_export_dirs := $(foreach fn,$(rt_headers_export),$(dir $(fn)))
 
 libhuert_c_flags := -I$(build_include_dir)
 libhuert_cxx_flags := $(libhuert_c_flags)
-
 libhuert_ld_flags := -L$(build_lib_dir) -lhuert
+
+# --- bin/hue ----------------------------------------------------------------------
+binhue_c_flags :=
+binhue_cxx_flags := $(binhue_c_flags) $(libllvm_cxx_flags) $(libhuert_cxx_flags) -I$(build_include_dir)
+binhue_ld_flags :=
+
+# readline
+#binhue_c_flags += -DHAVE_READLINE=1
+#binhue_cxx_flags += $(binhue_c_flags)
+#binhue_ld_flags += -lreadline
 
 # --- targets ---------------------------------------------------------------------
 
@@ -247,12 +263,17 @@ hue: libhuert hue_bin
 
 hue_bin: $(objects)
 	@mkdir -p $(build_bin_dir)
-	$(LD) $(LDFLAGS) $(XXLDFLAGS) $(libllvm_ld_flags) $(libhuert_ld_flags) -o $(build_bin_dir)/hue $^
+	$(LD) $(LDFLAGS) $(XXLDFLAGS) $(libllvm_ld_flags) $(libhuert_ld_flags) $(binhue_ld_flags) -o $(build_bin_dir)/hue $^
 
 # compiler C++ source -> objects
 $(object_dir)/%.o: %.cc
 	@mkdir -p $(compiler_object_dirs)
-	$(CXXC) $(CFLAGS) $(CXXFLAGS) $(libllvm_cxx_flags) $(libhuert_cxx_flags) -I$(build_include_dir) -c -o $@ $<
+	$(CXXC) $(CFLAGS) $(CXXFLAGS) $(binhue_cxx_flags) -c -o $@ $<
+
+# compiler C source -> objects
+$(object_dir)/%.o: %.c
+	@mkdir -p $(compiler_object_dirs)
+	$(CC) $(CFLAGS) $(binhue_c_flags) -c -o $@ $<
 
 # ---------------------------------------------------------------------------------
 # Runtime
@@ -274,6 +295,9 @@ make_rt_headers_dirs:
 	@mkdir -p $(rt_headers_export_dirs)
 
 $(rt_headers_build_dir)/%.h: src/%.h
+	@cp $^ $@
+
+$(rt_headers_build_dir)/%.h: deps/%.h
 	@cp $^ $@
 
 # runtime C source -> objects

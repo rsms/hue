@@ -1,6 +1,7 @@
 The Hue project contains some 3rd party software:
 
 - UTF8CPP: License can be found in src/utf8/LICENSE
+- linenoise: License can be found in src/linenoise/linenoise.h
 
 Unless otherwise stated, this software and associated documentation files are subject to the following license:
 

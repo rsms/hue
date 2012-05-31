@@ -12,6 +12,7 @@ namespace hue { namespace ast {
 class Block : public Expression {
 public:
   Block() : Expression(TBlock) {}
+  Block(const Type* resultType) : Expression(TBlock, resultType) {}
   Block(Expression *expression) : Expression(TBlock), expressions_(1, expression) {}
   Block(const ExpressionList &expressions) : Expression(TBlock), expressions_(expressions) {}
   
@@ -36,19 +37,16 @@ public:
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    ss << "<Block (";
-    ExpressionList::const_iterator it1;
-    it1 = expressions_.begin();
-    if (it1 < expressions_.end()) {
-      //NodeToStringHeader(level, ss);
-      ss << (*it1)->toString(level+1);
-      it1++;
+    //ss << "(";
+    ExpressionList::const_iterator I = expressions_.begin(), E = expressions_.end();
+    if (I != E) {
+      ss << (*I)->toString(level);
+      ++I;
     }
-    for (; it1 < expressions_.end(); it1++) {
-      //NodeToStringHeader(level, ss);
-      ss << ", " << (*it1)->toString(level+1);
+    for (;I != E; ++I) {
+      ss << " " << (*I)->toString(level);
     }
-    ss << ")>";
+    //ss << ")";
     return ss.str();
   }
 

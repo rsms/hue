@@ -10,13 +10,14 @@ namespace hue { namespace ast {
 
 class TextLiteral : public Expression {
 public:
-  TextLiteral(const Text& text) : Expression(TTextLiteral, new ArrayType(new Type(Type::Char))), text_(text) {}
+  TextLiteral(const Text& text)
+      : Expression(TTextLiteral, ArrayType::get(CharType)), text_(text) {}
   const Text& text() const { return text_; }
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
     NodeToStringHeader(level, ss);
-    ss << "<TextLiteral [" << text_.size() << "] \"";
+    ss << "\"";
     Text::const_iterator it = text_.begin();
     
     for (; it != text_.end(); ++ it) {
@@ -40,7 +41,7 @@ public:
       }
     }
     
-    ss << "\">";
+    ss << "\"";
     return ss.str();
   }
   
