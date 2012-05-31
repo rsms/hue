@@ -48,10 +48,17 @@ Should give you some stuff in the `build` subdirectory.
 
 ## bin/hue
 
-The `hue` program is a all-in-one tool which is essentially a JIT dynamic compiler.
+The `hue` program is a all-in-one tool which is essentially a REPL-able, JIT dynamic compiler.
 
     $ make hue
     $ build/bin/hue --help
+    ...
+    $ build/bin/hue
+    → 42
+    42
+    → 42 * 8
+    336
+    → ^C
     $ build/bin/hue test/test_lang_data_literals.hue
     Hello World
     Hello World
@@ -60,7 +67,7 @@ The `hue` program is a all-in-one tool which is essentially a JIT dynamic compil
     $ build/bin/hue -parse-only test/test_lang_data_literals.hue
     # AST repr here...
 
-You could chain hue with llvm tools to compile a machine image:
+You can chain hue with llvm tools in order to produce a machine-native program:
 
     $ build/bin/hue -output-ir=- -compile-only test/test_lang_data_literals.hue \
       | llvm-as -o=- | llvm-ld -native -Lbuild/lib -lhuert -o=program -
