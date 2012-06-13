@@ -58,10 +58,10 @@ protected:
 };
 
 
-typedef std::deque<Scope*> ScopeStack;
-
 class Scope {
 public:
+  typedef std::deque<Scope*> Stack;
+
   Scope(Scoped* supervisor);
   virtual ~Scope();
 
@@ -85,6 +85,7 @@ protected:
   Scoped* supervisor_;
   Target::Map targets_;
 };
+
 
 class Scoped {
 public:
@@ -115,7 +116,7 @@ public:
 
 private:
   friend class Scope;
-  ScopeStack scopeStack_;
+  Scope::Stack scopeStack_;
 };
 
 
