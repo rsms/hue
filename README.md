@@ -216,17 +216,14 @@ Examples:
 ### Identifier
 A symbolic name that identifies a value:
 
-    Identifier = IdentifierCharacter IdentifierTail?
+    Identifier = IdentifierCharacter [0..9 | IdentifierCharacter]*
     IdentifierCharacter = '_' | A..Z | a..z | <U+80..U+FFFFFFFF>
-    IdentifierTail = IdentifierInfix* IdentifierSuffix+
-    IdentifierInfix = [':' | IdentifierSuffix]
-    IdentifierSuffix = [0..9 | IdentifierCharacter]
 
 Examples:
 
-    _
     foo
-    foo:bar1:büz
+    _
+    büz
 
 ### Function
 A reusable executable unit:
