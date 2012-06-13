@@ -130,6 +130,7 @@ An Expression is the abstract basic language unit of Hue:
                | Identifier
                | Function
                | Conditional
+               | Structure
 
 ### BinaryOperation
 An expression that takes two Expressions and one infix operator:
@@ -215,8 +216,17 @@ Examples:
 ### Identifier
 A symbolic name that identifies a value:
 
-    Identifier = IdentifierCharacter [0..9 | IdentifierCharacter]*
+    Identifier = IdentifierCharacter IdentifierTail?
     IdentifierCharacter = '_' | A..Z | a..z | <U+80..U+FFFFFFFF>
+    IdentifierTail = IdentifierInfix* IdentifierSuffix+
+    IdentifierInfix = [':' | IdentifierSuffix]
+    IdentifierSuffix = [0..9 | IdentifierCharacter]
+
+Examples:
+
+    _
+    foo
+    foo:bar1:büz
 
 ### Function
 A reusable executable unit:
@@ -240,6 +250,23 @@ Example:
 
     if n > 5 100 else 200
 
+### Structure
+Packages several values together into a unit that can be passed around and referenced.
+
+    Structure = 'struct' Block
+
+Only assignment expressions are allowed to exist on the root level of the block. An assignment on the root level defines the symbol in the struct (rather than locally in the current scope).
+
+Example:
+
+    user = struct
+      uid = 1
+      about = struct
+        name = "Rasmus Andersson"
+        age = 29
+    
+    user:uid        # -> 1
+    user:about:age  # -> 29
 
 ----
 
