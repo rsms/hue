@@ -22,6 +22,11 @@ typedef std::basic_string<uint8_t> ByteString;
 // Represents Unicode text.
 class Text : public std::basic_string<UChar> {
 public:
+  typedef std::vector<Text> List;
+  typedef std::vector<const Text> ConstList;
+
+  static const Text Empty;
+
   Text() : std::basic_string<UChar>() {}
   Text(const char* utf8data) : std::basic_string<UChar>() {
     setFromUTF8String(utf8data);

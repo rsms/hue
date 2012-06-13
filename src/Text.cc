@@ -17,6 +17,8 @@ namespace hue {
 //   
 // }
 
+const Text Text::Empty;
+
 
 Text& Text::appendUTF8String(const std::string& utf8string) throw(utf8::invalid_code_point) {
   utf8::utf8to32(utf8string.begin(), utf8string.end(), std::back_inserter(*this));

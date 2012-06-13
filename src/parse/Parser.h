@@ -11,7 +11,7 @@
 
 #include <vector>
 
-#define DEBUG_PARSER 0
+#define DEBUG_PARSER 1
 #if DEBUG_PARSER
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_PARSER DEBUG_TRACE
@@ -347,8 +347,7 @@ public:
       return parseAssignment(identifierToken.textValue);
 
     } if (isParsingCallArguments_ || tokenTerminatesCall(token_)) {
-      return new Symbol(identifierToken.textValue, identifierToken.isNamespacedIdentifier(),
-                        identifierToken.isIdentifierWithPath());
+      return new Symbol(identifierToken.textValue, identifierToken.isIdentifierWithPath());
     }
     
     return parseCall(identifierToken.textValue);
