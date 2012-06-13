@@ -594,11 +594,18 @@ int main(int argc, char **argv, char * const *envp) {
   } else {
     // Batch mode (not REPL)
 
+    // XXX dump parsed module block to stdout
+    std::cout << moduleBlock->toString() << std::endl;
+
+    // Make sure the module block results in an integer value, since we will
+    // call it as a standard main function.
+    // TODO: Move this to where we call runFunctionAsMain
+    if (!moduleBlock->resultType()->isInt()) {
+      moduleBlock->addExpression(new ast::IntLiteral("0"));
+    }
+
     // Module wrapper function
     ast::Function* moduleFunc = Parser::wrapBlockInFunction(moduleBlock);
-
-    // xxx
-    std::cout << moduleFunc->toString() << std::endl;
 
     // Create code generator
     codegen::Visitor codegen;

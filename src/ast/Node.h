@@ -44,6 +44,7 @@ public:
     TDataLiteral,
     TTextLiteral,
     TListLiteral,
+    TStructure,
     
     _TypeCount
   };
@@ -61,12 +62,43 @@ public:
   inline bool isExternalFunction() const { return type_ == TExternalFunction; }
   inline bool isCall() const { return type_ == TCall; }
   inline bool isBlock() const { return type_ == TBlock; }
+  inline bool isSymbol() const { return type_ == TSymbol; }
+  inline bool isAssignment() const { return type_ == TAssignment; }
+
+  inline bool isStructure() const { return type_ == TStructure; }
 
   inline bool isCallable() const { return isFunction() || isExternalFunction(); }
   
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss; NodeToStringHeader(level, ss); ss << "<Node>";
     return ss.str();
+  }
+
+  virtual const char* typeName() const {
+    switch (type_) {
+      case TFunctionType: return "FunctionType";
+      case TVariable: return "Variable";
+
+      // Expressions
+      case TExpression: return "Expression";
+      case TFunction: return "Function";
+      case TExternalFunction: return "ExternalFunction";
+      case TBlock: return "Block";
+      case TSymbol: return "Symbol";
+      case TAssignment: return "Assignment";
+      case TBinaryOp: return "BinaryOp";
+      case TCall: return "Call";
+      case TConditional: return "Conditional";
+      case TIntLiteral: return "IntLiteral";
+      case TFloatLiteral: return "FloatLiteral";
+      case TBoolLiteral: return "BoolLiteral";
+      case TDataLiteral: return "DataLiteral";
+      case TTextLiteral: return "TextLiteral";
+      case TListLiteral: return "ListLiteral";
+      case TStructure: return "Structure";
+
+      default: return "?";
+    }
   }
   
 private:

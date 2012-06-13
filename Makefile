@@ -6,8 +6,11 @@ cxx_sources :=  	src/main.cc \
                 	src/linenoise/linenoise.cc \
                 	src/ast/Symbol.cc \
                 	src/ast/Type.cc \
+                	src/ast/StructType.cc \
+                	src/ast/Structure.cc \
                 	src/transform/Scope.cc \
                 	src/codegen/Visitor.cc \
+                	src/codegen/type_conversion.cc \
                 	src/codegen/assignment.cc \
                 	src/codegen/binop.cc \
                 	src/codegen/call.cc \
@@ -16,7 +19,8 @@ cxx_sources :=  	src/main.cc \
                 	src/codegen/cast.cc \
                 	src/codegen/conditional.cc \
                 	src/codegen/data_literal.cc \
-                	src/codegen/text_literal.cc
+                	src/codegen/text_literal.cc \
+                	src/codegen/structure.cc
 
 binhue_c_sources :=
 
@@ -39,6 +43,7 @@ rt_headers_pub := src/Text.h \
                   src/runtime/Vector.h \
                 	src/ast/ast.h \
                 	src/ast/Type.h \
+                	src/ast/StructType.h \
                 	src/ast/Node.h \
                 	src/ast/Expression.h \
                 	src/ast/Symbol.h \
@@ -50,7 +55,8 @@ rt_headers_pub := src/Text.h \
                 	src/ast/DataLiteral.h \
                 	src/ast/ListLiteral.h \
                 	src/ast/TextLiteral.h \
-                	src/ast/Variable.h
+                	src/ast/Variable.h \
+                	src/ast/Structure.h
 
 # Tools
 CC = clang

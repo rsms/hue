@@ -19,6 +19,15 @@
   #define DEBUG_TRACE_PARSER do{}while(0)
 #endif
 
+// Here be ugly hacks...
+// String formatting helper.
+//  std::string R_FMT(any << ..)
+static std::ostringstream* __attribute__((unused)) _r_fmt_begin() { return new std::ostringstream; }
+static std::string __attribute__((unused)) _r_fmt_end(std::ostringstream* s) {
+  std::string str = s->str(); delete s; return str;
+}
+#define R_FMT(A) _r_fmt_end( static_cast<std::ostringstream*>(&((*_r_fmt_begin()) << A )) )
+
 
 namespace hue {
 using namespace ast;
@@ -41,8 +50,8 @@ static int BinaryOperatorPrecedence(const Token& token) {
       // todo: bitwise shift?
       case '<': case '>': return 70;
       // equality ops (in separate branch for Token::BinaryComparisonOperator)
-      case '&': return 50; // Logical AND (C equiv: '&&')
-      case '|': return 40; // Logical OR  (C equiv: '||')
+      //case '&': return 50; // Logical AND (C equiv: '&&')
+      //case '|': return 40; // Logical OR  (C equiv: '||')
       
       case '=': return 30;
       
@@ -321,7 +330,7 @@ public:
   // IdentifierExpr = Identifier (= | Expression+)?
   Expression *parseIdentifierExpr() {
     DEBUG_TRACE_PARSER;
-    Text identifierName = token_.textValue;
+    Token identifierToken = token_;
     nextToken();  // eat identifier.
     
     // TODO: Refactor this mess...
@@ -335,12 +344,14 @@ public:
       //   nextToken(); // Eat '='
       // }
       // Look-ahead to solve the case: foo Bar = ... vs foo Bar baz (call)
-      return parseAssignment(identifierName);
+      return parseAssignment(identifierToken.textValue);
+
     } if (isParsingCallArguments_ || tokenTerminatesCall(token_)) {
-       return new Symbol(identifierName);
+      return new Symbol(identifierToken.textValue, identifierToken.isNamespacedIdentifier(),
+                        identifierToken.isIdentifierWithPath());
     }
     
-    return parseCall(identifierName);
+    return parseCall(identifierToken.textValue);
   }
   
   
@@ -487,7 +498,7 @@ public:
   //    or: token is Semicolon
   //    or: token is End or Unexpected
   // 
-  Block* parseBlock() {
+  Block* parseBlock(bool onlyAllowAssignments = false) {
     DEBUG_TRACE_PARSER;
     Block* block = new Block();
     //uint32_t startLine = token_.line;
@@ -512,6 +523,14 @@ public:
         delete block; // TODO: cleanup
         return 0;
       }
+
+      // If we only allow assignment expressions, raise an error unless expr is an assignment
+      if (onlyAllowAssignments && !expr->isAssignment()) {
+        delete block;
+        return (Block*)error(R_FMT("Expected assignment in block but found " << expr->typeName()));
+      }
+
+      // Add the expression to the block
       block->addExpression(expr);
 
       // if x 123
@@ -583,9 +602,16 @@ public:
     if (token_.type == Token::LeftParen) {
       // '('
       nextToken(); // eat '('
-      // VariableList =
-      variableList = parseVariableList();
-      if (variableList == 0) return 0;
+
+
+      if (token_.type != Token::RightParen) {
+        // VariableList =
+        variableList = parseVariableList();
+        if (variableList == 0) return 0;
+      } else {
+        // empty
+        variableList = new VariableList();
+      }
     
       // ')'
       if (token_.type != Token::RightParen) {
@@ -699,6 +725,18 @@ public:
     #endif
 
     return conditional;
+  }
+
+
+  // Structure = 'struct' Block
+  Expression* parseStructure() {
+    DEBUG_TRACE_PARSER;
+    nextToken(); // eat 'struct'
+
+    Block* block = parseBlock(true);
+    if (block == 0) return 0;
+
+    return new Structure(block);
   }
   
   // RHS = Expression
@@ -876,6 +914,8 @@ public:
         return func;
       }
 
+      case Token::Structure:
+        return parseStructure();
       case Token::External:
         return parseExternalFunction();
       case Token::LeftParen:

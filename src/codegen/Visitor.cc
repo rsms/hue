@@ -65,34 +65,6 @@ std::string Visitor::uniqueMangledName(const Text& name) const {
 }
 
 
-bool Visitor::IRTypesForASTVariables(std::vector<Type*>& argSpec, ast::VariableList *argVars) {
-  if (argVars != 0 && argVars->size() != 0) {
-    argSpec.reserve(argVars->size());
-    ast::VariableList::const_iterator it = argVars->begin();
-    
-    for (; it != argVars->end(); ++it) {
-      ast::Variable* var = *it;
-      
-      // Type should be inferred?
-      if (var->hasUnknownType()) {
-        // TODO: runtime type inference support.
-        return !!error("NOT IMPLEMENTED: runtime type inference of func arguments");
-      }
-      
-      // Lookup IR type for AST type
-      Type* T = IRTypeForASTType(var->type());
-      if (T == 0)
-        return !!error(R_FMT("No conversion for AST type " << var->toString() << " to IR type"));
-      
-      // Use T
-      argSpec.push_back(T);
-    }
-  }
-  
-  return true;
-}
-
-
 const char* Visitor::typeName(const Type* T) const {
   if (T == 0) return "<null>";
   // Type::TypeID from Type.h:
@@ -116,22 +88,6 @@ const char* Visitor::typeName(const Type* T) const {
     case Type::VectorTyID: return "vector";      ///< 14: SIMD 'packed' format, or other vector type
     default: return "?";
   }
-}
-
-
-StructType* Visitor::getArrayStructType(Type* elementType) {
-  // { length i64, data elementType* }
-  StructType *T = arrayStructTypes_[elementType];
-  if (T == 0) {
-    Type *tv[2];
-    tv[0] = Type::getInt64Ty(getGlobalContext()); // i64
-    //tv[1] = PointerType::get(Type::getInt8Ty(getGlobalContext()), 0); // i8*
-    tv[1] = PointerType::get(elementType, 0); // i8*
-    ArrayRef<Type*> elementTypes = makeArrayRef(tv, 2);
-    T = StructType::get(getGlobalContext(), elementTypes, /*isPacked = */true);
-    arrayStructTypes_[elementType] = T;
-  }
-  return T;
 }
 
 

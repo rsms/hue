@@ -22,13 +22,13 @@ public:
   enum Type {
     Unexpected = 0,
     Comment, // #.+
-    Func, // '^' ...
+    Func, // 'func' ...
     External, // "extern"
     Mutable, // "MUTABLE"
     Identifier,
     BinaryOperator,  // '+', '*', '>', etc.
     BinaryComparisonOperator, // '!=' '<=' '>=' '=='. First byte is key.
-    Structure,
+    MapLiteral,
     RightArrow, // '->'
     LeftArrow, // '<-'
     LeftParen, // '('
@@ -62,6 +62,8 @@ public:
     If,           // 'if'
     Else,         // 'else'
     Nil,          // 'nil'
+
+    Structure,    // 'struct'
     
     // Special meaning
     Error,        // textValue = message, intValue = code
@@ -71,6 +73,12 @@ public:
   } type;
   // The above enum MUST be aligned with the following array:
   static const TokenTypeInfo TypeInfo[_TypeCount];
+
+  // For tokens that encode flags into intValue
+  enum IntFlags {
+    Flag_Namespaced = 1,
+    Flag_Path = 2,
+  };
   
   Text textValue;
   union {
@@ -83,21 +91,38 @@ public:
   uint32_t length;
   
   Token(Type type = _TypeCount) : type(type), line(0), column(0), length(0) {}
-  Token(const Token &other) {
+  Token(const Token &other) { assign(other); }
+
+  void assign(const Token &other) {
     type = other.type;
     line = other.line;
     column = other.column;
     length = other.length;
+
     // Value
     if (type >= 0 && type < _TypeCount) {
       const TokenTypeInfo& info = TypeInfo[type];
-      if (info.hasTextValue) textValue = other.textValue;
-      if (info.hasDoubleValue) doubleValue = other.doubleValue;
-      if (info.hasIntValue)     intValue = other.intValue;
+
+      if (info.hasTextValue)
+        textValue = other.textValue;
+
+      if (info.hasDoubleValue) {
+        doubleValue = other.doubleValue;
+      } else if (info.hasIntValue) {
+        intValue = other.intValue;
+      }
     }
   }
   
   bool isNull() const { return type == _TypeCount; }
+
+  inline bool isIdentifier() const { return type == Identifier; }
+  inline bool isNamespacedIdentifier() const {
+    return isIdentifier() && (intValue & Flag_Namespaced);
+  }
+  inline bool isIdentifierWithPath() const {
+    return isIdentifier() && (intValue & Flag_Path);
+  }
   
   const char *typeName() const {
     if (type >= 0 && type < _TypeCount) {
@@ -130,6 +155,10 @@ public:
       return "?";
     }
   }
+
+  inline Token& operator= (const Token& rhs) {
+    assign(rhs); return *this;
+  }
 };
 
 static const Token NullToken;
@@ -141,10 +170,10 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"Func",                0,0,0},
   {"External",            0,0,0},
   {"Mutable",             0,0,0},
-  {"Identifier",          .hasTextValue = 1, 0,0},
+  {"Identifier",          .hasTextValue = 1, 0, .hasIntValue = 1}, // intValue = flags (enum IntFlags)
   {"BinaryOperator",      .hasTextValue = 1, 0,0},
   {"BinaryComparisonOperator",  .hasTextValue = 1, 0,0},
-  {"Structure",           .hasTextValue = 1, 0,0},
+  {"MapLiteral",          0,0,0},
   {"RightArrow",          0,0,0},
   {"LeftArrow",           0,0,0},
   {"LeftParen",           0,0,0},
@@ -175,6 +204,8 @@ const TokenTypeInfo Token::TypeInfo[] = {
   {"If",                  0,0,0},
   {"Else",                0,0,0},
   {"Nil",                 0,0,0},
+
+  {"Structure",           0,0,0},
   
   {"Error",               .hasTextValue = 1,0, .hasIntValue = 1},
   {"End",                 0,0,0},

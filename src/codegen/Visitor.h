@@ -3,7 +3,7 @@
 #ifndef HUE__CODEGEN_LLVM_VISITOR_H
 #define HUE__CODEGEN_LLVM_VISITOR_H
 
-#define DEBUG_LLVM_VISITOR 0
+#define DEBUG_LLVM_VISITOR 1
 #if DEBUG_LLVM_VISITOR
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_LLVM_VISITOR DEBUG_TRACE
@@ -218,65 +218,22 @@ protected:
   //  ast::Type *returnType = node->resultType();
   //  return (returnType == 0) ? builder_.getVoidTy() : IRTypeForASTType(returnType);
   //}
-  
-  llvm::Type *IRTypeForASTType(const ast::Type* T) {
-    if (T == 0) return builder_.getVoidTy();
-    switch (T->typeID()) {
-      case ast::Type::Nil:    return builder_.getInt1Ty();
-      case ast::Type::Float:  return builder_.getDoubleTy();
-      case ast::Type::Int:    return builder_.getInt64Ty();
-      case ast::Type::Char:   return builder_.getInt32Ty();
-      case ast::Type::Byte:   return builder_.getInt8Ty();
-      case ast::Type::Bool:   return builder_.getInt1Ty();
-      case ast::Type::Array: {
-        llvm::Type* elementType = IRTypeForASTType((reinterpret_cast<const ast::ArrayType*>(T))->type());
-        //return llvm::PointerType::get(elementType, 0);
-        // Return a pointer to a struct of the array type: <{ i64, elementType* }>*
-        return llvm::PointerType::get(getArrayStructType(elementType), 0);
-      }
-      //case ast::Type::Func: ...
-      //case ast::Type::Named: ...
-      default: {
-        error(std::string("No conversion from AST type ") + T->toString() + " to IR type");
-        return 0;
-      }
-    }
-  }
-  
-  llvm::ArrayType* getArrayTypeFromPointerType(llvm::Type* T) const {
-    return (    T->isPointerTy()
-             && T->getNumContainedTypes() == 1
-             && llvm::ArrayType::classof(T = T->getContainedType(0))
-              ? static_cast<llvm::ArrayType*>(T) : 0 );
-  }
 
-  ast::Type::TypeID ASTTypeIDForIRType(const llvm::Type* T) {
-    switch(T->getTypeID()) {
-      case llvm::Type::VoidTyID:      return ast::Type::Nil;
-      case llvm::Type::DoubleTyID:    return ast::Type::Float;
-      case llvm::Type::IntegerTyID: {
-        switch (T->getPrimitiveSizeInBits()) {
-          case 1: return ast::Type::Bool;
-          case 8: return ast::Type::Byte;
-          case 32: return ast::Type::Char;
-          case 64: return ast::Type::Int;
-          default: return ast::Type::MaxTypeID;
-        }
-      }
-      //case llvm::Type::FunctionTyID:
-      // case StructTyID: return       ///< 11: Structures
-      // case ArrayTyID: return        ///< 12: Arrays
-      // case PointerTyID: return      ///< 13: Pointers
-      // case VectorTyID: return       ///< 14: SIMD 'packed' format, or other vector type
-      default: return ast::Type::MaxTypeID;
-    }
-  }
-
-  ast::Type *ASTTypeForIRType(const llvm::Type* T) {
-    ast::Type::TypeID typeID = ASTTypeIDForIRType(T);
-    return typeID == ast::Type::MaxTypeID ? 0 : new ast::Type(typeID);
-  }
+  // The following are implemented in type_conversion.cc
+  llvm::StructType* getArrayStructType(llvm::Type* elementType);
+  inline llvm::StructType* getI8ArrayStructType() { return getArrayStructType(builder_.getInt8Ty()); }
+  llvm::StructType* getExplicitStructType(const ast::StructType* astST);
   
+  // The following are implemented in type_conversion.cc
+  llvm::Type *IRTypeForASTType(const ast::Type* T);
+  llvm::ArrayType* getArrayTypeFromPointerType(llvm::Type* T) const;
+  ast::Type::TypeID ASTTypeIDForIRType(const llvm::Type* T);
+  ast::Type *ASTTypeForIRType(const llvm::StructType* T);
+  ast::Type *ASTTypeForIRType(const llvm::Type* T);
+  // Returns false if an error occured
+  bool IRTypesForASTVariables(std::vector<llvm::Type*>& argSpec, ast::VariableList *argVars);
+  
+
   llvm::Value* wrapValueInGEP(llvm::Value* V) {
     llvm::Value *zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm::getGlobalContext()), 0);
     llvm::Value *Args[] = { zero, zero };
@@ -286,8 +243,6 @@ protected:
   
   const char* typeName(const llvm::Type* T) const;
   
-  // Returns false if an error occured
-  bool IRTypesForASTVariables(std::vector<llvm::Type*>& argSpec, ast::VariableList *argVars);
   
   llvm::Value* createNewLocalSymbol(const ast::Variable *variable, llvm::Value *rhsV,
                                     bool warnRedundantTypeDecl = true);
@@ -319,9 +274,6 @@ protected:
   llvm::Value* castValueToBool(llvm::Value* V);
   llvm::Value* castValueTo(llvm::Value* V, llvm::Type* destT);
   
-  llvm::StructType* getArrayStructType(llvm::Type* elementType);
-  inline llvm::StructType* getI8ArrayStructType() { return getArrayStructType(builder_.getInt8Ty()); }
-  
   llvm::GlobalVariable* createPrivateConstantGlobal(llvm::Constant* constantV, const llvm::Twine &name = "");
   llvm::GlobalVariable* createStruct(llvm::Constant** constants, size_t count, const llvm::Twine &name = "");
   llvm::GlobalVariable* createArray(llvm::Constant* constantArray, const llvm::Twine &name = "");
@@ -349,6 +301,7 @@ public:
       HANDLE(Assignment);
       HANDLE(Call);
       HANDLE(Conditional);
+      HANDLE(Structure);
       #undef HANDLE
       default: return error(std::string("Unable to generate code for node ")+node->toString());
     }
@@ -377,6 +330,12 @@ public:
   llvm::Value *codegenTextLiteral(const ast::TextLiteral *literal);
   llvm::Value *codegenBinaryOp(const ast::BinaryOp *binExpr);
   llvm::Value *codegenSymbol(const ast::Symbol *symbolExpr);
+
+  llvm::Value *codegenStructure(const ast::Structure *expr, const Text& name = "");
+  llvm::Value* codegenConstantStructure(llvm::StructType *ST,
+    const std::vector<llvm::Constant*>& fields, const Text& name);
+  llvm::Value* codegenDynamicStructure(llvm::StructType *ST,
+    const std::vector<llvm::Value*>& fields, const Text& name);
 
 
 private:

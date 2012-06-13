@@ -15,15 +15,18 @@ class FunctionType;
 // Referencing a symbol, like "a".
 class Symbol : public Expression {
 public:
-  Symbol(const Text &name) : Expression(TSymbol), name_(name), value_(0) {}
+  Symbol(const Text &name, bool isNamespaced, bool isPath)
+    : Expression(TSymbol), name_(name), value_(0), isNamespaced_(isNamespaced), isPath_(isPath) {}
   const Text& name() const { return name_; }
 
   Node* value() const { return value_; }
   void setValue(Node* value) { value_ = value; }
 
   virtual const Type *resultType() const;
-
   virtual void setResultType(const Type* T);
+
+  inline bool isNamespaced() const { return isNamespaced_; }
+  inline bool isPath() const { return isPath_; }
 
   virtual std::string toString(int level = 0) const {
     return name_.UTF8String();
@@ -38,6 +41,8 @@ public:
 protected:
   Text name_;
   Node* value_;
+  bool isNamespaced_;
+  bool isPath_;
 };
 
 

@@ -405,7 +405,7 @@ public:
           //case '^': token_.type = Token::Func; break;
 
           case '{':
-          case '}': token_.type = Token::Structure; break;
+          case '}': token_.type = Token::MapLiteral; break;
         
           default: {
             shouldParseIdentifier = true;
@@ -438,6 +438,7 @@ public:
             else if i32CMP_then_CONSUME_SYMBOL(FloatSymbol,  5, 'F','l','o','a','t');
             else if i32CMP_then_CONSUME_SYMBOL(Byte,         4, 'B','y','t','e');
             else if i32CMP_then_CONSUME_SYMBOL(Char,         4, 'C','h','a','r');
+            else if i32CMP_then_CONSUME_SYMBOL(Structure,    6, 's','t','r','u','c','t');
             else if i32CMP_then_CONSUME_SYMBOL(Mutable,      7, 'M','U','T','A','B','L','E');
     
             else if (_i32CMP(4, 't','r','u','e')) {
@@ -462,9 +463,19 @@ public:
               token_.column = startColumn;
               token_.length = 1;
               token_.type = Token::Identifier;
+              token_.intValue = 0;
               token_.textValue = currentChar();
-              while ( _isIdChar(nextChar()) ) // TODO allow all kinds of characters
+              while (1) {
+                if (nextChar() == ':') {
+                  token_.intValue |= (uint8_t)Token::Flag_Path; // OPT: means that the symbol is a path
+                } else if (currentChar() == '/') {
+                  token_.intValue |= (uint8_t)Token::Flag_Namespaced; // OPT: means that the symbol is namespaced
+                } else if (!_isIdChar(currentChar())) {
+                  break;
+                }
                 token_.textValue += currentChar();
+              }
+              token_.length = token_.textValue.size();
             }
     
             #undef if_i8CMP_then_CONSUME_SYMBOL

@@ -61,6 +61,12 @@ public:
   // E.g. A 3-octet-wide unicode character U+1F44D is represented as the bytes 0x1, 0xF4 and 0x4D.
   ByteList rawByteList() const;
   ByteString rawByteString() const;
+
+  // Create a list of components in the receiver separated by *separator*
+  std::vector<Text> split(UChar separator) const;
+
+  // Create text where *components* are joined by instances of the receiver.
+  Text join(const std::vector<Text>& components) const;
   
   // Assignment operators
   inline Text& operator= (const char* rhs) {
@@ -71,6 +77,9 @@ public:
   }
   inline Text& operator= (const UChar& rhs) {
     assign(1, rhs); return *this;
+  }
+  inline Text& operator= (const Text& rhs) {
+    assign(rhs); return *this;
   }
   
   // Combination operators

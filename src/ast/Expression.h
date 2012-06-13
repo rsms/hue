@@ -112,7 +112,7 @@ public:
 
   virtual std::string toString(int level = 0) const {
     std::ostringstream ss;
-    NodeToStringHeader(level, ss);
+    //NodeToStringHeader(level, ss);
     ss << "(= "
        << var_->toString(level+1)
        << " "

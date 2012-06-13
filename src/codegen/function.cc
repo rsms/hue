@@ -200,8 +200,10 @@ Value *Visitor::codegenFunction(ast::Function *node,
   // Update the AST node if the return type is unknown
   if (node->functionType()->resultType() == 0 || node->functionType()->resultType()->isUnknown()) {
     ast::Type* astReturnType = ASTTypeForIRType(returnType);
-    if (astReturnType == 0)
-      return error("Unable to transcode return type from IR to AST");
+    if (astReturnType == 0) {
+      //returnType->dump();
+      return error(R_FMT("Unable to transcode return type from IR to AST"));
+    }
     node->functionType()->setResultType(astReturnType);
   }
   

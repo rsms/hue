@@ -31,11 +31,10 @@ public:
   std::string toString(int level = 0) const {
     std::ostringstream ss;
     ss << name_;
-    ss << ':';
     if (isMutable_)
       ss << "<MUTABLE>";
     if (!hasUnknownType())
-      ss << type_->toString();
+      ss << ':' << type_->toString();
     return ss.str();
   }
   

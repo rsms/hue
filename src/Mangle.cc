@@ -81,7 +81,7 @@ Itanium C++ ABI name mangling rules:
 */
 
 // MangledType = <ASCII string>
-std::string mangle(const hue::ast::Type& T) {
+std::string mangle(const ast::Type& T) {
   if (T.typeID() == ast::Type::Named) {
     std::string utf8name = T.name().UTF8String();
     char buf[12];
@@ -95,8 +95,24 @@ std::string mangle(const hue::ast::Type& T) {
     case ast::Type::Byte:  return "a";
     case ast::Type::Bool:  return "b";
     case ast::Type::Func:  return "F"; // TODO
+    case ast::Type::StructureT:
+      return mangle(static_cast<const ast::StructType&>(T));
     default:    return "";
   }
+}
+
+std::string mangle(const ast::StructType& ST) {
+  std::string cname;
+  size_t count = ST.size();
+  
+  char buf[12];
+  int len = snprintf(buf, 12, "S%zu", count);
+  cname.insert(0, buf, len);
+
+  for (size_t i = 0; i < count; ++i ) {
+    cname += mangle(*ST.types()[i]);
+  }
+  return cname;
 }
 
 ast::Type demangle(const std::string& mangleID) {

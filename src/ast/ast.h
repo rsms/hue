@@ -13,5 +13,6 @@
 #include <hue/ast/DataLiteral.h>
 #include <hue/ast/TextLiteral.h>
 #include <hue/ast/ListLiteral.h>
+#include <hue/ast/Structure.h>
 
 #endif // HUE_AST_AST_H

@@ -78,12 +78,30 @@ public:
       //VISIT(DataLiteral);
       //VISIT(TextLiteral);
       //VISIT(ListLiteral);
+      VISIT(Structure);
 
       #undef VISIT
       default:
         //rlog("Skipping node " << node->toString());
         return true;
     }
+  }
+
+  bool visitStructure(ast::Structure *st) {
+    bool hadUnknownBlockResultType = st->block()->resultType()->isUnknown();
+
+    if (!visitBlock(st->block()))
+      return false;
+
+    if (hadUnknownBlockResultType && st->block()->resultType()->isUnknown()) {
+      return error(errs_ << "Failed to infer result type of block in struct");
+    }
+
+    // Dependants might have been updated (deep structs), so we must update this
+    // unconditionally.
+    st->update();
+
+    return true;
   }
 
   bool visitFunction(ast::Function *fun, const Text& name = "__func") {
@@ -103,7 +121,15 @@ public:
       defineSymbol((*I)->name(), *I);
     }
 
-    return visitBlock(fun->body(), fun);
+    if (!visitBlock(fun->body(), fun))
+      return false;
+
+    // Materialize function type if neccessary
+    if (FT->resultTypeIsUnknown() && !fun->body()->resultType()->isUnknown()) {
+      FT->setResultType(fun->body()->resultType());
+    }
+
+    return true;
   }
 
 
@@ -133,6 +159,7 @@ public:
     }
 
     //rlog("block->resultType(): " << (block->resultType() ? block->resultType()->toString() : std::string("<null>")) );
+
     return true;
   }
 
@@ -199,11 +226,20 @@ public:
   // Modifies symbol: setValue
   bool visitSymbol(ast::Symbol *sym) {
     DEBUG_TRACE_LFR_VISITOR;
-    const Target& target = lookupSymbol(sym->name());
+    const Target& target = lookupSymbol(*sym);
+
     if (target.isEmpty()) {
+      //rlog("No target for " << sym->name() << " (" << sym->isPath() << ")");
       return error(errs_ << "Unknown symbol \"" << sym->name() << "\"");
+
     } else {
-      sym->setValue(target.value);
+      const ast::Type* T = target.resultType();
+      //rlog("Found target for " << sym->name() << ": " << (T ? T->toString() : std::string("<nil>")));
+
+      if (T != 0 && !T->isUnknown()) {
+        sym->setResultType(T);
+        assert(!sym->resultType()->isUnknown());
+      }
     }
     return true;
   }

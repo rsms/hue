@@ -171,6 +171,48 @@ std::string Text::UCharToUTF8String(const UChar c) {
 }
 
 
+std::vector<Text> Text::split(UChar separator) const {
+  std::vector<Text> components;
+  Text buf;
+
+  // TODO: Optimize by avoiding copying of buf
+
+  for (Text::const_iterator I = begin(), E = end(); I != E; ++I) {
+    if (*I == separator) {
+      if (!buf.empty()) {
+        components.push_back(buf);
+        buf.clear();
+      }
+    } else {
+      buf.push_back(*I);
+    }
+  }
+
+  if (!buf.empty()) {
+    components.push_back(buf);
+  }
+
+  return components;
+}
+
+
+Text Text::join(const std::vector<Text>& components) const {
+  if (components.size() == 0) return Text();
+  else if (components.size() == 1) return components[0];
+
+  Text text(components[0]);
+
+  std::vector<Text>::const_iterator I = components.begin(), E = components.end();
+  ++I; // components[0]
+  for (;I != E; ++I) {
+    text += *this;
+    text += *I;
+  }
+
+  return text;
+}
+
+
 const UChar NullChar = 0;
 
 } // namespace hue

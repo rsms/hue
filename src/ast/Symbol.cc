@@ -13,12 +13,13 @@ const Type *Symbol::resultType() const {
     Variable* var = static_cast<Variable*>(value_);
     return var->type() ? var->type() : resultType_;
   } else {
-    return resultType_; // Type::Unknown;
+    return resultType_;
   }
 }
 
 void Symbol::setResultType(const Type* T) {
   assert(T->isUnknown() == false); // makes no sense to set T=unknown
+
   // Call setResultType with T for value_ if value_ result type is unknown
   if (value_) {
 
@@ -38,6 +39,8 @@ void Symbol::setResultType(const Type* T) {
         var->setType(T);
     }
 
+  } else {
+    resultType_ = T;
   }
 }
 

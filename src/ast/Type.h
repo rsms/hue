@@ -25,6 +25,7 @@ public:
     Bool,
     Func,
     Array,
+    StructureT,
 
     MaxTypeID
   };
@@ -46,6 +47,7 @@ public:
   inline bool isFunction() const { return typeID_ == Func; }
   inline bool isInt() const { return typeID_ == Int; }
   inline bool isFloat() const { return typeID_ == Float; }
+  inline bool isStructure() const { return typeID_ == StructureT; }
   
   virtual std::string toString() const {
     switch (typeID_) {
@@ -58,12 +60,15 @@ public:
       case Byte:    return "Byte";
       case Bool:    return "Bool";
       case Func:    return "func";
+      case StructureT: return "struct";
       case Array:   return "[?]";
       default:      return "";
     }
   }
   
   virtual std::string toHueSource() const { return toString(); }
+
+  virtual std::string canonicalName() const { return toString(); }
 
   static const Type* highestFidelity(const Type* T1, const Type* T2);
   
@@ -103,6 +108,14 @@ public:
     s += "]";
     return s;
   }
+
+  virtual std::string canonicalName() const {
+    std::string s("vector");
+    if (type_)
+      s += '$' + type_->canonicalName();
+    return s;
+  }
+
 private:
   const Type* type_;
 };

@@ -4,6 +4,7 @@
 #define _HUE_CODEGEN_MANGLE_INCLUDED
 
 #include "ast/Type.h"
+#include "ast/StructType.h"
 #include "ast/Function.h"
 
 #include <llvm/Type.h>
@@ -14,7 +15,8 @@ namespace hue {
 std::string mangle(const ast::TypeList& types);
 std::string mangle(const ast::VariableList& vars);
 std::string mangle(const ast::FunctionType& funcType);
-std::string mangle(const hue::ast::Type& T);
+std::string mangle(const ast::StructType& structType);
+std::string mangle(const ast::Type& T);
 std::string mangle(llvm::Type* T);
 std::string mangle(llvm::FunctionType* FT);
 

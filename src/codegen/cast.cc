@@ -39,6 +39,10 @@ Type* Visitor::highestFidelityType(Type* T1, Type* T2) {
   }
 }
 
+
+static const int64_t FloatMaxFiniteValue = 9218868437227405312;
+static const int64_t FloatMinFiniteValue = -9218868437227405312;
+
 Value* Visitor::castValueTo(Value* inputV, Type* destT) {
   Type* inputT = inputV->getType();
   
@@ -51,13 +55,28 @@ Value* Visitor::castValueTo(Value* inputV, Type* destT) {
     
     // Int->Float:
     if (inputT->isIntegerTy() && destT->isDoubleTy()) {
+
+      // Is the integer larger than the 1:1 numbers able to be represented by a
+      // double (limited by the mantissa)?
+      if (ConstantInt::classof(inputV)) {
+        ConstantInt* intV = (ConstantInt*)inputV;
+        const APInt& apint = intV->getValue();
+        //int64_t v = (int64_t)intV->getLimitedValue();
+        if (   (intV->isNegative() && apint.slt((uint64_t)FloatMinFiniteValue))
+            || (!intV->isNegative() && apint.sgt((uint64_t)FloatMaxFiniteValue)) ) {
+        //if (   (intV->isNegative() && v < FloatMinFiniteValue)
+        //    || (!intV->isNegative() && v > FloatMinFiniteValue) ) {
+          warning("Implicit conversion from integer to floating-point number loses precision");
+        }
+      }
+
       return builder_.CreateSIToFP(inputV, destT, "casttmp");
     
     // Float->Int: Error
     } else if (destT->isIntegerTy() && inputT->isDoubleTy()) {
       // warning("Implicit conversion of floating point value to integer storage");
       // V = builder_.CreateFPToSI(V, destT, "casttmp");
-      return error("Illegal conversion from floating point number to integer");
+      return error("Implicit conversion from floating-point number to integer");
 
     } else if (ArrayType::classof(destT) && ArrayType::classof(inputT)) {
       // Both sides are Array types. Let's check what elements they contain.
@@ -177,6 +196,7 @@ Value* Visitor::castValueTo(Value* inputV, Type* destT) {
     if (inputT->canLosslesslyBitCastTo(destT)) {
       return builder_.CreateBitCast(inputV, destT, "bcasttmp");
     } else if (destT->getPrimitiveSizeInBits() < inputT->getPrimitiveSizeInBits()) {
+      // TODO: Make this an error if truncation could cause loss of precision
       warning("Implicit truncation of floating point number");
       return builder_.CreateFPTrunc(inputV, destT, "fptrunctmp");
     } else {

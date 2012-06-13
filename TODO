@@ -1,5 +1,8 @@
 # TODO
 
+• Rudimentary structures (to get something started and we will
+  iterate later)
+
 • Macros
 
     unless = macro test a b -> if %test %b else %a

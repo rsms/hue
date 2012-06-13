@@ -159,7 +159,17 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
     // Create type list from LHS variable, which the call codegen can use in the case
     // where there are multiple function candidates that only differ on return type.
     rhsValue = codegenCall(static_cast<const ast::Call*>(node->rhs()), variable->type());
-    
+
+  } else if (node->rhs()->isStructure()) {
+    const ast::Structure* st = static_cast<const ast::Structure*>(node->rhs());
+
+    // Generate a mangled name
+    std::string mangledName = module_->getModuleIdentifier() + ":";
+    mangledName += variable->name().UTF8String();
+    mangledName += mangle(*st->resultStructType());
+
+    rhsValue = codegenStructure(st, mangledName);
+
   } else {
     rhsValue = codegen(node->rhs());
   }
