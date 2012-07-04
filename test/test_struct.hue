@@ -20,11 +20,10 @@ bar:a    # 1
 bar:b:c  # 2.3
 
 # Access into dynamic structs
-st1 = baz 20
-st1:bob  # 40
-foo 123  # <{ <{ i64 }>* }>
-st2 = foo 123
-st2:x:y  # 123
+st1 = baz 20    # <{ i64 }>
+st1:bob         # 40
+st2 = foo 123   # <{ <{ i64 }>* }>
+st2:x:y         # 123
 
 # Func calls from struct traversal.
 # Implementation status:
