@@ -15,7 +15,7 @@ baz = func (n Int)
 Math = struct
   factorial = func (n Int) if n == 0 1 else n * factorial n - 1
 
-# Access into constant local or global structs
+# Access into constant structs
 bar:a    # 1
 bar:b:c  # 2.3
 
