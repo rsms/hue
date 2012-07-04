@@ -4,7 +4,7 @@
 
 
 
-Function *Visitor::codegenFunctionType(ast::FunctionType *node,
+Function *Visitor::codegenFunctionType(ast::FunctionType *astFT,
                                        std::string name, // = "",
                                        Type *returnType  // = 0
                                        ) {
@@ -15,20 +15,15 @@ Function *Visitor::codegenFunctionType(ast::FunctionType *node,
     returnType = builder_.getVoidTy();
   }
   
-  // Build argument spec and create the function type:  double(double,double) etc.
-  FunctionType *FT;
-  ast::VariableList *argVars = node->args();
-  std::vector<Type*> argSpec;
-  if (!IRTypesForASTVariables(argSpec, argVars)) return 0;
-  FT = FunctionType::get(returnType, argSpec, /*isVararg = */false);
-  //std::vector<Type*> v(argVars->size(), Type::getDoubleTy(getGlobalContext()));
-  //FT = FunctionType::get(returnType, v, /*isVararg = */false);
+  // Get LLVM function type
+  FunctionType *FT = getLLVMFuncTypeForASTFuncType(astFT, returnType);
+  if (FT == 0) return 0;
   
   if (!FT) return (Function*)error("Failed to create function type");
 
   // Create function
   GlobalValue::LinkageTypes linkageType = GlobalValue::PrivateLinkage;
-  if (node->isPublic()) {
+  if (astFT->isPublic()) {
     linkageType = GlobalValue::ExternalLinkage;
   }
   Function *F = Function::Create(FT, linkageType, name, module_);
@@ -36,6 +31,8 @@ Function *Visitor::codegenFunctionType(ast::FunctionType *node,
   
   // No unwinding
   F->setDoesNotThrow();
+
+  ast::VariableList *argVars = astFT->args();
 
   // If F conflicted, there was already something named 'Name'.  If it has a
   // body, don't allow redefinition or reextern.

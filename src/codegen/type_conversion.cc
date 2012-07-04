@@ -17,11 +17,23 @@ StructType* Visitor::getExplicitStructType(const ast::StructType* astST) {
   for (ast::TypeList::const_iterator I = astST->types().begin(),
        E = astST->types().end(); I != E; ++I)
   {
-    irTypes.push_back(IRTypeForASTType(*I));
+    llvm::Type *T = IRTypeForASTType(*I);
+    if (T == 0) return 0;
+    irTypes.push_back(T);
   }
 
   return StructType::create(llvm::getGlobalContext(), makeArrayRef(irTypes),
     canonicalName, astST->isPacked());
+}
+
+
+llvm::FunctionType* Visitor::getLLVMFuncTypeForASTFuncType(const ast::FunctionType* astFT,
+                                                           llvm::Type* returnType) {
+  // Build argument spec and create the function type:  double(double,double) etc.
+  if (returnType == 0) returnType = returnTypeForFunctionType(astFT);
+  std::vector<Type*> argSpec;
+  if (!IRTypesForASTVariables(argSpec, astFT->args())) return 0;
+  return FunctionType::get(returnType, argSpec, /*isVararg = */false);
 }
 
 
@@ -65,7 +77,12 @@ llvm::Type *Visitor::IRTypeForASTType(const ast::Type* T) {
       return llvm::PointerType::get(irST, 0);
     }
 
-    //case ast::Type::Func: ...
+    case ast::Type::FuncT: {
+      const ast::FunctionType* astST = static_cast<const ast::FunctionType*>(T);
+      llvm::FunctionType *FT = getLLVMFuncTypeForASTFuncType(astST);
+      return llvm::PointerType::get(FT, 0);
+    }
+
     //case ast::Type::Named: ...
     default: {
       error(std::string("No conversion from AST type ") + T->toString() + " to IR type");

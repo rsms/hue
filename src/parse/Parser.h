@@ -11,7 +11,7 @@
 
 #include <vector>
 
-#define DEBUG_PARSER 1
+#define DEBUG_PARSER 0
 #if DEBUG_PARSER
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_PARSER DEBUG_TRACE
@@ -288,7 +288,7 @@ public:
   //
   // foo a b (c = x d)  -->  foo(a, b, (c = x(d)))
   //
-  Expression *parseCall(Text identifierName) {
+  Expression *parseCall(Text identifierName, bool isIdentifierWithPath) {
     DEBUG_TRACE_PARSER;
     
     ScopeFlag<bool> isParsingCallArguments(&isParsingCallArguments_, true);
@@ -323,7 +323,7 @@ public:
     } while (token_.type == Token::LeftParen || !tokenTerminatesCall(token_.type));
     
     //printf("Call to '%s' w/ %lu args\n", identifierName.c_str(), args.size());
-    return new Call(identifierName, args);
+    return new Call(new Symbol(identifierName, isIdentifierWithPath), args);
   }
   
   
@@ -350,7 +350,7 @@ public:
       return new Symbol(identifierToken.textValue, identifierToken.isIdentifierWithPath());
     }
     
-    return parseCall(identifierToken.textValue);
+    return parseCall(identifierToken.textValue, identifierToken.isIdentifierWithPath());
   }
   
   
@@ -444,7 +444,7 @@ public:
     
          if (token_.type == Token::IntSymbol)   T = &IntType;
     else if (token_.type == Token::FloatSymbol) T = &FloatType;
-    else if (token_.type == Token::Func)        T = &FuncType;
+    //else if (token_.type == Token::Func)        T = &FuncType; // TODO
     else if (token_.type == Token::Bool)        T = &BoolType;
     else if (token_.type == Token::Byte)        T = &ByteType;
     else if (token_.type == Token::Char)        T = &CharType;

@@ -3,23 +3,24 @@
 
 #ifndef HUE__AST_VARIABLE_DEFINITION_H
 #define HUE__AST_VARIABLE_DEFINITION_H
-#include "Node.h"
+
 #include "Type.h"
 #include <vector>
 #include <string>
+#include <sstream>
+
 namespace hue { namespace ast {
 
 class Variable;
 typedef std::vector<Variable*> VariableList;
 
-class Variable : public Node {
+class Variable {
 public:
   Variable(bool isMutable, const Text& name, const Type *type)
-    : Node(TVariable), isMutable_(isMutable), name_(name), type_(type) {}
+    : isMutable_(isMutable), name_(name), type_(type) {}
   
   // Primarily used for tests:
-  Variable(Type *type)
-    : Node(TVariable), isMutable_(false), name_(), type_(type) {}
+  Variable(const Type *type) : isMutable_(false), name_(), type_(type) {}
   
   const bool& isMutable() const { return isMutable_; }
   const Text& name() const { return name_; }

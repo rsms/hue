@@ -6,6 +6,7 @@
 #include "Node.h"
 #include "Expression.h"
 #include "Type.h"
+#include "FunctionType.h"
 #include "Block.h"
 
 namespace hue { namespace ast {
@@ -25,74 +26,6 @@ public:
   }
 };
 
-// Represents the "prototype" for a function, which captures its name, and its
-// argument names (thus implicitly the number of arguments the function takes).
-class FunctionType : public Node {
-public:
-  FunctionType(VariableList *args = 0,
-               const Type *resultType = 0,
-               bool isPublic = false)
-    : Node(TFunctionType), args_(args), resultType_(resultType), isPublic_(isPublic) {}
-
-  VariableList *args() const { return args_; }
-
-  const Type *resultType() const { return resultType_; }
-  void setResultType(const Type* T) {
-    resultType_ = T;
-  }
-
-  bool resultTypeIsUnknown() const { return resultType_ && resultType_->isUnknown(); }
-  
-  bool isPublic() const { return isPublic_; }
-  void setIsPublic(bool isPublic) { isPublic_ = isPublic; }
-  
-
-  virtual std::string toString(int level = 0) const {
-    std::ostringstream ss;
-    //NodeToStringHeader(level, ss);
-    ss << "func (";
-    if (args_) {
-      VariableList::const_iterator it1;
-      it1 = args_->begin();
-      if (it1 < args_->end()) { ss << (*it1)->toString(); it1++; }
-      for (; it1 < args_->end(); it1++) { ss << ", " << (*it1)->toString(); }
-    }
-    ss << ")";
-
-    if (resultType_) ss << ' ' << resultType_->toString();
-    return ss.str();
-  }
-  
-  
-  virtual std::string toHueSource() const {
-    std::ostringstream ss;
-    ss << "func ";
-    
-    if (args_ && !args_->empty()) {
-      ss << '(';
-      VariableList::const_iterator it1;
-      it1 = args_->begin();
-      for (; it1 != args_->end();) {
-        ss << (*it1)->type()->toHueSource();
-        ++it1;
-        if (it1 != args_->end()) ss << ", ";
-      }
-      ss << ')';
-    }
-    
-    if (resultType_)
-      ss << ' ' << resultType_->toHueSource();
-    
-    return ss.str();
-  }
-  
-  
-private:
-  VariableList *args_;
-  const Type *resultType_;
-  bool isPublic_;
-};
-
 // Represents a function definition.
 class Function : public Expression {
   FunctionType *functionType_;
@@ -108,10 +41,15 @@ public:
 
   // Override Expression result type
   virtual const Type *resultType() const {
-    return functionType_ ? functionType_->resultType() : 0;
+    return functionType_;
   }
-  virtual void setResultType(const Type* T) {
-    if (functionType_) functionType_->setResultType(T);
+  virtual void setResultType(const Type* T) throw(std::logic_error) {
+    throw std::logic_error("Can not set type for compound 'Function' expression");
+  }
+
+  // Type resulting from a call to this function
+  const Type *callResultType() const {
+    return functionType_ ? functionType_->resultType() : &UnknownType;
   }
 
   virtual std::string toString(int level = 0) const {

@@ -8,7 +8,7 @@
 #include "Node.h"
 #include "Type.h"
 #include "Variable.h"
-
+#include "../Logger.h"
 #include "../Text.h"
 
 #include <vector>
@@ -100,8 +100,11 @@ public:
 
   virtual const Type *resultType() const {
     if (rhs_ && var_->hasUnknownType()) {
+      // rloge("CASE 1 ret " << rhs_->resultType()->toString()
+      //       << " from " << rhs_->toString() << " (" << rhs_->typeName() << ")");
       return rhs_->resultType();
     } else {
+      //rloge("CASE 2 ret " << var_->type()->toString());
       return var_->type();
     }
   }

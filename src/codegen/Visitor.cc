@@ -157,6 +157,16 @@ FunctionType* Visitor::functionTypeForValue(Value* V) {
   }
 }
 
+llvm::Type* Visitor::returnTypeForFunctionType(const ast::FunctionType* astFT) {
+  // Figure out return type (unless it's been overridden by returnType) if
+  // the interface declares the return type.
+  if (astFT->resultTypeIsUnknown()) {
+    return builder_.getVoidTy();
+  } else {
+    return IRTypeForASTType(astFT->resultType());
+  }
+}
+
 
 bool Visitor::BlockScope::setFunctionSymbolTarget(const Text& name, ast::FunctionType* hueT,
                                                   FunctionType* FT, Value *V) {
@@ -189,8 +199,11 @@ bool Visitor::BlockScope::setFunctionSymbolTarget(const Text& name, ast::Functio
 }
 
 
-Visitor::FunctionSymbolTargetList Visitor::lookupFunctionSymbols(const Text& name) const {
+Visitor::FunctionSymbolTargetList Visitor::lookupFunctionSymbols(const ast::Symbol& symbol) const {
   FunctionSymbolTargetList found;
+
+  // FIXME: This needs to resolve actual symbols
+  const Text& name = symbol.pathname().size() > 0 ? symbol.pathname()[0] : Text::Empty;
   
   // Scan symbol maps starting at top of stack moving down
   BlockStack::const_reverse_iterator bsit = blockStack_.rbegin();

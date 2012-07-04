@@ -12,7 +12,7 @@ std::string Visitor::formatFunctionCandidateErrorMessage(const ast::Call* node,
                                                          const FunctionSymbolTargetList& candidateFuncs,
                                                          CandidateError error) const
 {
-  std::string utf8calleeName = node->calleeName().UTF8String();
+  std::string utf8calleeName = node->symbol()->toString();
   std::ostringstream ss;
   
   if (error == CandidateErrorArgCount) {
@@ -50,15 +50,24 @@ std::string Visitor::formatFunctionCandidateErrorMessage(const ast::Call* node,
 
 Value *Visitor::codegenCall(const ast::Call* node, const ast::Type* expectedReturnType/* = 0*/) {
   DEBUG_TRACE_LLVM_VISITOR;
+  const ast::Symbol& symbol = *node->symbol();
+
+  // TODO FIXME: This will fail for lookups into any structs (e.g. foo:bar) since
+  //             we have not implemented struct traversal for symbol lookup, in the
+  //             special function symbol table.
+  if (symbol.isPath()) {
+    return error(std::string("Not implemented: Struct traversal for function symbols (at symbol \"")
+                 + symbol.toString() + "\")");
+  }
   
   // Look up a list of matching function symbols
-  FunctionSymbolTargetList candidateFuncs = lookupFunctionSymbols(node->calleeName());
+  FunctionSymbolTargetList candidateFuncs = lookupFunctionSymbols(symbol);
   
   // No symbol?
   if (candidateFuncs.empty()) {
     // TODO: We could take all known symbols, order them by edit distance and suggest
     //       the top N (N is perhaps controlled by a quality threshold) symbol names.
-    return error(std::string("Unknown symbol \"") + node->calleeName().UTF8String() + "\"");
+    return error(std::string("Unknown symbol \"") + node->symbol()->toString() + "\"");
   }
   
   // Local ref to input arguments, for our convenience.
@@ -198,7 +207,7 @@ Value *Visitor::codegenCall(const ast::Call* node, const ast::Type* expectedRetu
     builder_.CreateCall(targetV, argValues);
     return ConstantInt::getFalse(getGlobalContext());
   } else {
-    return builder_.CreateCall(targetV, argValues, node->calleeName().UTF8String() + "_res");
+    return builder_.CreateCall(targetV, argValues, node->symbol()->toString() + "_res");
   }
 }
 

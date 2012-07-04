@@ -14,28 +14,24 @@ class Call : public Expression {
 public:
   typedef std::vector<Expression*> ArgumentList;
   
-  Call(const Text &calleeName, ArgumentList &args)
-    : Expression(TCall), calleeName_(calleeName), args_(args), callee_(0) {}
+  Call(Symbol* calleeSymbol, ArgumentList &args)
+    : Expression(TCall), calleeSymbol_(calleeSymbol), args_(args), calleeType_(0) {}
 
-  const Text& calleeName() const { return calleeName_; }
+  Symbol* symbol() const { return calleeSymbol_; }
   const ArgumentList& arguments() const { return args_; }
 
-  Function* callee() const { return callee_; }
-  void setCallee(Function* F) { callee_ = F; }
+  const FunctionType* calleeType() const { return calleeType_; }
+  void setCalleeType(const FunctionType* FT) { calleeType_ = FT; }
 
   virtual const Type *resultType() const {
-    if (callee_ != 0) {
-      return callee_->resultType() ? callee_->resultType() : &UnknownType;
-    } else {
-      return resultType_; // Type::Unknown
-    }
+    return calleeType_ ? calleeType_->resultType() : &UnknownType;
   }
 
   virtual void setResultType(const Type* T) {
     assert(T->isUnknown() == false); // makes no sense to set T=unknown
     // Call setResultType with T for callee if callee's resultType is unknown
-    if (callee_ && callee_->resultType()->isUnknown()) {
-      callee_->setResultType(T);
+    if (calleeType_ && calleeType_->resultType()->isUnknown()) {
+      const_cast<FunctionType*>(calleeType_)->setResultType(T);
     }
   }
 
@@ -43,7 +39,7 @@ public:
     std::ostringstream ss;
     //NodeToStringHeader(level, ss);
     ss << "(";
-    ss << calleeName_;
+    ss << calleeSymbol_;
     for (ArgumentList::const_iterator I = args_.begin(), E = args_.end(); I != E; ++I) {
       ss << " " << (*I)->toString(level+1);
     }
@@ -51,9 +47,9 @@ public:
     return ss.str();
   }
 private:
-  Text calleeName_;
+  Symbol* calleeSymbol_;
   ArgumentList args_;
-  Function* callee_; // weak
+  const FunctionType* calleeType_; // weak
 };
 
 }} // namespace hue::ast

@@ -23,9 +23,9 @@ public:
     Char,
     Byte,
     Bool,
-    Func,
     Array,
     StructureT,
+    FuncT,
 
     MaxTypeID
   };
@@ -44,7 +44,7 @@ public:
   }
 
   inline bool isUnknown() const { return typeID_ == Unknown; }
-  inline bool isFunction() const { return typeID_ == Func; }
+  inline bool isFunction() const { return typeID_ == FuncT; }
   inline bool isInt() const { return typeID_ == Int; }
   inline bool isFloat() const { return typeID_ == Float; }
   inline bool isStructure() const { return typeID_ == StructureT; }
@@ -59,7 +59,7 @@ public:
       case Char:    return "Char";
       case Byte:    return "Byte";
       case Bool:    return "Bool";
-      case Func:    return "func";
+      case FuncT:    return "func";
       case StructureT: return "struct";
       case Array:   return "[?]";
       default:      return "";
@@ -84,7 +84,6 @@ extern const Type IntType;
 extern const Type CharType;
 extern const Type ByteType;
 extern const Type BoolType;
-extern const Type FuncType;
 
 
 class ArrayType : public Type {

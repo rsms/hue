@@ -94,7 +94,7 @@ std::string mangle(const ast::Type& T) {
     case ast::Type::Char:  return "j";
     case ast::Type::Byte:  return "a";
     case ast::Type::Bool:  return "b";
-    case ast::Type::Func:  return "F"; // TODO
+    case ast::Type::FuncT: return "F"; // TODO
     case ast::Type::StructureT:
       return mangle(static_cast<const ast::StructType&>(T));
     default:    return "";
@@ -122,7 +122,7 @@ ast::Type demangle(const std::string& mangleID) {
     case 'j': return ast::Type(ast::Type::Char);
     case 'a': return ast::Type(ast::Type::Byte);
     case 'b': return ast::Type(ast::Type::Bool);
-    case 'F': return ast::Type(ast::Type::Func);
+    case 'F': return ast::Type(ast::Type::FuncT);
     case 'N': {
       return ast::Type(Text(mangleID.substr(1)));
     }

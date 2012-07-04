@@ -1,6 +1,7 @@
 // Copyright (c) 2012, Rasmus Andersson. All rights reserved. Use of this source
 // code is governed by a MIT-style license that can be found in the LICENSE file.
 #include "StructType.h"
+#include "Function.h"
 #include "Block.h"
 #include "../Mangle.h"
 
@@ -23,6 +24,7 @@ StructType* StructType::get(const Member::List& members) {
 
   for (Member::List::const_iterator I = members.begin(), E = members.end(); I != E; ++I) {
     ST->nameToIndexMap_[(*I).name] = ST->types_.size();
+    //rlogw("StructType::get: push " << (*I).name << "," << (*I).type->toString());
     ST->types_.push_back((*I).type);
   }
 

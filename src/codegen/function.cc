@@ -15,25 +15,31 @@ Value *Visitor::codegenFunction(ast::Function *node,
   DEBUG_TRACE_LLVM_VISITOR;
 
   bool inferredReturnType = false;
-  const ast::Type* astReturnType = node->functionType()->resultType();
   
   // Figure out return type (unless it's been overridden by returnType) if
   // the interface declares the return type.
+  ast::FunctionType* astFT = node->functionType();
   if (returnType != 0) {
-    astReturnType = ASTTypeForIRType(returnType);
-    node->functionType()->setResultType(astReturnType);
-  } else if (!node->functionType()->resultTypeIsUnknown()) {
-    returnType = IRTypeForASTType(node->functionType()->resultType());
-    if (returnType == 0)
-      return error("Unable to transcode return type from AST to IR");
+    const ast::Type* astReturnType = ASTTypeForIRType(returnType);
+    if (astReturnType == 0) return 0;
+    astFT->setResultType(astReturnType);
   } else {
-    inferredReturnType = true;
-    returnType = builder_.getVoidTy();
-    //returnType = Type::getLabelTy(getGlobalContext());
+    returnType = returnTypeForFunctionType(astFT);
+    if (returnType == 0) return 0;
+    inferredReturnType = returnType->isVoidTy();
   }
+  // } else if (!astFT->resultTypeIsUnknown()) {
+  //   returnType = IRTypeForASTType(astFT->resultType());
+  //   if (returnType == 0)
+  //     return error("Unable to transcode return type from AST to IR");
+  // } else {
+  //   inferredReturnType = true;
+  //   returnType = builder_.getVoidTy();
+  //   //returnType = Type::getLabelTy(getGlobalContext());
+  // }
   
   // Generate interface
-  Function* F = codegenFunctionType(node->functionType(), name, returnType);
+  Function* F = codegenFunctionType(astFT, name, returnType);
   if (F == 0) return 0;
 
   // If the return type is inferred, register us in the current BlockScope
@@ -205,7 +211,7 @@ Value *Visitor::codegenFunction(ast::Function *node,
   // Update the AST node if the return type is unknown
   if (   node->functionType()->resultType() == 0
       || node->functionType()->resultType()->isUnknown()) {
-    astReturnType = ASTTypeForIRType(returnType);
+    const ast::Type* astReturnType = ASTTypeForIRType(returnType);
     if (astReturnType == 0) {
       //returnType->dump();
       return error(R_FMT("Unable to transcode return type from IR "

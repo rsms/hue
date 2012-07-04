@@ -36,9 +36,12 @@ const Target& Scoped::lookupSymbol(const ast::Symbol& sym) {
 
   // Lookup root
   const Target& target = lookupSymbol(pathname[0]);
-  if (target.isEmpty() || pathname.size() == 1) return target;
+  if (target.isEmpty() || pathname.size() == 1) {
+    return target;
+  }
 
   // Dig into target
+  //rlog("digging into target 0: " << target.toString() << ", pathname: " << Text(", ").join(pathname));
   return const_cast<Target&>(target).lookupSymbol(pathname.begin()+1, pathname.end());
 }
 
@@ -46,7 +49,7 @@ const Target& Scoped::lookupSymbol(const ast::Symbol& sym) {
 const Target& Target::lookupSymbol(Text::List::const_iterator it, Text::List::const_iterator itend) {
   const Text& name = *it;
   ++it;
-  //rlog("Target::lookupSymbol(\"" << name << "\", itend)");
+  //rlog("<Target " << toString() << ">::lookupSymbol(\"" << name << "\", itend)");
 
   Target* target = 0;
 
@@ -58,8 +61,26 @@ const Target& Target::lookupSymbol(Text::List::const_iterator it, Text::List::co
   } else {
     // Dig further based on our type
     const ast::Type* T = resultType();
-    if (T == 0 || !T->isStructure())
+    if (T == 0) {
       return Target::Empty;
+    }
+
+    if (T->isFunction()) {
+      Target& t = targets_[name];
+      t.typeID = FunctionType;
+      if (it == itend) {
+        t.type = T;
+      } //else rlog("Target::lookupSymbol: Unexpected leaf when expecting a branch");
+      return t;
+
+    } else if (!T->isStructure()) {
+      Target& t = targets_[name];
+      t.typeID = LeafType;
+      if (it == itend) {
+        t.type = T;
+      } //else rlog("Target::lookupSymbol: Unexpected leaf when expecting a branch");
+      return t;
+    }
 
     // Else: T is a StructType
     const ast::StructType* ST = static_cast<const ast::StructType*>(T);
@@ -67,21 +88,35 @@ const Target& Target::lookupSymbol(Text::List::const_iterator it, Text::List::co
     // Lookup struct member by name
     const ast::Type* memberT = (*ST)[name];
     if (memberT == 0) {
-      //rlogw("Unknown symbol \"" << name << "\" in struct " << ST->toString());
+      rlogw("Unknown symbol \"" << name << "\" in struct " << ST->toString());
       return Target::Empty;
     }
+    //rloge("ST MEMBER for " << name << " => " << memberT->toString());
 
     // Register target for name
     Target& t = targets_[name];
-    t.typeID = StructType;
-    t.parentTarget = this; // currently unused
-    t.structMemberType = memberT;
     target = &t;
+    if (memberT->isStructure()) {
+      t.typeID = StructType;
+      t.type = memberT;
+
+    } else if (memberT->isFunction()) {
+      t.typeID = FunctionType;
+      if (it == itend) {
+        t.type = memberT;
+      } //else rlog("Target::lookupSymbol: Unexpected function leaf when expecting a branch");
+
+    } else {
+      t.typeID = LeafType;
+      if (it == itend) {
+        t.type = memberT;
+      } //else rlog("Target::lookupSymbol: Unexpected value leaf when expecting a branch");
+    }
   }
 
   // Are we the leaf?
   if (it == itend) {
-    //rlog("Leaf found! -> " << (target->resultType() ? target->resultType()->toString() : std::string("<nil>")) );
+    //rlog("Leaf found! -> " << (target ? target->toString() : std::string("<nil>")) );
     return *target;
   } else {
     return target->lookupSymbol(it, itend);
@@ -97,22 +132,36 @@ const ast::Type* Target::resultType() const {
       if (value->isExpression()) {
         const ast::Expression* expr = static_cast<const ast::Expression*>(value);
         return expr->resultType();
-      } else if (value->isVariable()) {
-        const ast::Variable* var = static_cast<const ast::Variable*>(value);
-        return var->type();
+
+      } else if (value->isValue()) {
+        const ast::Value* var = static_cast<const ast::Value*>(value);
+        return var->resultType();
+
       } else {
         return &ast::UnknownType;
       }
     }
 
-    case StructType: {
-      return structMemberType;
-    }
+    case LeafType:
+    case StructType:
+    case FunctionType:
+      return type;
 
     default: return 0;
   }
 }
 
+
+std::string Target::toString() const {
+  if (hasValue()) {
+    return "value:" + (value ?
+      (std::string(value->typeName()) + ":" + value->toString()) : std::string("<null>"));
+  } else if (hasType()) {
+    return "type:" + (type ? type->toString() : std::string("<null>"));
+  } else {
+    return "<null>";
+  }
+}
 
 
 }} // namespace hue transform

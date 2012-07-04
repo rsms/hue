@@ -8,6 +8,7 @@ cxx_sources :=  	src/main.cc \
                 	src/ast/Type.cc \
                 	src/ast/StructType.cc \
                 	src/ast/Structure.cc \
+                	src/ast/FunctionType.cc \
                 	src/transform/Scope.cc \
                 	src/codegen/Visitor.cc \
                 	src/codegen/type_conversion.cc \
@@ -45,6 +46,7 @@ rt_headers_pub := src/Text.h \
                 	src/ast/ast.h \
                 	src/ast/Type.h \
                 	src/ast/StructType.h \
+                	src/ast/FunctionType.h \
                 	src/ast/Node.h \
                 	src/ast/Expression.h \
                 	src/ast/Symbol.h \

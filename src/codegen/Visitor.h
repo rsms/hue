@@ -191,7 +191,7 @@ protected:
     return SymbolTarget::Empty;
   }
   
-  FunctionSymbolTargetList lookupFunctionSymbols(const Text& name) const;
+  FunctionSymbolTargetList lookupFunctionSymbols(const ast::Symbol& symbol) const;
 
   bool moduleHasNamedGlobal(llvm::StringRef name) const {
     return module_->getNamedValue(name) != 0
@@ -225,6 +225,8 @@ protected:
   llvm::StructType* getArrayStructType(llvm::Type* elementType);
   inline llvm::StructType* getI8ArrayStructType() { return getArrayStructType(builder_.getInt8Ty()); }
   llvm::StructType* getExplicitStructType(const ast::StructType* astST);
+  llvm::FunctionType* getLLVMFuncTypeForASTFuncType(const ast::FunctionType* astFT,
+                                                    llvm::Type* returnType = 0);
   
   // The following are implemented in type_conversion.cc
   llvm::Type *IRTypeForASTType(const ast::Type* T);
@@ -235,6 +237,7 @@ protected:
   // Returns false if an error occured
   bool IRTypesForASTVariables(std::vector<llvm::Type*>& argSpec, ast::VariableList *argVars);
   
+  llvm::Type* returnTypeForFunctionType(const ast::FunctionType* astFT);
 
   llvm::Value* wrapValueInGEP(llvm::Value* V) {
     llvm::Value *zero = llvm::ConstantInt::get(llvm::Type::getInt32Ty(llvm::getGlobalContext()), 0);

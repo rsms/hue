@@ -11,6 +11,7 @@
 namespace hue { namespace ast {
 
 class Block;
+class FunctionType;
 
 // A struct type represents an ordered map where the offset of a member
 // signifies the offset into the underlying struct. The name is the name
@@ -36,7 +37,7 @@ public:
     
     Member() : type(0), name() {}
     Member(const Type* T, const Text N, unsigned i) : type(T), name(N), index(i) {}
-    Member(const Member& other) : type(other.type), name(other.name) {}
+    //Member(const Member& other) : type(other.type), ... , name(other.name) {}
 
     const Type* type;
     Text name;

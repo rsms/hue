@@ -31,25 +31,29 @@ public:
   
   enum TargetType {
     ScopedValue = 0,
+    LeafType,
     StructType,
+    FunctionType,
   } typeID;
 
-  union {
-    ast::Node* value; // typeID == ScopedValue
-    const ast::Type* structMemberType; // typeID == StructType
-  };
-  union {
-    Scope* scope; // typeID == ScopedValue
-    const Target* parentTarget; // typeID == StructType
-  };
+  //union {
+    ast::Node* value; // typeID: ScopedValue
+    const ast::Type* type; // typeID: StructType or FunctionType or LeafType
+  //};
+  Scope* scope; // typeID: ScopedValue (else null)
   
-  Target(TargetType typ = ScopedValue) : typeID(typ), value(0), scope(0) {}
+  Target(TargetType typ = ScopedValue) : typeID(typ), value(0), type(0), scope(0) {}
 
-  inline bool isEmpty() const { return value == 0; }
+  inline bool isEmpty() const { return value == 0 && type == 0; }
+  inline bool hasValue() const { return typeID == ScopedValue; }
+  inline bool hasType() const {
+    return typeID == StructType || typeID == FunctionType || typeID == LeafType; }
   const ast::Type* resultType() const;
   
   // Find a sub-target
   const Target& lookupSymbol(Text::List::const_iterator it, Text::List::const_iterator itend);
+
+  std::string toString() const;
 
 protected:
   Map targets_;
@@ -86,6 +90,12 @@ public:
     target.scope = this;
   }
 
+  void defineSymbol(const Text& name, const ast::Type *T) {
+    Target& target = targets_[name];
+    target.value = new ast::Value(T);
+    target.scope = this;
+  }
+
   // Look up a target only in this scope.
   // Use Visitor::lookupSymbol to lookup stuff in any scope
   const Target& lookupSymbol(const Text& name) {
@@ -118,6 +128,9 @@ public:
 
   inline void defineSymbol(const Text& name, ast::Node *value) {
     currentScope()->defineSymbol(name, value);
+  }
+  inline void defineSymbol(const Text& name, const ast::Type *T) {
+    currentScope()->defineSymbol(name, T);
   }
 
 private:

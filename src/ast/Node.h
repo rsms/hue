@@ -5,6 +5,7 @@
 #ifndef HUE__AST_NODE_H
 #define HUE__AST_NODE_H
 
+#include "Type.h"
 #include <sstream>
 #include <vector>
 
@@ -26,7 +27,7 @@ public:
     TNode,
 
     TFunctionType,
-    TVariable,
+    TValue,
     
     // Expressions
     TExpression,
@@ -55,7 +56,7 @@ public:
   inline const NodeTypeID& nodeTypeID() const { return type_; }
 
   inline bool isFunctionType() const { return type_ == TFunctionType; }
-  inline bool isVariable() const { return type_ == TVariable; }
+  inline bool isValue() const { return type_ == TValue; }
 
   inline bool isExpression() const { return type_ >= TExpression; }
   inline bool isFunction() const { return type_ == TFunction; }
@@ -77,7 +78,7 @@ public:
   virtual const char* typeName() const {
     switch (type_) {
       case TFunctionType: return "FunctionType";
-      case TVariable: return "Variable";
+      case TValue: return "Value";
 
       // Expressions
       case TExpression: return "Expression";
@@ -103,6 +104,15 @@ public:
   
 private:
   const NodeTypeID type_;
+};
+
+// Used for function input parameters
+class Value : public Node {
+public:
+  Value(const Type* T) : Node(TValue), type_(T) {}
+  inline const Type* resultType() const { return type_; }
+protected:
+  const Type* type_;
 };
 
 }} // namespace hue.ast

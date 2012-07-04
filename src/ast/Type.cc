@@ -11,7 +11,7 @@ const Type IntType(Type::Int);
 const Type CharType(Type::Char);
 const Type ByteType(Type::Byte);
 const Type BoolType(Type::Bool);
-const Type FuncType(Type::Func);
+//const Type FuncType(Type::Func);
 
 const Type* Type::highestFidelity(const Type* T1, const Type* T2) {
   if (T1 && !T1->isUnknown() && T2 && !T2->isUnknown()) {

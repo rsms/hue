@@ -118,7 +118,7 @@ public:
     FunctionType *FT = fun->functionType();
     VariableList *args = FT->args();
     for (ast::VariableList::const_iterator I = args->begin(), E = args->end(); I != E; ++I) {
-      defineSymbol((*I)->name(), *I);
+      defineSymbol((*I)->name(), (*I)->type());
     }
 
     if (!visitBlock(fun->body(), fun))
@@ -188,19 +188,37 @@ public:
 
   bool visitCall(ast::Call* call) {
     DEBUG_TRACE_LFR_VISITOR;
-    const Target& target = lookupSymbol(call->calleeName());
+    const Target& target = lookupSymbol(*call->symbol());
 
     if (target.isEmpty()) {
-      return error(errs_ << "Unknown symbol \"" << call->calleeName() << "\"");
+      return error(errs_ << "Unknown symbol \"" << call->symbol() << "\"");
     }
 
-    if (!target.value->isCallable()) {
-      return error(errs_ << "Trying to call \"" << call->calleeName()
-                   << "\" which is not a function");
+    // if (!target.hasValue()) {
+    //   return error(errs_ << "Trying to call \"" << call->symbol()
+    //                << "\" which is not a function ("
+    //                << (target.hasType() ? target.type->toString() : "?") << ")");
+    // }
+
+    if (target.hasValue()) {
+      if (!target.value->isCallable() && !target.value->isFunctionType()) {
+        return error(errs_ << "Trying to call \"" << call->symbol()
+                   << "\" which is not a function (" << target.toString() << ")");
+      }
+      call->setCalleeType(static_cast<ast::Function*>(target.value)->functionType());
+
+    } else if (target.hasType()) {
+      if (!target.type->isFunction()) {
+        return error(errs_ << "Trying to call \"" << call->symbol()
+                   << "\" which is not a function (" << target.toString() << ")");
+      }
+      call->setCalleeType(static_cast<const ast::FunctionType*>(target.type));
+
+    } else {
+      return error(errs_ << "Internal error: Symbol target is neither value nor type");
     }
-    
-    // Substitute function for calleeName
-    call->setCallee((ast::Function*)target.value);
+
+    //rlogw("visitCall(): found & resolved " << target.toString());
 
     return true;
   }

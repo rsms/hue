@@ -357,7 +357,7 @@ void repl(llvm::Module *Mod, llvm::FunctionPassManager* funcPassManager, llvm::E
       case ast::Type::Bool:
         std::cout << (returnV.IntVal.getLimitedValue(1) ? "true" : "false"); break;
 
-      case ast::Type::Func: {
+      case ast::Type::FuncT: {
         ast::Expression* lastExpr = moduleBlock->expressions().back();
         // TODO: Represent the actual result
         std::cout << TS_Brown << lastExpr->toString();
@@ -368,6 +368,8 @@ void repl(llvm::Module *Mod, llvm::FunctionPassManager* funcPassManager, llvm::E
         // TODO: Represent an array
         std::cout << TS_Cyan << "[" << returnV.PointerVal << "]"; break;
       }
+
+      // TODO: case ast::Type::StructureT:
 
       // TODO: case ast::Type::Named:
       
@@ -595,7 +597,7 @@ int main(int argc, char **argv, char * const *envp) {
     // Batch mode (not REPL)
 
     // XXX dump parsed module block to stdout
-    std::cout << moduleBlock->toString() << std::endl;
+    std::cout << "Parse result:\n" << moduleBlock->toString() << std::endl;
 
     // Make sure the module block results in an integer value, since we will
     // call it as a standard main function.

@@ -43,7 +43,7 @@ public:
     ss << "(if " << (testExpression_ ? testExpression_->toString(level) : "nil");
     NodeToStringHeader(level+1, ss);
     ss << (trueBlock_ ? trueBlock_->toString(level+1) : "nil");
-    NodeToStringHeader(level, ss);
+    if (level == 0) ss << "\n"; else NodeToStringHeader(level, ss);
     ss << "else ";
     NodeToStringHeader(level+1, ss);
     ss << (falseBlock_ ? falseBlock_->toString(level+1) : "nil")
