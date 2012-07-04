@@ -20,7 +20,8 @@ cxx_sources :=  	src/main.cc \
                 	src/codegen/conditional.cc \
                 	src/codegen/data_literal.cc \
                 	src/codegen/text_literal.cc \
-                	src/codegen/structure.cc
+                	src/codegen/structure.cc \
+                	src/codegen/symbol.cc
 
 binhue_c_sources :=
 

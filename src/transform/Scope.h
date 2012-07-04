@@ -13,6 +13,10 @@
 #include <deque>
 #include <sstream>
 
+//
+// Logic to deal with symbolic references, potentially nested in scopes.
+//
+
 namespace hue { namespace transform {
 
 class Scope;
@@ -27,37 +31,46 @@ public:
   
   enum TargetType {
     ScopedValue = 0,
-    StructValue,
     StructType,
   } typeID;
 
   union {
     ast::Node* value; // typeID == ScopedValue
-    const ast::Structure::Member* structMember; // typeID == StructValue
     const ast::Type* structMemberType; // typeID == StructType
   };
   union {
     Scope* scope; // typeID == ScopedValue
-    const Target* parentTarget; // typeID == StructValue || StructType
+    const Target* parentTarget; // typeID == StructType
   };
   
   Target(TargetType typ = ScopedValue) : typeID(typ), value(0), scope(0) {}
 
   inline bool isEmpty() const { return value == 0; }
-
-  const ast::Node* astNode() const;
   const ast::Type* resultType() const;
   
   // Find a sub-target
-  const Target& lookupSymbol(const Text& name);
-  const Target& lookupSymbol(const ast::Type* T, const Text& name);
-
+  const Target& lookupSymbol(Text::List::const_iterator it, Text::List::const_iterator itend);
 
 protected:
   Map targets_;
 };
 
 
+// This class adds itself to the top of the stack of a supervisor Scoped
+// instance when created with a constructor that takes a Scoped instance.
+// When a Scope instance is deallocated, is pops itself from any Scoped's
+// stack is lives in. This makes it convenient to map stack scopes to Scope
+// instances:
+//
+//   void parseBlock(Block* block) {
+//      Scope scope(scopes_); // pushes itself to scopes_ stack
+//      for each symboldef:
+//         scope.defineSymbol(symboldef.name, symboldef.rhs);
+//      // any code inside here can now access these symbols through
+//      // scopes_.lookupSymbol(...).
+//   }
+//   // scope pops itself from scopes_ stack
+//
 class Scope {
 public:
   typedef std::deque<Scope*> Stack;
@@ -65,11 +78,14 @@ public:
   Scope(Scoped* supervisor);
   virtual ~Scope();
 
+  // Define a symbol as being rooted in this scope.
+  // *name* must not be a pathname.
   void defineSymbol(const Text& name, ast::Node *value) {
     Target& target = targets_[name];
     target.value = value;
     target.scope = this;
   }
+
   // Look up a target only in this scope.
   // Use Visitor::lookupSymbol to lookup stuff in any scope
   const Target& lookupSymbol(const Text& name) {
@@ -92,20 +108,10 @@ public:
   // Current scope, or 0 if none
   virtual Scope* currentScope() const { return scopeStack_.empty() ? 0 : scopeStack_.back(); }
   virtual Scope* parentScope() const { return scopeStack_.size() > 1 ? 0 : scopeStack_.back() -1; }
+  virtual Scope* rootScope() const { return scopeStack_.size() == 0 ? 0 : scopeStack_.front(); }
   
   // Find a target by name
-  const Target& lookupSymbol(const Text& name) {
-    // Scan symbol maps starting at top of stack moving down
-    ScopeStack::const_reverse_iterator I = scopeStack_.rbegin();
-    ScopeStack::const_reverse_iterator E = scopeStack_.rend();
-    for (; I != E; ++I) {
-      //Scope* scope = *I;
-      const Target& target = (*I)->lookupSymbol(name);
-      if (!target.isEmpty())
-        return target;
-    }
-    return Target::Empty;
-  }
+  const Target& lookupSymbol(const Text& name);
 
   // Find a target by a potentially nested symbol
   const Target& lookupSymbol(const ast::Symbol& sym);

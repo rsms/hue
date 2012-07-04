@@ -1,22 +1,26 @@
-bar = struct
+bar = struct            # constant <{ i64, %type.S1d* }>
   a = 1
-  b = struct
+  b = struct            # constant <{ double }>
     c = 2.3
 
 foo = func (n Int)
-  struct
-    x = struct
+  struct                # allocates <{ %type.S1x* }>
+    x = struct          # allocates <{ i64 }>
       y = n
 
 baz = func (n Int)
   y = n * 2
-  struct bob = y
+  struct bob = y        # allocates <{ i64 }>
 
-st1 = baz 5
+st1 = baz 20
 
-st1:bob
-bar:a
-bar:b:c
+bar:a    # 1
+bar:b:c  # 2.3
+st1:bob  # 40
 
-st2 = foo 123
-st2:x:y
+#foo 123  # <{ <{ i64 }>* }>
+#st2 = foo 123
+#st2:x:y  # 123
+
+# TODO: Indirect member access
+# (foo 123):x:y

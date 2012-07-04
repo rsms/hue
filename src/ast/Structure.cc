@@ -29,10 +29,10 @@ void Structure::update() {
     const Text& name = ass->variable()->name();
 
     size_t index = stmembers.size();
-    stmembers.push_back(StructType::Member(ass->resultType(), name));
+    stmembers.push_back(StructType::Member(ass->resultType(), name, (unsigned)index));
 
     Member& member = members_[name];
-    member.index = index;
+    member.index = (unsigned)index;
     member.value = ass->rhs();
   }
 

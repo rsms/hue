@@ -229,8 +229,7 @@ public:
     const Target& target = lookupSymbol(*sym);
 
     if (target.isEmpty()) {
-      //rlog("No target for " << sym->name() << " (" << sym->isPath() << ")");
-      return error(errs_ << "Unknown symbol \"" << sym->name() << "\"");
+      return error(errs_ << "Unknown symbol \"" << sym << "\"");
 
     } else {
       const ast::Type* T = target.resultType();

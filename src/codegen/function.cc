@@ -15,11 +15,12 @@ Value *Visitor::codegenFunction(ast::Function *node,
   DEBUG_TRACE_LLVM_VISITOR;
 
   bool inferredReturnType = false;
+  const ast::Type* astReturnType = node->functionType()->resultType();
   
   // Figure out return type (unless it's been overridden by returnType) if
   // the interface declares the return type.
   if (returnType != 0) {
-    ast::Type* astReturnType = ASTTypeForIRType(returnType);
+    astReturnType = ASTTypeForIRType(returnType);
     node->functionType()->setResultType(astReturnType);
   } else if (!node->functionType()->resultTypeIsUnknown()) {
     returnType = IRTypeForASTType(node->functionType()->resultType());
@@ -46,7 +47,7 @@ Value *Visitor::codegenFunction(ast::Function *node,
 
   // Export the current function into the bs
   if (!symbol.empty())
-    bs.setFunctionSymbol(symbol, node->functionType(), F->getFunctionType(), F);
+    bs.setFunctionSymbolTarget(symbol, node->functionType(), F->getFunctionType(), F);
   
   // setSymbol for arguments, and alloca+store if mutable
   ast::VariableList *args = node->functionType()->args();
@@ -67,11 +68,11 @@ Value *Visitor::codegenFunction(ast::Function *node,
         builder_.CreateStore(&arg, Alloca);
       
         // Register or override the value ref with the alloca inst
-        bs.setSymbol(var->name(), Alloca, /* isMutable = */true);
+        bs.setSymbolTarget(var->name(), var->type(), Alloca, /* isMutable = */true);
 
       } else {
         // Register the symbol
-        bs.setSymbol(var->name(), &arg, /* isMutable = */false);
+        bs.setSymbolTarget(var->name(), var->type(), &arg, /* isMutable = */false);
       }
       
     }
@@ -194,15 +195,21 @@ Value *Visitor::codegenFunction(ast::Function *node,
 
   } else if (returnValue->getType() != returnType) {
     // Return type should match the actual type, but it doesn't.
-    return error("Function return type is incompatible with the actual result type");
+    return error(std::string("Function return type (")
+                 + llvmTypeToString(*returnValue->getType())
+                 + ") is incompatible with the actual result type ("
+                 + llvmTypeToString(*returnType)
+                 + ")");
   }
 
   // Update the AST node if the return type is unknown
-  if (node->functionType()->resultType() == 0 || node->functionType()->resultType()->isUnknown()) {
-    ast::Type* astReturnType = ASTTypeForIRType(returnType);
+  if (   node->functionType()->resultType() == 0
+      || node->functionType()->resultType()->isUnknown()) {
+    astReturnType = ASTTypeForIRType(returnType);
     if (astReturnType == 0) {
       //returnType->dump();
-      return error(R_FMT("Unable to transcode return type from IR to AST"));
+      return error(R_FMT("Unable to transcode return type from IR "
+                         << llvmTypeToString(*returnType) << " to AST"));
     }
     node->functionType()->setResultType(astReturnType);
   }

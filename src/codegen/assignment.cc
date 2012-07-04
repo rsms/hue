@@ -6,7 +6,9 @@
 #include "../Mangle.h"
 #include "_VisitorImplHeader.h"
 
-Value* Visitor::createNewLocalSymbol(const ast::Variable *variable, Value *rhsValue,
+Value* Visitor::createNewLocalSymbol(const ast::Variable *variable,
+                                     const ast::Type* hueType,
+                                     Value *rhsValue,
                                      bool warnRedundantTypeDecl)
 {
   Type* rhsOriginalType = rhsValue->getType();
@@ -16,7 +18,7 @@ Value* Visitor::createNewLocalSymbol(const ast::Variable *variable, Value *rhsVa
   
   // Map Variable's type
   if (storageTypeIsKnown) {
-    varT = IRTypeForASTType(variable->type());
+    varT = IRTypeForASTType(hueType);
     if (varT == 0) return error("No encoding for variable's AST type");
   }
   
@@ -85,7 +87,8 @@ Value* Visitor::createNewLocalSymbol(const ast::Variable *variable, Value *rhsVa
     // }
   }
   
-  blockScope()->setSymbol(variable->name(), V, variable->isMutable());
+  assert(hueType != 0);
+  blockScope()->setSymbolTarget(variable->name(), hueType, V, variable->isMutable());
   
   return V;
 }
@@ -181,7 +184,7 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
   FunctionType* FT = functionTypeForValue(rhsValue);
   if (FT) {
     assert(hueFuncType != 0);
-    if (blockScope()->setFunctionSymbol(variable->name(), hueFuncType, FT, rhsValue) == false) {
+    if (blockScope()->setFunctionSymbolTarget(variable->name(), hueFuncType, FT, rhsValue) == false) {
       return error("Implementation has already been defined for the symbol");
     }
 
@@ -189,12 +192,12 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
     // We are dealing with something not a function
 
     // Look up the name in this direct scope.
-    const Symbol& symbol = blockScope()->lookupSymbol(variable->name());
+    const SymbolTarget& symbol = blockScope()->lookupSymbolTarget(variable->name());
     Value *existingValue = symbol.value;
     
     // Check if there's a function symbol with the same name
     if (existingValue == 0) {
-      if (blockScope()->lookupFunctionSymbols(variable->name()) != 0) {
+      if (blockScope()->lookupFunctionSymbolTargets(variable->name()) != 0) {
         return error("Symbol has already been defined");
       }
     }
@@ -202,7 +205,8 @@ Value *Visitor::codegenAssignment(const ast::Assignment* node) {
     if (existingValue == 0) {
       // New symbol
       bool warnRedundantTypeDecl = (node->rhs()->nodeTypeID() != ast::Node::TCall);
-      rhsValue = createNewLocalSymbol(variable, rhsValue, warnRedundantTypeDecl);
+      rhsValue = createNewLocalSymbol(variable, node->rhs()->resultType(),
+                                      rhsValue, warnRedundantTypeDecl);
       if (rhsValue == 0) return 0;
 
     } else {

@@ -106,4 +106,12 @@ private:
 };
 
 }} // namespace hue.ast
+
+inline static std::ostream& operator<< (std::ostream& os, const hue::ast::Node& node) {
+  return os << node.toString();
+}
+inline static std::ostream& operator<< (std::ostream& os, const hue::ast::Node* node) {
+  return os << node->toString();
+}
+
 #endif // HUE__AST_NODE_H

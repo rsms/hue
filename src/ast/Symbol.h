@@ -12,7 +12,7 @@ class Symbol : public Expression {
 public:
   Symbol(const Text &name, bool isPath);
 
-  const Text& name() const { return pathname_.size() == 0 ? Text::Empty : pathname_[0]; }
+  //const Text& name() const { return pathname_.size() == 0 ? Text::Empty : pathname_[0]; }
   const Text::List& pathname() const { return pathname_; }
   bool isPath() const { return pathname_.size() > 1; }
   virtual std::string toString(int level = 0) const;

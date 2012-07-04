@@ -3,7 +3,7 @@
 #ifndef HUE__CODEGEN_LLVM_VISITOR_H
 #define HUE__CODEGEN_LLVM_VISITOR_H
 
-#define DEBUG_LLVM_VISITOR 1
+#define DEBUG_LLVM_VISITOR 0
 #if DEBUG_LLVM_VISITOR
   #include "../DebugTrace.h"
   #define DEBUG_TRACE_LLVM_VISITOR DEBUG_TRACE
@@ -35,24 +35,26 @@ class Visitor {
   class BlockScope;
 
   // Represents a named symbol (or "alias")
-  class Symbol {
+  class SymbolTarget {
   public:
-    static Symbol Empty;
+    static SymbolTarget Empty;
     
+    const ast::Type* hueType;
     llvm::Value *value;
     bool isMutable;
     BlockScope *owningScope;
+
+    SymbolTarget() : hueType(0), value(0), isMutable(false), owningScope(0) {}
+    //SymbolTarget(ast::Node* N, llvm::Value *V, bool M = true, BlockScope* S = 0)
+    //  : astNode(N), value(V), isMutable(M), owningScope(S) {}
     
     inline bool isAlloca() const { return value ? llvm::AllocaInst::classof(value) : false; };
     inline bool empty() const { return value == 0; }
-    Symbol() : value(0), isMutable(true), owningScope(0) {}
-    Symbol(llvm::Value *V, bool M = true, BlockScope* S = 0)
-      : value(V), isMutable(M), owningScope(S) {}
   };
 
-  typedef std::map<Text, Symbol> SymbolMap;
+  typedef std::map<Text, SymbolTarget> SymbolTargetMap;
   
-  class FunctionSymbol {
+  class FunctionSymbolTarget {
   public:
     ast::FunctionType* hueType;
     llvm::FunctionType* type;
@@ -60,8 +62,8 @@ class Visitor {
     BlockScope *owningScope;
   };
     
-  typedef std::vector<FunctionSymbol> FunctionSymbolList;
-  typedef std::map<Text, FunctionSymbolList> FunctionSymbolMap;
+  typedef std::vector<FunctionSymbolTarget> FunctionSymbolTargetList;
+  typedef std::map<Text, FunctionSymbolTargetList> FunctionSymbolTargetMap;
   
   // Iterable stack of block scopes
   typedef std::deque<BlockScope*> BlockStack;
@@ -86,31 +88,33 @@ class Visitor {
     }
     
     inline llvm::BasicBlock *block() const { return block_; }
-    inline const SymbolMap& symbols() const { return symbols_; }
-    inline const FunctionSymbolMap& functions() const { return functions_; }
+
+    inline const SymbolTargetMap& symbolTargets() const { return symbols_; }
+    inline const FunctionSymbolTargetMap& functionsSymbolTargets() const { return functions_; }
     
-    void setSymbol(const Text& name, llvm::Value *V, bool isMutable = true) {
-      Symbol& symbol = symbols_[name];
+    void setSymbolTarget(const Text& name, const ast::Type* type, llvm::Value *V, bool isMutable = true) {
+      SymbolTarget& symbol = symbols_[name];
+      symbol.hueType = type;
       symbol.value = V;
       symbol.isMutable = isMutable;
       symbol.owningScope = this;
     }
     
-    bool setFunctionSymbol(const Text& name, ast::FunctionType* hueT, llvm::FunctionType* T,
-                           llvm::Value *V);
+    bool setFunctionSymbolTarget(const Text& name, ast::FunctionType* hueT,
+                                 llvm::FunctionType* T, llvm::Value *V);
     
     // Look up a symbol only in this scope.
     // Use Visitor::lookupSymbol to lookup stuff in any scope
-    const Symbol& lookupSymbol(const Text& name) const {
-      SymbolMap::const_iterator it = symbols_.find(name);
+    const SymbolTarget& lookupSymbolTarget(const Text& name) const {
+      SymbolTargetMap::const_iterator it = symbols_.find(name);
       if (it != symbols_.end()) return it->second;
-      return Symbol::Empty;
+      return SymbolTarget::Empty;
     }
     
     // Look up a function symbols only in this scope.
-    // Use Visitor::lookupFunctionSymbols to lookup stuff in any scope
-    const FunctionSymbolList* lookupFunctionSymbols(const Text& name) const {
-      FunctionSymbolMap::const_iterator it = functions_.find(name);
+    // Use Visitor::lookupFunctionSymbolTargets to lookup stuff in any scope
+    const FunctionSymbolTargetList* lookupFunctionSymbolTargets(const Text& name) const {
+      FunctionSymbolTargetMap::const_iterator it = functions_.find(name);
       if (it != functions_.end()) return &it->second;
       return 0;
     }
@@ -118,8 +122,8 @@ class Visitor {
   private:
     Visitor& visitor_;
     llvm::BasicBlock *block_;
-    SymbolMap symbols_;
-    FunctionSymbolMap functions_;
+    SymbolTargetMap symbols_;
+    FunctionSymbolTargetMap functions_;
   };
   
 public:
@@ -174,20 +178,20 @@ protected:
   // Current block, or 0 if none
   inline llvm::BasicBlock* block() const { return builder_.GetInsertBlock(); }
   
-  const Symbol& lookupSymbol(const Text& name) const {
+  const SymbolTarget& lookupSymbol(const Text& name) const {
     // Scan symbol maps starting at top of stack moving down
     BlockStack::const_reverse_iterator bsit = blockStack_.rbegin();
     for (; bsit != blockStack_.rend(); ++bsit) {
       BlockScope* bs = *bsit;
-      SymbolMap::const_iterator it = bs->symbols().find(name);
-      if (it != bs->symbols().end()) {
+      SymbolTargetMap::const_iterator it = bs->symbolTargets().find(name);
+      if (it != bs->symbolTargets().end()) {
         return it->second;
       }
     }
-    return Symbol::Empty;
+    return SymbolTarget::Empty;
   }
   
-  FunctionSymbolList lookupFunctionSymbols(const Text& name) const;
+  FunctionSymbolTargetList lookupFunctionSymbols(const Text& name) const;
 
   bool moduleHasNamedGlobal(llvm::StringRef name) const {
     return module_->getNamedValue(name) != 0
@@ -202,12 +206,10 @@ protected:
   } CandidateError;
 
   std::string formatFunctionCandidateErrorMessage(const ast::Call* node,
-                                                  const FunctionSymbolList& candidates,
+                                                  const FunctionSymbolTargetList& candidates,
                                                   CandidateError error) const;
   
   //std::vector<Function> lookupFunctions(const Text& name);
-  
-  llvm::Value *resolveSymbol(const Text& name);
   
   // Dump all symbols in the current block stack to stderr
   void dumpBlockSymbols();
@@ -244,7 +246,9 @@ protected:
   const char* typeName(const llvm::Type* T) const;
   
   
-  llvm::Value* createNewLocalSymbol(const ast::Variable *variable, llvm::Value *rhsV,
+  llvm::Value* createNewLocalSymbol(const ast::Variable *variable,
+                                    const ast::Type* hueType,
+                                    llvm::Value *rhsV,
                                     bool warnRedundantTypeDecl = true);
   
   inline std::string mangledName(const std::string& localName) const {

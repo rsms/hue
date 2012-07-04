@@ -158,17 +158,17 @@ FunctionType* Visitor::functionTypeForValue(Value* V) {
 }
 
 
-bool Visitor::BlockScope::setFunctionSymbol(const Text& name, ast::FunctionType* hueT,
-                                            FunctionType* FT, Value *V) {
-  //rlog("setFunctionSymbol: name: " << name);
+bool Visitor::BlockScope::setFunctionSymbolTarget(const Text& name, ast::FunctionType* hueT,
+                                                  FunctionType* FT, Value *V) {
+  //rlog("setFunctionSymbolTarget: name: " << name);
   
-  FunctionSymbolList& funcs = functions_[name];
+  FunctionSymbolTargetList& funcs = functions_[name];
   
   if (funcs.size() != 0) {
     // Check existing function types, making sure there's no implementation for FT
-    FunctionSymbolList::const_iterator it = funcs.begin();
+    FunctionSymbolTargetList::const_iterator it = funcs.begin();
     for (; it != funcs.end(); ++it) {
-      const FunctionSymbol& exstingFS = (*it);
+      const FunctionSymbolTarget& exstingFS = (*it);
       // Compare function types
       if (exstingFS.type == FT) {
         rlog("Duplicate functions");
@@ -178,7 +178,7 @@ bool Visitor::BlockScope::setFunctionSymbol(const Text& name, ast::FunctionType*
     
   }
   
-  FunctionSymbol symbol;
+  FunctionSymbolTarget symbol;
   symbol.hueType = hueT;
   symbol.type = FT;
   symbol.value = V;
@@ -189,15 +189,15 @@ bool Visitor::BlockScope::setFunctionSymbol(const Text& name, ast::FunctionType*
 }
 
 
-Visitor::FunctionSymbolList Visitor::lookupFunctionSymbols(const Text& name) const {
-  FunctionSymbolList found;
+Visitor::FunctionSymbolTargetList Visitor::lookupFunctionSymbols(const Text& name) const {
+  FunctionSymbolTargetList found;
   
   // Scan symbol maps starting at top of stack moving down
   BlockStack::const_reverse_iterator bsit = blockStack_.rbegin();
   for (; bsit != blockStack_.rend(); ++bsit) {
     BlockScope* bs = *bsit;
     
-    const FunctionSymbolList* funcSymbols = bs->lookupFunctionSymbols(name);
+    const FunctionSymbolTargetList* funcSymbols = bs->lookupFunctionSymbolTargets(name);
     if (funcSymbols != 0) {
       // insert ( iterator position, InputIterator first, InputIterator last
       found.insert(found.end(), funcSymbols->begin(), funcSymbols->end());
@@ -287,56 +287,7 @@ Value *Visitor::codegenBoolLiteral(const ast::BoolLiteral *literal) {
                            : ConstantInt::getFalse(getGlobalContext());
 }
 
-// Reference or load a symbol
-Value *Visitor::resolveSymbol(const Text& name) {
-  DEBUG_TRACE_LLVM_VISITOR;
-  
-  // Lookup symbol
-  const Symbol& symbol = lookupSymbol(name);
-  if (symbol.empty())
-    return error((std::string("Unknown variable \"") + name.UTF8String() + "\"").c_str());
-  
-  // Value must be either a global or in the same scope
-  assert(blockScope() != 0);
-  if (symbol.owningScope != blockScope()) {
-    if (!GlobalValue::classof(symbol.value)) {
-      // TODO: Future: If we support funcs that capture its environment, that code should
-      // likely live here.
-      return error((std::string("Unknown variable \"") + name.UTF8String() + "\" (no reachable symbols in scope)").c_str());
-    }
-    #if DEBUG_LLVM_VISITOR
-    else {
-      rlog("Resolving \"" << name << "\" to a global constant");
-    }
-    #endif
-  } 
-  #if DEBUG_LLVM_VISITOR
-  else {
-    if (GlobalValue::classof(symbol.value)) {
-      rlog("Resolving \"" << name << "\" to a global & local constant");
-    } else {
-      rlog("Resolving \"" << name << "\" to a local variable");
-    }
-  }
-  #endif
 
-  // Load an alloca or return a reference
-  if (symbol.isAlloca()) {
-    return builder_.CreateLoad(symbol.value, name.c_str());
-  } else {
-    return symbol.value;
-  }
-}
-
-
-Value *Visitor::codegenSymbol(const ast::Symbol *symbolExpr) {
-  DEBUG_TRACE_LLVM_VISITOR;
-  assert(symbolExpr != 0);
-  return resolveSymbol(symbolExpr->name());
-}
-
-
-
-Visitor::Symbol Visitor::Symbol::Empty;
+Visitor::SymbolTarget Visitor::SymbolTarget::Empty;
 
 #include "_VisitorImplFooter.h"

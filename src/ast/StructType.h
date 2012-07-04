@@ -33,11 +33,15 @@ public:
   class Member {
   public:
     typedef std::vector<Member> List;
+    
     Member() : type(0), name() {}
-    Member(const Type* T, const Text N) : type(T), name(N) {}
+    Member(const Type* T, const Text N, unsigned i) : type(T), name(N), index(i) {}
     Member(const Member& other) : type(other.type), name(other.name) {}
+
     const Type* type;
     Text name;
+    unsigned index;
+    
     // inline Member& operator= (const Member& rhs) {
     //   rhs
     //   return *this;
@@ -54,12 +58,15 @@ public:
   virtual std::string toString() const;
   virtual std::string canonicalName() const;
 
+  // Struct offset for member with name. Returns SIZE_MAX if not found.
+  size_t indexOf(const Text& name) const;
+
   // Get type for name (or nil if not found)
   const Type* operator[](const Text& name) const;
 
 private:
   TypeList types_;
-  NameMap nameMap_;
+  NameMap nameToIndexMap_;
 };
 
 }} // namespace hue::ast

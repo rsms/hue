@@ -9,7 +9,7 @@ inline static bool valueIsCallable(Value* V) {
 }
 
 std::string Visitor::formatFunctionCandidateErrorMessage(const ast::Call* node,
-                                                         const FunctionSymbolList& candidateFuncs,
+                                                         const FunctionSymbolTargetList& candidateFuncs,
                                                          CandidateError error) const
 {
   std::string utf8calleeName = node->calleeName().UTF8String();
@@ -39,7 +39,7 @@ std::string Visitor::formatFunctionCandidateErrorMessage(const ast::Call* node,
   }
   
   ss << std::endl;
-  FunctionSymbolList::const_iterator it2 = candidateFuncs.begin();
+  FunctionSymbolTargetList::const_iterator it2 = candidateFuncs.begin();
   for (; it2 != candidateFuncs.end(); ++it2) {
     ss << "  " << utf8calleeName << ' ' << (*it2).hueType->toHueSource() << std::endl;
   }
@@ -52,7 +52,7 @@ Value *Visitor::codegenCall(const ast::Call* node, const ast::Type* expectedRetu
   DEBUG_TRACE_LLVM_VISITOR;
   
   // Look up a list of matching function symbols
-  FunctionSymbolList candidateFuncs = lookupFunctionSymbols(node->calleeName());
+  FunctionSymbolTargetList candidateFuncs = lookupFunctionSymbols(node->calleeName());
   
   // No symbol?
   if (candidateFuncs.empty()) {
@@ -65,8 +65,8 @@ Value *Visitor::codegenCall(const ast::Call* node, const ast::Type* expectedRetu
   const ast::Call::ArgumentList& arguments = node->arguments();
   
   // Filter out functions that take a different number of arguments
-  FunctionSymbolList::const_iterator it = candidateFuncs.begin();
-  FunctionSymbolList candidateFuncsMatchingArgCount;
+  FunctionSymbolTargetList::const_iterator it = candidateFuncs.begin();
+  FunctionSymbolTargetList candidateFuncsMatchingArgCount;
   for (; it != candidateFuncs.end(); ++it) {
     if (static_cast<size_t>((*it).type->getNumParams()) == arguments.size())
       candidateFuncsMatchingArgCount.push_back(*it);
@@ -94,8 +94,8 @@ Value *Visitor::codegenCall(const ast::Call* node, const ast::Type* expectedRetu
   }
   
   // Find a function that matches the arguments
-  FunctionSymbolList::const_iterator it2 = candidateFuncsMatchingArgCount.begin();
-  FunctionSymbolList candidateFuncsMatchingTypes;
+  FunctionSymbolTargetList::const_iterator it2 = candidateFuncsMatchingArgCount.begin();
+  FunctionSymbolTargetList candidateFuncsMatchingTypes;
   for (; it2 != candidateFuncsMatchingArgCount.end(); ++it2) {
     FunctionType* candidateFT = (*it2).type;
     size_t i = 0;
@@ -138,8 +138,8 @@ Value *Visitor::codegenCall(const ast::Call* node, const ast::Type* expectedRetu
   if (expectedReturnType != 0) {
     
     // Reduce our list of candidates according to expected return types
-    FunctionSymbolList candidateFuncsMatchingReturns;
-    FunctionSymbolList::const_iterator it3 = candidateFuncsMatchingTypes.begin();
+    FunctionSymbolTargetList candidateFuncsMatchingReturns;
+    FunctionSymbolTargetList::const_iterator it3 = candidateFuncsMatchingTypes.begin();
     for (; it3 != candidateFuncsMatchingTypes.end(); ++it3) {
 
       // Get the list types that the candidate returns

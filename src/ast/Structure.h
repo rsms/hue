@@ -17,7 +17,7 @@ public:
   class Member {
   public:
     Member() : index(0), value(0) {}
-    size_t index;
+    unsigned index;
     Expression* value;
   };
 

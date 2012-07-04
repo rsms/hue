@@ -15,58 +15,83 @@ Scope::~Scope() {
 }
 
 
-
-const Target& Scoped::lookupSymbol(const ast::Symbol& sym) {
-  // TODO: namespaces
-  const Text& name = sym.name();
-
-  if (!sym.isPath()) {
-    return lookupSymbol(name);
-
-  } else if (!name.empty()) {
-    std::vector<Text> components = name.split(':');
-    const Target& target = lookupSymbol(components[0]);
-
-    if (!target.isEmpty()) {
-      if (components.size() == 1) {
-        return target;
-      }
-
-      // Dig into target
-      //rlog("components: " << Text("/").join(components));
-      std::vector<Text>::const_iterator I = components.begin(), E = components.end();
-      ++I;
-      Target* target1 = (Target*)&target;
-      //rlog("target.typeID: " << target.typeID);
-
-      for (; I != E; ++I) {
-        const Target& target2 = target1->lookupSymbol(*I);
-        if (target2.isEmpty())
-          return target2; // empty
-        target1 = (Target*)&target2;
-      }
-
-      // OMG we found something
-      return const_cast<const Target&>(*target1);
-    }
+const Target& Scoped::lookupSymbol(const Text& name) {
+  // Scan symbol maps starting at top of stack moving down
+  Scope::Stack::const_reverse_iterator I = scopeStack_.rbegin();
+  Scope::Stack::const_reverse_iterator E = scopeStack_.rend();
+  for (; I != E; ++I) {
+    //Scope* scope = *I;
+    const Target& target = (*I)->lookupSymbol(name);
+    if (!target.isEmpty())
+      return target;
   }
-
   return Target::Empty;
 }
 
 
-const ast::Node* Target::astNode() const {
-  if (typeID == ScopedValue && value) {
-    return value;
-  } else if (typeID == StructValue && structMember) {
-    return structMember->value;
+const Target& Scoped::lookupSymbol(const ast::Symbol& sym) {
+  const Text::List& pathname = sym.pathname();
+  assert(pathname.size() != 0);
+  //rlog("pathname: " << Text("/").join(pathname));
+
+  // Lookup root
+  const Target& target = lookupSymbol(pathname[0]);
+  if (target.isEmpty() || pathname.size() == 1) return target;
+
+  // Dig into target
+  return const_cast<Target&>(target).lookupSymbol(pathname.begin()+1, pathname.end());
+}
+
+
+const Target& Target::lookupSymbol(Text::List::const_iterator it, Text::List::const_iterator itend) {
+  const Text& name = *it;
+  ++it;
+  //rlog("Target::lookupSymbol(\"" << name << "\", itend)");
+
+  Target* target = 0;
+
+  // Already resolved?
+  Target::Map::iterator MI = targets_.find(name);
+  if (MI != targets_.end()) {
+    target = &MI->second;
+
+  } else {
+    // Dig further based on our type
+    const ast::Type* T = resultType();
+    if (T == 0 || !T->isStructure())
+      return Target::Empty;
+
+    // Else: T is a StructType
+    const ast::StructType* ST = static_cast<const ast::StructType*>(T);
+
+    // Lookup struct member by name
+    const ast::Type* memberT = (*ST)[name];
+    if (memberT == 0) {
+      //rlogw("Unknown symbol \"" << name << "\" in struct " << ST->toString());
+      return Target::Empty;
+    }
+
+    // Register target for name
+    Target& t = targets_[name];
+    t.typeID = StructType;
+    t.parentTarget = this; // currently unused
+    t.structMemberType = memberT;
+    target = &t;
   }
-  return 0;
+
+  // Are we the leaf?
+  if (it == itend) {
+    //rlog("Leaf found! -> " << (target->resultType() ? target->resultType()->toString() : std::string("<nil>")) );
+    return *target;
+  } else {
+    return target->lookupSymbol(it, itend);
+  }
 }
 
 
 const ast::Type* Target::resultType() const {
   switch (typeID) {
+
     case ScopedValue: {
       if (value == 0) return 0;
       if (value->isExpression()) {
@@ -76,12 +101,8 @@ const ast::Type* Target::resultType() const {
         const ast::Variable* var = static_cast<const ast::Variable*>(value);
         return var->type();
       } else {
-        return 0;
+        return &ast::UnknownType;
       }
-    }
-
-    case StructValue: {
-      return structMember && structMember->value ? structMember->value->resultType() : 0;
     }
 
     case StructType: {
@@ -90,72 +111,6 @@ const ast::Type* Target::resultType() const {
 
     default: return 0;
   }
-}
-
-
-const Target& Target::lookupSymbol(const ast::Type* T, const Text& name) {
-  //rlog("Result type: " << T->toString());
-
-  if (T->isStructure()) {
-    //rlog("isStructure");
-    const ast::StructType* ST = static_cast<const ast::StructType*>(T);
-    const ast::Type* memberT = (*ST)[name];
-
-    if (memberT) {
-      //rlog("creating Target::StructType");
-      Target& target = targets_[name];
-      target.typeID = StructType;
-      target.parentTarget = this;
-      target.structMemberType = memberT;
-      return target;
-    }
-  }
-
-  return Target::Empty;
-}
-
-
-// Find a sub-target by name.
-const Target& Target::lookupSymbol(const Text& name) {
-  //rlog("Target::lookupSymbol(\"" << name << "\")");
-
-  // First, see if we have an existing target
-  Target::Map::const_iterator it = targets_.find(name);
-  if (it != targets_.end()) return it->second;
-
-  // Digging in a lazy struct?
-  if (typeID == StructType && structMemberType) {
-    return lookupSymbol(structMemberType, name);
-  }
-
-  // Find node and bail unless its an expression
-  const ast::Node* node = astNode();
-  if (node == 0 || !node->isExpression()) return Target::Empty;
-  const ast::Expression* expr = static_cast<const ast::Expression*>(node);
-  
-  // Okay, we don't know about name. If we have a value and that value is a
-  // struct, dig into it.
-  if (expr->isStructure()) {
-    const ast::Structure* st = static_cast<const ast::Structure*>(expr);
-    const ast::Structure::Member* member = (*st)[name];
-
-    if (member) {
-      Target& target = targets_[name];
-      target.typeID = StructValue;
-      target.parentTarget = this;
-      target.structMember = member;
-      return target;
-    }
-    // else {
-    //   rlog("Member " << name << " not found in structure " << st->toString());
-    // }
-
-  } else {
-    const ast::Type* T = expr->resultType();
-    return lookupSymbol(T, name);
-  }
-
-  return Target::Empty;
 }
 
 

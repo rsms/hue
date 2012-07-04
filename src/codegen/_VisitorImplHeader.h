@@ -31,3 +31,13 @@ static std::string __attribute__((unused)) _r_fmt_end(std::ostringstream* s) {
   return str;
 }
 #define R_FMT(A) _r_fmt_end( static_cast<std::ostringstream*>(&((*_r_fmt_begin()) << A )) )
+
+static std::string __attribute__((unused)) llvmTypeToString(const llvm::Type& T) {
+  std::string str;
+  llvm::raw_string_ostream s(str);
+  T.print(s);
+  return s.str();
+}
+static std::string __attribute__((unused)) llvmTypeToString(const llvm::Type const* T) {
+  return llvmTypeToString(*T);
+}
